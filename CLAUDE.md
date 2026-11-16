@@ -20,3 +20,7 @@ Desertų parduotuvė, kurioje užsakyti galima tik per admino atidarytą pardavi
 ## Komandos
 - `pnpm dev`, `pnpm build`, `pnpm typecheck`
 - Vienai aplikacijai: `pnpm turbo run <task> --filter=@desert-web/<api|web|admin|shared>`
+
+## Git
+- Prieš commit'inant nustatyk autorių: `git config user.name "Almintas"` ir `git config user.email "107874379+Almintas@users.noreply.github.com"`.
+- Commit'ų ir PR aprašymuose nerašyk `Co-Authored-By: Claude`, `Claude-Session` ar `Generated with Claude Code` eilučių.
