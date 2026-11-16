@@ -44,3 +44,25 @@ export interface OrderDto {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * POST /orders atsakymas. accessToken grąžinamas tik vieną kartą: frontas iš jo
+ * sudaro pirkėjo nuorodą į užsakymą (GET /orders/access/:accessToken).
+ */
+export interface CreateOrderResponse {
+  order: OrderDto;
+  accessToken: string;
+}
+
+/** Klaidų kodai, kuriuos grąžina POST /orders (laukas `code` klaidos atsakyme). */
+export const ORDER_ERROR_CODES = [
+  'SALE_WINDOW_NOT_FOUND',
+  'SALE_WINDOW_CLOSED',
+  'FULFILLMENT_NOT_AVAILABLE',
+  'ITEM_NOT_IN_WINDOW',
+  'ITEM_UNAVAILABLE',
+  'MAX_PER_ORDER_EXCEEDED',
+  'MAX_PER_CUSTOMER_EXCEEDED',
+  'INSUFFICIENT_STOCK',
+] as const;
+export type OrderErrorCode = (typeof ORDER_ERROR_CODES)[number];

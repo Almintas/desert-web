@@ -21,3 +21,13 @@ export function formatShopDateTime(value: Date | string): string {
 export function formatShopDate(value: Date | string): string {
   return dateFormatter.format(new Date(value));
 }
+
+const yearFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: SHOP_TIMEZONE,
+  year: 'numeric',
+});
+
+/** Metai parduotuvės laiku (pvz., gruodžio 31 d. 23:30 Vilniuje dar senieji metai). */
+export function getShopYear(value: Date | string = new Date()): number {
+  return Number(yearFormatter.format(new Date(value)));
+}
