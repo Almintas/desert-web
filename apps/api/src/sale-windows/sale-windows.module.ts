@@ -12,5 +12,6 @@ import { SaleWindowsService } from './sale-windows.service';
   ],
   controllers: [SaleWindowsController],
   providers: [SaleWindowsService],
+  exports: [SaleWindowsService, MongooseModule],
 })
 export class SaleWindowsModule {}

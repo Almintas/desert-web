@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { type Env, validateEnv } from './config/env';
 import { HealthModule } from './health/health.module';
+import { OrdersModule } from './orders/orders.module';
 import { ProductsModule } from './products/products.module';
 import { SaleWindowsModule } from './sale-windows/sale-windows.module';
 
@@ -24,6 +25,7 @@ import { SaleWindowsModule } from './sale-windows/sale-windows.module';
     HealthModule,
     ProductsModule,
     SaleWindowsModule,
+    OrdersModule,
   ],
 })
 export class AppModule {}

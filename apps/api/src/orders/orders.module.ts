@@ -1,0 +1,20 @@
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { CountersModule } from '../counters/counters.module';
+import { ProductsModule } from '../products/products.module';
+import { SaleWindowsModule } from '../sale-windows/sale-windows.module';
+import { Order, OrderSchema } from './order.schema';
+import { OrdersController } from './orders.controller';
+import { OrdersService } from './orders.service';
+
+@Module({
+  imports: [
+    MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }]),
+    ProductsModule, // eksportuoja Product modelį
+    SaleWindowsModule, // eksportuoja SaleWindow modelį
+    CountersModule,
+  ],
+  controllers: [OrdersController],
+  providers: [OrdersService],
+})
+export class OrdersModule {}
