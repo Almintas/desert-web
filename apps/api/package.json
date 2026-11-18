@@ -9,7 +9,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.spec.json --noEmit",
     "seed": "node --env-file=.env dist/scripts/seed.js",
     "test": "jest --runInBand",
-    "db:indexes": "node --env-file-if-exists=.env dist/scripts/sync-indexes.js"
+    "db:indexes": "node --env-file-if-exists=.env dist/scripts/sync-indexes.js",
+    "admin:create": "node --env-file-if-exists=.env dist/scripts/create-admin.js"
   },
   "dependencies": {
     "@desert-web/shared": "workspace:*",
@@ -18,6 +19,7 @@
     "@nestjs/core": "^11.1.0",
     "@nestjs/mongoose": "^11.0.0",
     "@nestjs/platform-express": "^11.1.0",
+    "@nestjs/throttler": "^6.8.0",
     "mongoose": "^8.18.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",

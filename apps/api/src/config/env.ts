@@ -18,6 +18,11 @@ export const envSchema = z.object({
         .map((o) => o.trim())
         .filter(Boolean),
     ),
+  /** Admino sesijos trukmė dienomis. */
+  ADMIN_SESSION_TTL_DAYS: z.coerce.number().positive().default(7),
+  /** Kiek nesėkmingų / bet kokių prisijungimo bandymų leidžiama iš vieno IP per langą. */
+  ADMIN_LOGIN_RATE_LIMIT: z.coerce.number().int().positive().default(5),
+  ADMIN_LOGIN_RATE_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
   RESEND_API_KEY: optionalString,
   EMAIL_FROM: optionalString,
   CLOUDINARY_CLOUD_NAME: optionalString,

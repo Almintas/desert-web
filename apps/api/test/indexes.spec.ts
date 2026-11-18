@@ -7,6 +7,8 @@ const REQUIRED_UNIQUE: [string, string][] = [
   ['orders', 'orderNumber'],
   ['orders', 'accessToken'],
   ['products', 'slug'],
+  ['admins', 'email'],
+  ['adminSessions', 'tokenHash'],
 ];
 
 describe('createAllIndexes (db:indexes)', () => {
@@ -28,7 +30,7 @@ describe('createAllIndexes (db:indexes)', () => {
   afterAll(async () => {
     await fresh.dropDatabase();
     await fresh.close();
-    await ctx.app.close();
+    await ctx?.app.close();
   });
 
   async function uniqueFields(collection: string): Promise<string[]> {
@@ -54,6 +56,11 @@ describe('createAllIndexes (db:indexes)', () => {
     );
     const orderIndexNames = (await fresh.db!.collection('orders').indexes()).map((i) => i.name);
     expect(orderIndexNames).toContain('manual_idx');
+
+    const ttl = (await fresh.db!.collection('adminSessions').indexes()).find(
+      (i) => i.key.expiresAt === 1,
+    );
+    expect(ttl?.expireAfterSeconds).toBe(0);
 
     // Visi schemose aprašyti indeksai egzistuoja.
     for (const model of Object.values(fresh.models)) {

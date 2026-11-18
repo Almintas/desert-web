@@ -8,3 +8,4 @@ export * from './schemas/product';
 export * from './schemas/sale-window';
 export * from './schemas/order';
 export * from './schemas/special-order';
+export * from './schemas/admin';

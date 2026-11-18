@@ -40,6 +40,21 @@ pnpm --filter @desert-web/api seed
 pnpm dev
 ```
 
+### Pirmas adminas
+
+Viešos registracijos nėra. Adminą sukuria `admin:create` (slaptažodis bent 12 simbolių, įvedamas nerodant):
+
+```bash
+pnpm turbo run build --filter=@desert-web/api
+pnpm --filter @desert-web/api admin:create --email tu@example.com --role owner
+
+# neinteraktyviai (pvz., Railway shell)
+ADMIN_PASSWORD='...' pnpm --filter @desert-web/api admin:create --email tu@example.com --role owner
+
+# pamirštas slaptažodis: pakeičia hash'ą ir ištrina visas to admino sesijas
+pnpm --filter @desert-web/api admin:create --email tu@example.com --reset-password
+```
+
 | Aplikacija | Adresas                                                                 |
 | ---------- | ----------------------------------------------------------------------- |
 | web        | http://localhost:3000                                                   |
@@ -61,7 +76,7 @@ Naudingos komandos: `pnpm dev:web`, `pnpm dev:admin`, `pnpm dev:api`, `pnpm buil
    - **Start Command:** `pnpm --filter @desert-web/api start`
    - **Healthcheck Path:** `/health`
    - **Watch Paths:** `apps/api/**`, `packages/shared/**` (kad nebūtų perdiegiama keičiant tik frontendą)
-3. Variables: `NODE_ENV=production`, `MONGODB_URI`, `CORS_ORIGINS` (web ir admin adresai per kablelį). `PORT` Railway nustato pats.
+3. Variables: `NODE_ENV=production`, `MONGODB_URI`, `CORS_ORIGINS` (web ir admin adresai per kablelį). `PORT` Railway nustato pats. Neprivalomi: `ADMIN_SESSION_TTL_DAYS`, `ADMIN_LOGIN_RATE_LIMIT`, `ADMIN_LOGIN_RATE_WINDOW_SECONDS`.
    - **Pre-deploy Command:** `pnpm --filter @desert-web/api db:indexes`
 4. Settings → Networking → Generate Domain (arba prijunk `api.tavodomenas.lt`).
 
@@ -101,7 +116,7 @@ Duomenų modelis ir sprendimai aprašyti Claude projekte „Desert Web“ (`duom
 
 ## Kas toliau
 
-- [ ] Admin prisijungimas (API + admin app)
+- [x] Admin prisijungimas (API + admin app)
 - [ ] Admin CRUD: produktai (su Cloudinary įkėlimu) ir pardavimo langai
 - [ ] Užsakymo kūrimas su atomine kiekio rezervacija ir limitu vienam pirkėjui
 - [ ] Laiškai per Resend (užsakymo patvirtinimas)

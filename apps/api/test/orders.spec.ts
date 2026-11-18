@@ -21,7 +21,7 @@ describe('Užsakymai (POST /orders, GET /orders/access/:token)', () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await ctx?.app.close();
   });
 
   beforeEach(async () => {
