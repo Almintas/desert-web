@@ -31,3 +31,95 @@ const yearFormatter = new Intl.DateTimeFormat('en-US', {
 export function getShopYear(value: Date | string = new Date()): number {
   return Number(yearFormatter.format(new Date(value)));
 }
+
+const partsFormatter = new Intl.DateTimeFormat('en-US', {
+  timeZone: SHOP_TIMEZONE,
+  hourCycle: 'h23',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
+
+interface LocalParts {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+}
+
+function vilniusParts(instant: number): LocalParts {
+  const parts: Record<string, number> = {};
+  for (const p of partsFormatter.formatToParts(new Date(instant))) {
+    if (p.type !== 'literal') parts[p.type] = Number(p.value);
+  }
+  return {
+    year: parts.year!,
+    month: parts.month!,
+    day: parts.day!,
+    hour: parts.hour!,
+    minute: parts.minute!,
+    second: parts.second!,
+  };
+}
+
+/** Vilniaus poslinkis nuo UTC milisekundėmis tam momentui (+2 h žiemą, +3 h vasarą). */
+function vilniusOffset(instant: number): number {
+  const truncated = Math.floor(instant / 1000) * 1000;
+  const p = vilniusParts(truncated);
+  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - truncated;
+}
+
+const LOCAL_DATE_TIME = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/;
+const DAY_MS = 86_400_000;
+
+/**
+ * Vilniaus vietinis laikas iš `<input type="datetime-local">` („2026-12-20T10:00“) -> UTC Date.
+ * Grąžina null, jei eilutė netinkama (pvz., 2026-02-30T10:00).
+ *
+ * Laikrodžio persukimas (Europe/Vilnius, paskutinį kovo ir spalio sekmadienį):
+ * - Kovo 03:00–03:59 vietinio laiko nėra (03:00 EET -> 04:00 EEST). Toks laikas
+ *   pastumiamas pirmyn per tarpą: 03:30 -> 04:30 EEST (01:30 UTC).
+ * - Spalio 03:00–03:59 būna du kartus (04:00 EEST -> 03:00 EET). Imamas ankstesnis,
+ *   t. y. vasaros laikas: 03:30 -> 03:30 EEST (00:30 UTC).
+ * Tai ta pati taisyklė kaip Temporal `disambiguation: 'compatible'`.
+ */
+export function vilniusLocalToUtc(local: string): Date | null {
+  const m = LOCAL_DATE_TIME.exec(local.trim());
+  if (!m) return null;
+  const [year, month, day, hour, minute, second] = m.slice(1).map((v) => Number(v ?? 0)) as [
+    number,
+    number,
+    number,
+    number,
+    number,
+    number,
+  ];
+  if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 59) return null;
+  // Laukai, perskaityti „kaip UTC“; tikrinam, ar diena egzistuoja (vasario 30 d. ir pan.).
+  const asUtc = Date.UTC(year, month - 1, day, hour, minute, second);
+  const check = new Date(asUtc);
+  if (check.getUTCFullYear() !== year || check.getUTCDate() !== day) return null;
+
+  // Poslinkiai parą prieš ir po: persukimas Vilniuje vyksta ne dažniau kaip kartą per parą.
+  const offsetBefore = vilniusOffset(asUtc - DAY_MS);
+  const offsetAfter = vilniusOffset(asUtc + DAY_MS);
+  const candidates = [asUtc - offsetBefore, asUtc - offsetAfter].filter(
+    (t) => t + vilniusOffset(t) === asUtc,
+  );
+  // Abu tinka: kartojama valanda, imam ankstesnį. Nė vienas: neegzistuojanti valanda,
+  // imam poslinkį prieš persukimą (rezultatas atsiduria po tarpo).
+  return new Date(candidates.length > 0 ? Math.min(...candidates) : asUtc - offsetBefore);
+}
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** UTC Date / ISO -> Vilniaus vietinis laikas `<input type="datetime-local">` laukui („2026-12-20T10:00“). */
+export function utcToVilniusLocal(value: Date | string): string {
+  const p = vilniusParts(new Date(value).getTime());
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}T${pad(p.hour)}:${pad(p.minute)}`;
+}
