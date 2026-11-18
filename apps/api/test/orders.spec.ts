@@ -21,7 +21,7 @@ describe('Užsakymai (POST /orders, GET /orders/access/:token)', () => {
   });
 
   afterAll(async () => {
-    await ctx.app.close();
+    await ctx?.app.close();
   });
 
   beforeEach(async () => {
@@ -315,6 +315,29 @@ describe('Užsakymai (POST /orders, GET /orders/access/:token)', () => {
           orderBody(window._id, [{ variantId, quantity: 3 }], { customer }),
         );
         expect(second.status).toBe(201);
+      });
+
+      it('el. paštas su tarpais priimamas, saugomas be tarpų ir skaičiuojamas į tą patį limitą', async () => {
+        const { window, variantId } = await setup();
+        const first = await post(
+          orderBody(window._id, [{ variantId, quantity: 2 }], {
+            customer: { name: 'Ona', email: '  ona@example.com ', phone: '+37061111111' },
+          }),
+        );
+        expect(first.status).toBe(201);
+        expect(first.body.order.customer.email).toBe('ona@example.com');
+        const stored = await ctx.orderModel.findById(first.body.order.id).lean().exec();
+        expect(stored?.customer.email).toBe('ona@example.com');
+        expect(stored?.customer.emailNormalized).toBe('ona@example.com');
+
+        const second = await post(
+          orderBody(window._id, [{ variantId, quantity: 2 }], {
+            customer: { name: 'Ona', email: 'ona@example.com', phone: '+37062222222' },
+          }),
+        );
+        expect(second.status).toBe(409);
+        expect(second.body.code).toBe('MAX_PER_CUSTOMER_EXCEEDED');
+        expect(second.body.remaining).toBe(1);
       });
     });
   });

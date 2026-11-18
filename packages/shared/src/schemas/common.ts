@@ -7,7 +7,8 @@ export const centsSchema = z.number().int().nonnegative();
 
 export const customerInputSchema = z.object({
   name: z.string().trim().min(2).max(100),
-  email: z.email().max(200),
+  // Pirmiau trim, tada validacija: " ona@example.com " turi praeiti ir būti išsaugotas be tarpų.
+  email: z.string().trim().pipe(z.email().max(200)),
   phone: z
     .string()
     .trim()

@@ -40,10 +40,25 @@ pnpm --filter @desert-web/api seed
 pnpm dev
 ```
 
-| Aplikacija | Adresas |
-| ---------- | ------- |
-| web        | http://localhost:3000 |
-| admin      | http://localhost:3001 |
+### Pirmas adminas
+
+Viešos registracijos nėra. Adminą sukuria `admin:create` (slaptažodis bent 12 simbolių, įvedamas nerodant):
+
+```bash
+pnpm turbo run build --filter=@desert-web/api
+pnpm --filter @desert-web/api admin:create --email tu@example.com --role owner
+
+# neinteraktyviai (pvz., Railway shell)
+ADMIN_PASSWORD='...' pnpm --filter @desert-web/api admin:create --email tu@example.com --role owner
+
+# pamirštas slaptažodis: pakeičia hash'ą ir ištrina visas to admino sesijas
+pnpm --filter @desert-web/api admin:create --email tu@example.com --reset-password
+```
+
+| Aplikacija | Adresas                                                                 |
+| ---------- | ----------------------------------------------------------------------- |
+| web        | http://localhost:3000                                                   |
+| admin      | http://localhost:3001                                                   |
 | api        | http://localhost:4000 (`/health`, `/products`, `/sale-windows/current`) |
 
 Po pirmo `pnpm install` **užcommitink `pnpm-lock.yaml`**: Railway ir Vercel jo reikia.
@@ -61,8 +76,35 @@ Naudingos komandos: `pnpm dev:web`, `pnpm dev:admin`, `pnpm dev:api`, `pnpm buil
    - **Start Command:** `pnpm --filter @desert-web/api start`
    - **Healthcheck Path:** `/health`
    - **Watch Paths:** `apps/api/**`, `packages/shared/**` (kad nebūtų perdiegiama keičiant tik frontendą)
-3. Variables: `NODE_ENV=production`, `MONGODB_URI`, `CORS_ORIGINS` (web ir admin adresai per kablelį). `PORT` Railway nustato pats.
+3. Variables: `NODE_ENV=production`, `MONGODB_URI`, `CORS_ORIGINS` (web ir admin adresai per kablelį), `INTERNAL_API_SECRET` (žr. [Admin prisijungimas](#admin-prisijungimas)). `PORT` Railway nustato pats. Neprivalomi: `ADMIN_SESSION_TTL_DAYS`, `ADMIN_LOGIN_RATE_LIMIT`, `ADMIN_LOGIN_RATE_WINDOW_SECONDS`.
+   - **Pre-deploy Command:** `pnpm --filter @desert-web/api db:indexes`
 4. Settings → Networking → Generate Domain (arba prijunk `api.tavodomenas.lt`).
+
+#### Admin prisijungimas
+
+Naršyklė į API admin veiksmams tiesiogiai nesikreipia: admin Next.js serveris kviečia API ir laiko sesijos tokeną savo `httpOnly` cookie `dw_admin_session`. Todėl admin app naudoja tik serverio kintamąjį `API_URL` (ne `NEXT_PUBLIC_`).
+
+Kadangi visi prisijungimai į API ateina iš admin serverio IP, **produkcijoje privaloma** nustatyti `INTERNAL_API_SECRET` (bent 32 simboliai, `openssl rand -base64 32`) su **ta pačia reikšme** abiejose vietose:
+
+- Railway → api service → Variables
+- Vercel → admin projektas → Settings → Environment Variables (Production)
+
+Su ja admin app perduoda tikrą naršyklės IP, ir prisijungimų limitas (`ADMIN_LOGIN_RATE_LIMIT` per `ADMIN_LOGIN_RATE_WINDOW_SECONDS`) skaičiuojamas kiekvienam lankytojui atskirai. Be jos limitas būtų bendras visiems adminams, ir bet kas galėtų juos visus užblokuoti, todėl:
+
+- API su `NODE_ENV=production` be `INTERNAL_API_SECRET` **nepasileidžia** (klaida Railway deploy loguose).
+- Admin app produkcijoje be jos **atmeta prisijungimą** su aiškiu pranešimu (ir klaida Vercel runtime loguose). Tikrinama prisijungimo metu, ne builde, nes Vercel buildui runtime kintamųjų gali neduoti.
+- Jei reikšmės skiriasi, API paslapties nepriima ir tyliai grįžta prie bendro limito, todėl keičiant ją atnaujink abiejose vietose.
+
+#### DB indeksai
+
+Produkcijoje (`NODE_ENV=production`) Mongoose indeksų automatiškai nekuria, o unikalūs indeksai (`orders.orderNumber`, `orders.accessToken`, `products.slug` ir kt.) yra būtini. Juos sukuria `db:indexes`:
+
+```bash
+pnpm turbo run build --filter=@desert-web/api
+pnpm --filter @desert-web/api db:indexes
+```
+
+Paleisk **prieš pirmą produkcinį paleidimą ir po kiekvieno schemų pakeitimo**. Paprasčiausia nustatyti jį kaip Railway Pre-deploy Command (žr. aukščiau). Skriptas naudoja `createIndexes`: trūkstamus indeksus sukuria, esamų netrina.
 
 MongoDB Atlas → Network Access: leisk prisijungti iš Railway (paprasčiausia `0.0.0.0/0` su stipriu slaptažodžiu).
 
@@ -70,12 +112,12 @@ MongoDB Atlas → Network Access: leisk prisijungti iš Railway (paprasčiausia 
 
 Du atskiri Vercel projektai iš to paties repo:
 
-| Nustatymas      | web                                                      | admin                                                      |
-| --------------- | -------------------------------------------------------- | ---------------------------------------------------------- |
-| Root Directory  | `apps/web`                                               | `apps/admin`                                               |
-| Framework       | Next.js                                                  | Next.js                                                    |
-| Build Command   | `cd ../.. && pnpm turbo run build --filter=@desert-web/web` | `cd ../.. && pnpm turbo run build --filter=@desert-web/admin` |
-| Env             | `NEXT_PUBLIC_API_URL=https://<api domenas>`              | `NEXT_PUBLIC_API_URL=https://<api domenas>`                |
+| Nustatymas     | web                                                         | admin                                                                                    |
+| -------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Root Directory | `apps/web`                                                  | `apps/admin`                                                                             |
+| Framework      | Next.js                                                     | Next.js                                                                                  |
+| Build Command  | `cd ../.. && pnpm turbo run build --filter=@desert-web/web` | `cd ../.. && pnpm turbo run build --filter=@desert-web/admin`                            |
+| Env            | `NEXT_PUBLIC_API_URL=https://<api domenas>`                 | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (privaloma, ta pati kaip Railway) |
 
 ## Pagrindinės taisyklės
 
@@ -89,8 +131,10 @@ Duomenų modelis ir sprendimai aprašyti Claude projekte „Desert Web“ (`duom
 
 ## Kas toliau
 
-- [ ] Admin prisijungimas (API + admin app)
-- [ ] Admin CRUD: produktai (su Cloudinary įkėlimu) ir pardavimo langai
+- [x] Admin prisijungimas (API + admin app)
+- [x] Admin produktų valdymas (`/admin/products`, be nuotraukų; archyvuojama `isActive: false`, trynimo nėra)
+- [ ] Produktų nuotraukos (Cloudinary įkėlimas)
+- [ ] Admin CRUD: pardavimo langai
 - [ ] Užsakymo kūrimas su atomine kiekio rezervacija ir limitu vienam pirkėjui
 - [ ] Laiškai per Resend (užsakymo patvirtinimas)
 - [ ] Specialūs užsakymai

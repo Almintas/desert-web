@@ -1,9 +1,11 @@
-import type { INestApplication } from '@nestjs/common';
+import type { ModuleMetadata } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
 import { AppModule } from '../src/app.module';
+import { configureApp } from '../src/app.setup';
 import { Counter } from '../src/counters/counter.schema';
 import { Order } from '../src/orders/order.schema';
 import { Product } from '../src/products/product.schema';
@@ -12,7 +14,7 @@ import { SaleWindow } from '../src/sale-windows/sale-window.schema';
 const MINUTE = 60_000;
 
 export interface TestContext {
-  app: INestApplication;
+  app: NestExpressApplication;
   connection: Connection;
   productModel: Model<Product>;
   saleWindowModel: Model<SaleWindow>;
@@ -20,10 +22,19 @@ export interface TestContext {
   counterModel: Model<Counter>;
 }
 
-/** Paleidžia tikrą AppModule (MONGODB_URI nustato global-setup.ts). */
-export async function createTestContext(): Promise<TestContext> {
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-  const app = moduleRef.createNestApplication({ logger: false });
+/**
+ * Paleidžia tikrą AppModule (MONGODB_URI nustato global-setup.ts) su tais pačiais
+ * nustatymais kaip main.ts. `extra` leidžia pridėti tik testams skirtus controllerius.
+ */
+export async function createTestContext(
+  extra: Pick<ModuleMetadata, 'imports' | 'controllers'> = {},
+): Promise<TestContext> {
+  const moduleRef = await Test.createTestingModule({
+    imports: [AppModule, ...(extra.imports ?? [])],
+    controllers: extra.controllers ?? [],
+  }).compile();
+  const app = moduleRef.createNestApplication<NestExpressApplication>({ logger: false });
+  configureApp(app);
   await app.init();
 
   const connection = app.get<Connection>(getConnectionToken());

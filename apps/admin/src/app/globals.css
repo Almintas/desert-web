@@ -66,6 +66,8 @@ a {
 
 .content {
   padding: 2rem;
+  /* Leidžia plačiai lentelei slinkti savo konteineryje, o ne platinti puslapį. */
+  min-width: 0;
 }
 
 .muted {
@@ -107,5 +109,368 @@ a {
   .sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--border);
+  }
+}
+
+.account {
+  margin-top: 2rem;
+  padding: 1rem 0.5rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.account .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 0.5rem;
+}
+
+.button {
+  font: inherit;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.button.secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.button.secondary:hover {
+  border-color: var(--accent);
+}
+
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.login .card {
+  height: auto;
+  width: 100%;
+  max-width: 380px;
+}
+
+.login h1 {
+  margin: 0 0 1rem;
+  font-size: 1.4rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-weight: 500;
+}
+
+.form input,
+.form textarea {
+  font: inherit;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.form input:focus,
+.form textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.form-error {
+  margin: 0;
+  color: #b42318;
+}
+
+/* Puslapio antraštė su veiksmu */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.page-header h1 {
+  margin: 0;
+}
+
+.breadcrumbs {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+}
+
+.breadcrumbs a:hover {
+  color: var(--accent);
+}
+
+a.button {
+  display: inline-block;
+  text-align: center;
+}
+
+.button.small {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+}
+
+.small {
+  font-size: 0.85rem;
+}
+
+.strong {
+  font-weight: 600;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Pranešimai */
+
+.alert {
+  margin: 0 0 1.25rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid;
+  border-radius: 8px;
+}
+
+.form .alert {
+  margin: 0;
+}
+
+.alert p {
+  margin: 0;
+}
+
+.alert ul {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.alert.success {
+  background: #ecfdf3;
+  border-color: #abefc6;
+  color: #067647;
+}
+
+.alert.error {
+  background: #fef3f2;
+  border-color: #fecdca;
+  color: #b42318;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge.active {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.badge.archived {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+/* Lentelė */
+
+.table-wrap {
+  /* position: kad absoliučiai pozicionuoti vaikai (.visually-hidden) liktų slinkties ribose. */
+  position: relative;
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+
+.table th {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.table td > .muted {
+  display: block;
+  margin: 0;
+}
+
+.table a.strong:hover {
+  color: var(--accent);
+}
+
+.table .actions {
+  text-align: right;
+}
+
+.variant-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.variant-list li {
+  white-space: nowrap;
+}
+
+/* Produkto forma */
+
+.product-form {
+  max-width: 760px;
+}
+
+.form fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 0;
+  padding: 1rem 1.25rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.form legend {
+  padding: 0 0.35rem;
+  font-weight: 600;
+}
+
+.form textarea {
+  resize: vertical;
+}
+
+.form input[aria-invalid='true'],
+.form textarea[aria-invalid='true'] {
+  border-color: #b42318;
+}
+
+.form input[readonly] {
+  background: var(--bg);
+  color: var(--muted);
+}
+
+.form .checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 400;
+}
+
+.form input[type='checkbox'] {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.form .narrow {
+  max-width: 200px;
+}
+
+.field-error {
+  color: #b42318;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.variant-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px auto;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.variant-row .remove {
+  /* Sulygiuota su laukais, ne su jų antraštėmis. */
+  margin-top: 1.85rem;
+}
+
+.variant-row > .field-error {
+  grid-column: 1 / -1;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+  .variant-row {
+    grid-template-columns: minmax(0, 1fr) 110px;
+  }
+  .variant-row .remove {
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-top: 0;
   }
 }
