@@ -19,3 +19,10 @@ export function parseEurToCents(input: string): number | null {
   const [whole = '0', fraction = ''] = normalized.split('.');
   return Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
 }
+
+/** 1250 -> "12,50" (formos laukui; priešinga parseEurToCents). Be float aritmetikos. */
+export function centsToInput(cents: number): string {
+  const sign = cents < 0 ? '-' : '';
+  const abs = Math.abs(Math.trunc(cents));
+  return `${sign}${Math.floor(abs / 100)},${String(abs % 100).padStart(2, '0')}`;
+}

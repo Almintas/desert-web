@@ -1,6 +1,7 @@
 export * from './enums';
 export * from './money';
 export * from './time';
+export * from './slug';
 export * from './customer';
 export * from './sale-window';
 export * from './schemas/common';
