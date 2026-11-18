@@ -2,8 +2,11 @@ import type { ModuleMetadata } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
+import type { AdminSaleWindowDto, AdminSaleWindowInputBody } from '@desert-web/shared';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
+import request from 'supertest';
+import { AdminAccountsService } from '../src/admin-auth/admin-accounts.service';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { Counter } from '../src/counters/counter.schema';
@@ -12,6 +15,7 @@ import { Product } from '../src/products/product.schema';
 import { SaleWindow } from '../src/sale-windows/sale-window.schema';
 
 const MINUTE = 60_000;
+const HOUR = 3_600_000;
 
 export interface TestContext {
   app: NestExpressApplication;
@@ -161,5 +165,81 @@ export function orderBody(
     customer: overrides.customer ?? uniqueCustomer(),
     items: items.map((i) => ({ variantId: i.variantId.toString(), quantity: i.quantity })),
     fulfillment: overrides.fulfillment ?? { method: 'pickup' },
+  };
+}
+
+let adminSeq = 0;
+
+/** Sukuria adminą ir prisijungia (kiekvienas kartas iš kito IP, kad netrukdytų ribojimas). */
+export async function loginAdmin(
+  ctx: TestContext,
+  role: 'owner' | 'staff' = 'owner',
+): Promise<string> {
+  adminSeq += 1;
+  const email = `admin${adminSeq}@example.com`;
+  const password = 'teisingas-slaptazodis';
+  await ctx.app.get(AdminAccountsService).create(email, role, password);
+  const res = await request(ctx.app.getHttpServer())
+    .post('/admin/auth/login')
+    .set('X-Forwarded-For', `10.9.${Math.floor(adminSeq / 250)}.${adminSeq % 250}`)
+    .send({ email, password });
+  if (res.status !== 200) throw new Error(`Prisijungti nepavyko: ${res.status}`);
+  return res.body.token as string;
+}
+
+// --- Admin pardavimo langų užklausų body ---
+
+export const iso = (hoursFromNow: number) =>
+  new Date(Date.now() + hoursFromNow * HOUR).toISOString();
+
+export type ItemBody = AdminSaleWindowInputBody['items'][number];
+
+export function item(p: ProductFixture, variant = 0, overrides: Partial<ItemBody> = {}): ItemBody {
+  return {
+    productId: p.productId.toString(),
+    variantId: p.variantIds[variant]!.toString(),
+    priceCents: 2000,
+    quantityTotal: 10,
+    ...overrides,
+  };
+}
+
+export function windowBody(
+  items: ItemBody[],
+  overrides: Partial<AdminSaleWindowInputBody> = {},
+): AdminSaleWindowInputBody {
+  return {
+    title: 'Kalėdinis pardavimas',
+    opensAt: iso(24),
+    closesAt: iso(48),
+    fulfillment: { pickupAvailable: true, pickupLocation: 'Vilnius', deliveryAvailable: false },
+    items,
+    ...overrides,
+  };
+}
+
+/** PUT body iš DTO (esamos prekės pagal variantId). */
+export function bodyFrom(
+  w: AdminSaleWindowDto,
+  overrides: Partial<AdminSaleWindowInputBody> = {},
+): AdminSaleWindowInputBody {
+  return {
+    title: w.title,
+    opensAt: w.opensAt,
+    closesAt: w.closesAt,
+    fulfillment: {
+      pickupAvailable: w.fulfillment.pickupAvailable,
+      pickupLocation: w.fulfillment.pickupLocation ?? undefined,
+      deliveryAvailable: w.fulfillment.deliveryAvailable,
+    },
+    items: w.items.map((i) => ({
+      productId: i.productId,
+      variantId: i.variantId,
+      priceCents: i.priceCents,
+      quantityTotal: i.quantityTotal,
+      maxPerOrder: i.maxPerOrder ?? undefined,
+      maxPerCustomer: i.maxPerCustomer ?? undefined,
+    })),
+    ...overrides,
   };
 }

@@ -113,52 +113,68 @@ export class AdminProductsService {
     if (!objectIdSchema.safeParse(id).success) throw productNotFound();
 
     try {
-      const updated = await this.connection.transaction(async (session) => {
-        const existing = await this.productModel
-          .findById(id)
-          .session(session)
-          .lean<Product>()
-          .exec();
-        if (!existing) throw productNotFound();
-
-        const slugOwner = await this.productModel
-          .exists({ slug: input.slug, _id: { $ne: existing._id } })
-          .session(session);
-        if (slugOwner) throw slugTaken();
-
-        const existingById = new Map(existing.variants.map((v) => [v._id.toString(), v]));
-        const unknown = input.variants
-          .filter((v) => v.id && !existingById.has(v.id))
-          .map((v) => v.id!);
-        if (unknown.length > 0) throw this.unknownVariants(unknown);
-
-        const keptIds = new Set(input.variants.filter((v) => v.id).map((v) => v.id!));
-        const removedIds = existing.variants
-          .filter((v) => !keptIds.has(v._id.toString()))
-          .map((v) => v._id);
-        await this.assertVariantsRemovable(existing._id, removedIds, session);
-
-        const variants = input.variants.map((v) => ({
-          _id: v.id ? existingById.get(v.id)!._id : new Types.ObjectId(),
-          name: v.name,
-          priceCents: v.priceCents,
-        }));
-
-        return this.productModel
-          .findByIdAndUpdate(
-            existing._id,
-            { $set: { ...editableFields(input), variants } },
-            { new: true, runValidators: true, session },
-          )
-          .lean<Product>()
-          .exec();
-      });
-      if (!updated) throw productNotFound();
+      const updated = await this.connection.transaction((session) =>
+        this.updateInSession(id, input, session),
+      );
       return toProductDto(updated);
     } catch (error) {
       if (isDuplicateSlugError(error)) throw slugTaken();
       throw error;
     }
+  }
+
+  /**
+   * update() vienos transakcijos turinys (atskirai, kad testai galėtų valdyti transakcijų
+   * eiliškumą).
+   *
+   * Lenktynės su pardavimo langais: čia skaitom langus (ar variantas naudojamas) ir rašom
+   * produktą, o lango kūrimas / redagavimas skaito produktą ir rašo langą. Kadangi nė viena
+   * pusė nerašo to, ką skaito kita, MongoDB pats konflikto nepastebėtų, ir langas galėtų
+   * likti su ką tik pašalintu variantu. Todėl lango transakcija taip pat RAŠO šį produktą
+   * ($inc saleWindowLinkVersion, žr. AdminSaleWindowsService.linkProducts). Abi transakcijos
+   * keičia tą patį dokumentą, todėl vėliau rašanti gauna WriteConflict ir kartojama:
+   * pakartotas PUT jau mato naują langą ir grąžina VARIANT_IN_USE, o pakartotas lango
+   * įrašymas mato pašalintą variantą ir grąžina VARIANT_NOT_FOUND.
+   */
+  async updateInSession(
+    id: string,
+    input: AdminProductInput,
+    session: ClientSession,
+  ): Promise<Product> {
+    const existing = await this.productModel.findById(id).session(session).lean<Product>().exec();
+    if (!existing) throw productNotFound();
+
+    const slugOwner = await this.productModel
+      .exists({ slug: input.slug, _id: { $ne: existing._id } })
+      .session(session);
+    if (slugOwner) throw slugTaken();
+
+    const existingById = new Map(existing.variants.map((v) => [v._id.toString(), v]));
+    const unknown = input.variants.filter((v) => v.id && !existingById.has(v.id)).map((v) => v.id!);
+    if (unknown.length > 0) throw this.unknownVariants(unknown);
+
+    const keptIds = new Set(input.variants.filter((v) => v.id).map((v) => v.id!));
+    const removedIds = existing.variants
+      .filter((v) => !keptIds.has(v._id.toString()))
+      .map((v) => v._id);
+    await this.assertVariantsRemovable(existing._id, removedIds, session);
+
+    const variants = input.variants.map((v) => ({
+      _id: v.id ? existingById.get(v.id)!._id : new Types.ObjectId(),
+      name: v.name,
+      priceCents: v.priceCents,
+    }));
+
+    const updated = await this.productModel
+      .findByIdAndUpdate(
+        existing._id,
+        { $set: { ...editableFields(input), variants } },
+        { new: true, runValidators: true, session },
+      )
+      .lean<Product>()
+      .exec();
+    if (!updated) throw productNotFound();
+    return updated;
   }
 
   /**
