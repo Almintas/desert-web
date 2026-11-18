@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { requireAdmin } from '@/lib/dal';
 
 const SECTIONS = [
   {
@@ -15,13 +16,14 @@ const SECTIONS = [
   },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  // Layout'as navigacijos metu nebūtinai perpiešiamas, todėl tikrinam ir puslapyje.
+  await requireAdmin();
+
   return (
     <>
       <h1>Apžvalga</h1>
-      <p className="muted">
-        Admin skeletas. Prisijungimas ir valdymo puslapiai bus pridėti kituose žingsniuose.
-      </p>
+      <p className="muted">Admin skeletas. Valdymo puslapiai bus pridėti kituose žingsniuose.</p>
       <ul className="cards">
         {SECTIONS.map((s) => (
           <li key={s.href}>

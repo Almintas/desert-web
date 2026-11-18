@@ -23,6 +23,14 @@ export const envSchema = z.object({
   /** Kiek nesėkmingų / bet kokių prisijungimo bandymų leidžiama iš vieno IP per langą. */
   ADMIN_LOGIN_RATE_LIMIT: z.coerce.number().int().positive().default(5),
   ADMIN_LOGIN_RATE_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
+  /**
+   * Bendra paslaptis su admin Next.js serveriu: su ja admin app perduoda tikrą naršyklės IP
+   * prisijungimų ribojimui (X-Client-IP). Neprivaloma; be jos ribojama pagal req.ip.
+   */
+  INTERNAL_API_SECRET: optionalString.refine(
+    (v) => v === undefined || v.length >= 32,
+    'INTERNAL_API_SECRET turi būti bent 32 simbolių',
+  ),
   RESEND_API_KEY: optionalString,
   EMAIL_FROM: optionalString,
   CLOUDINARY_CLOUD_NAME: optionalString,

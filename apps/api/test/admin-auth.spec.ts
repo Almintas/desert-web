@@ -154,6 +154,36 @@ describe('Admin autentifikacija (/admin/auth)', () => {
       const other = await login({ email: 'ona@example.com', password: PASSWORD });
       expect(other.status).toBe(200);
     });
+
+    describe('kai kreipiasi admin app serveris (vienas IP visiems naršyklėms)', () => {
+      const secret = () => ctx.app.get(ConfigService<Env, true>).get('INTERNAL_API_SECRET')!;
+      const limit = () => ctx.app.get(ConfigService<Env, true>).get('ADMIN_LOGIN_RATE_LIMIT');
+      const viaAdminApp = (clientIp: string, internalSecret: string, password: string) =>
+        login({ email: 'ona@example.com', password })
+          .set('X-Internal-Secret', internalSecret)
+          .set('X-Client-IP', clientIp);
+
+      it('su teisinga paslaptimi ribojama pagal perduotą naršyklės IP', async () => {
+        await createAdmin();
+        for (let i = 0; i < limit(); i++) {
+          expect((await viaAdminApp('203.0.113.7', secret(), 'blogas-slaptazodis')).status).toBe(
+            401,
+          );
+        }
+        expect((await viaAdminApp('203.0.113.7', secret(), PASSWORD)).status).toBe(429);
+        // Kitas naršyklės IP per tą patį admin app serverį neužblokuotas.
+        expect((await viaAdminApp('203.0.113.8', secret(), PASSWORD)).status).toBe(200);
+      });
+
+      it('be teisingos paslapties X-Client-IP ignoruojamas (negalima apeiti limito)', async () => {
+        await createAdmin();
+        for (let i = 0; i < limit(); i++) {
+          const res = await viaAdminApp(`198.51.100.${i + 1}`, 'neteisinga', 'blogas-slaptazodis');
+          expect(res.status).toBe(401);
+        }
+        expect((await viaAdminApp('198.51.100.99', 'neteisinga', PASSWORD)).status).toBe(429);
+      });
+    });
   });
 
   describe('GET /admin/auth/me', () => {

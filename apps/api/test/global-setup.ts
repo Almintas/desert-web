@@ -16,4 +16,5 @@ export default async function globalSetup(): Promise<void> {
   // Testų workeriai paveldi process.env, todėl AppModule ConfigModule šią reikšmę pamato.
   process.env.MONGODB_URI = replSet.getUri('desert-web-test');
   process.env.NODE_ENV = 'test';
+  process.env.INTERNAL_API_SECRET = 'testams-skirta-vidine-paslaptis-0123456789';
 }

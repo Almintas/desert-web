@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import type { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -9,6 +10,7 @@ import { AdminAccountsService } from './admin-accounts.service';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminAuthGuard } from './admin-auth.guard';
 import { AdminAuthService } from './admin-auth.service';
+import { loginThrottleTracker } from './login-throttle-tracker';
 import { RolesGuard } from './roles';
 
 @Module({
@@ -28,6 +30,8 @@ import { RolesGuard } from './roles';
           },
         ],
         errorMessage: 'Per daug bandymų prisijungti. Pabandyk vėliau.',
+        getTracker: (req) =>
+          loginThrottleTracker(req as Request, config.get('INTERNAL_API_SECRET', { infer: true })),
       }),
     }),
   ],

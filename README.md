@@ -80,6 +80,12 @@ Naudingos komandos: `pnpm dev:web`, `pnpm dev:admin`, `pnpm dev:api`, `pnpm buil
    - **Pre-deploy Command:** `pnpm --filter @desert-web/api db:indexes`
 4. Settings → Networking → Generate Domain (arba prijunk `api.tavodomenas.lt`).
 
+#### Admin prisijungimas
+
+Naršyklė į API admin veiksmams tiesiogiai nesikreipia: admin Next.js serveris kviečia API ir laiko sesijos tokeną savo `httpOnly` cookie `dw_admin_session`. Todėl admin app naudoja tik serverio kintamąjį `API_URL` (ne `NEXT_PUBLIC_`).
+
+Kadangi visi prisijungimai į API ateina iš admin serverio IP, nustatyk tą pačią `INTERNAL_API_SECRET` (bent 32 simboliai, `openssl rand -base64 32`) **ir** Railway (api), **ir** Vercel (admin) projekte. Su ja admin app perduoda tikrą naršyklės IP, ir prisijungimų limitas (`ADMIN_LOGIN_RATE_LIMIT` per `ADMIN_LOGIN_RATE_WINDOW_SECONDS`) skaičiuojamas kiekvienam lankytojui atskirai. Be jos limitas bendras visiems adminams.
+
 #### DB indeksai
 
 Produkcijoje (`NODE_ENV=production`) Mongoose indeksų automatiškai nekuria, o unikalūs indeksai (`orders.orderNumber`, `orders.accessToken`, `products.slug` ir kt.) yra būtini. Juos sukuria `db:indexes`:
@@ -102,7 +108,7 @@ Du atskiri Vercel projektai iš to paties repo:
 | Root Directory | `apps/web`                                                  | `apps/admin`                                                  |
 | Framework      | Next.js                                                     | Next.js                                                       |
 | Build Command  | `cd ../.. && pnpm turbo run build --filter=@desert-web/web` | `cd ../.. && pnpm turbo run build --filter=@desert-web/admin` |
-| Env            | `NEXT_PUBLIC_API_URL=https://<api domenas>`                 | `NEXT_PUBLIC_API_URL=https://<api domenas>`                   |
+| Env            | `NEXT_PUBLIC_API_URL=https://<api domenas>`                 | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET`        |
 
 ## Pagrindinės taisyklės
 

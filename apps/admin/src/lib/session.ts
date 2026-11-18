@@ -1,0 +1,23 @@
+import 'server-only';
+import { cookies } from 'next/headers';
+import { SESSION_COOKIE } from './session-cookie';
+
+export async function getSessionToken(): Promise<string | undefined> {
+  return (await cookies()).get(SESSION_COOKIE)?.value;
+}
+
+/** Tik Server Action / Route Handler (Server Component cookie keisti negali). */
+export async function setSessionCookie(token: string, expiresAt: Date): Promise<void> {
+  (await cookies()).set(SESSION_COOKIE, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    expires: expiresAt,
+  });
+}
+
+/** Tik Server Action / Route Handler. */
+export async function deleteSessionCookie(): Promise<void> {
+  (await cookies()).delete(SESSION_COOKIE);
+}
