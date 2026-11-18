@@ -506,7 +506,6 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
       const draftWithOrders = await createOk();
       await ctx.orderModel.create({
         orderNumber: 'DW-TEST-1',
-        // ObjectId, ne string: schemoje `type: Types.ObjectId` yra Mixed ir nekonvertuoja.
         saleWindowId: new Types.ObjectId(draftWithOrders.id),
         customer: {
           name: 'Ona',

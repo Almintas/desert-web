@@ -7,7 +7,7 @@ import {
   type PaymentStatus,
 } from '@desert-web/shared';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { type HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 @Schema({ _id: false })
 export class OrderCustomer {
@@ -33,10 +33,10 @@ export const OrderCustomerSchema = SchemaFactory.createForClass(OrderCustomer);
 /** Produkto pavadinimo ir kainos kopija užsakymo metu. */
 @Schema({ _id: false })
 export class OrderItem {
-  @Prop({ type: Types.ObjectId, required: true, ref: 'Product' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true, ref: 'Product' })
   productId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true })
   variantId!: Types.ObjectId;
 
   @Prop({ required: true })
@@ -93,7 +93,7 @@ export class Order {
   @Prop({ required: true })
   orderNumber!: string;
 
-  @Prop({ type: Types.ObjectId, required: true, ref: 'SaleWindow' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true, ref: 'SaleWindow' })
   saleWindowId!: Types.ObjectId;
 
   @Prop({ type: OrderCustomerSchema, required: true })

@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Types } from 'mongoose';
+import { Schema as MongooseSchema, Types } from 'mongoose';
 
 @Schema({ collection: 'adminSessions', timestamps: { createdAt: true, updatedAt: false } })
 export class AdminSession {
@@ -9,7 +9,7 @@ export class AdminSession {
   @Prop({ required: true })
   tokenHash!: string;
 
-  @Prop({ type: Types.ObjectId, required: true, ref: 'Admin' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true, ref: 'Admin' })
   adminId!: Types.ObjectId;
 
   /** TTL indeksas ištrina pasibaigusias sesijas (ne iškart, todėl tikrinam ir užklausoje). */

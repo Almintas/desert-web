@@ -1,6 +1,6 @@
 import { SALE_WINDOW_STATUSES, type SaleWindowStatus } from '@desert-web/shared';
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { type HydratedDocument, Types } from 'mongoose';
+import { type HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
 @Schema({ _id: false })
 export class SaleWindowFulfillment {
@@ -23,10 +23,10 @@ export const SaleWindowFulfillmentSchema = SchemaFactory.createForClass(SaleWind
 
 @Schema({ _id: false })
 export class SaleWindowItem {
-  @Prop({ type: Types.ObjectId, required: true, ref: 'Product' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true, ref: 'Product' })
   productId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, required: true })
+  @Prop({ type: MongooseSchema.Types.ObjectId, required: true })
   variantId!: Types.ObjectId;
 
   @Prop({ required: true, min: 0 })
