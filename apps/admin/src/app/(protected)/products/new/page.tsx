@@ -1,4 +1,4 @@
-import type { ProductDto } from '@desert-web/shared';
+import type { AdminProductDto } from '@desert-web/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: 'Naujas produktas · Desert Web Admin
 export default async function NewProductPage() {
   await requireAdmin();
   const token = await getSessionToken();
-  const products = await apiFetch<ProductDto[]>('/admin/products', { token });
+  const products = await apiFetch<AdminProductDto[]>('/admin/products', { token });
 
   return (
     <>

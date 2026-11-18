@@ -1,4 +1,4 @@
-import { formatEur, type ProductDto } from '@desert-web/shared';
+import { type AdminProductDto, cloudinaryImageUrl, formatEur } from '@desert-web/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
@@ -20,7 +20,7 @@ export default async function ProductsPage({
   await requireAdmin();
   const token = await getSessionToken();
   const [products, { saved }] = await Promise.all([
-    apiFetch<ProductDto[]>('/admin/products', { token }),
+    apiFetch<AdminProductDto[]>('/admin/products', { token }),
     searchParams,
   ]);
   const savedMessage = saved ? SAVED_MESSAGES[saved] : undefined;
@@ -47,6 +47,9 @@ export default async function ProductsPage({
           <table className="table">
             <thead>
               <tr>
+                <th scope="col" className="thumb-cell">
+                  <span className="visually-hidden">Nuotrauka</span>
+                </th>
                 <th scope="col">Pavadinimas</th>
                 <th scope="col">Kategorija</th>
                 <th scope="col">Variantai</th>
@@ -59,6 +62,21 @@ export default async function ProductsPage({
             <tbody>
               {products.map((p) => (
                 <tr key={p.id}>
+                  <td className="thumb-cell">
+                    {p.images[0] ? (
+                      // Paprastas img: dydį ir formatą parenka Cloudinary (f_auto).
+                      <img
+                        className="thumb"
+                        src={cloudinaryImageUrl(p.images[0].url, { width: 112, height: 112 })}
+                        alt=""
+                        width={56}
+                        height={56}
+                        loading="lazy"
+                      />
+                    ) : (
+                      <span className="thumb placeholder" aria-hidden="true" />
+                    )}
+                  </td>
                   <td>
                     <Link href={`/products/${p.id}`} className="strong">
                       {p.name}

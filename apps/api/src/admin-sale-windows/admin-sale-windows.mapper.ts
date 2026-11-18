@@ -4,6 +4,7 @@ import {
   getSaleWindowPhase,
 } from '@desert-web/shared';
 import type { Product } from '../products/product.schema';
+import { toPublicImages } from '../products/products.mapper';
 import type { SaleWindow } from '../sale-windows/sale-window.schema';
 
 export interface OrderStats {
@@ -30,6 +31,7 @@ export function toAdminSaleWindowDto(
       productSlug: product?.slug ?? '',
       variantName: variant?.name ?? 'Nežinomas variantas',
       imageUrl: product?.images[0]?.url ?? null,
+      images: product ? toPublicImages(product) : [],
       productActive: product?.isActive ?? false,
       priceCents: item.priceCents,
       quantityTotal: item.quantityTotal,

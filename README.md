@@ -76,7 +76,7 @@ Naudingos komandos: `pnpm dev:web`, `pnpm dev:admin`, `pnpm dev:api`, `pnpm buil
    - **Start Command:** `pnpm --filter @desert-web/api start`
    - **Healthcheck Path:** `/health`
    - **Watch Paths:** `apps/api/**`, `packages/shared/**` (kad nebūtų perdiegiama keičiant tik frontendą)
-3. Variables: `NODE_ENV=production`, `MONGODB_URI`, `CORS_ORIGINS` (web ir admin adresai per kablelį), `INTERNAL_API_SECRET` (žr. [Admin prisijungimas](#admin-prisijungimas)). `PORT` Railway nustato pats. Neprivalomi: `ADMIN_SESSION_TTL_DAYS`, `ADMIN_LOGIN_RATE_LIMIT`, `ADMIN_LOGIN_RATE_WINDOW_SECONDS`.
+3. Variables: `NODE_ENV=production`, `MONGODB_URI`, `CORS_ORIGINS` (web ir admin adresai per kablelį), `INTERNAL_API_SECRET` (žr. [Admin prisijungimas](#admin-prisijungimas)), `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (žr. [Produktų nuotraukos](#produktų-nuotraukos-cloudinary)). `PORT` Railway nustato pats. Neprivalomi: `ADMIN_SESSION_TTL_DAYS`, `ADMIN_LOGIN_RATE_LIMIT`, `ADMIN_LOGIN_RATE_WINDOW_SECONDS`, `CLOUDINARY_FOLDER`.
    - **Pre-deploy Command:** `pnpm --filter @desert-web/api db:indexes`
 4. Settings → Networking → Generate Domain (arba prijunk `api.tavodomenas.lt`).
 
@@ -94,6 +94,24 @@ Su ja admin app perduoda tikrą naršyklės IP, ir prisijungimų limitas (`ADMIN
 - API su `NODE_ENV=production` be `INTERNAL_API_SECRET` **nepasileidžia** (klaida Railway deploy loguose).
 - Admin app produkcijoje be jos **atmeta prisijungimą** su aiškiu pranešimu (ir klaida Vercel runtime loguose). Tikrinama prisijungimo metu, ne builde, nes Vercel buildui runtime kintamųjų gali neduoti.
 - Jei reikšmės skiriasi, API paslapties nepriima ir tyliai grįžta prie bendro limito, todėl keičiant ją atnaujink abiejose vietose.
+
+#### Produktų nuotraukos (Cloudinary)
+
+Failai į mūsų serverius nekeliami: admin naršyklė gauna iš API (per admin Next.js serverį) pasirašytus parametrus ir siunčia nuotrauką tiesiai į `api.cloudinary.com`, o tada Cloudinary atsakymą perduoda API, kuris patikrina Cloudinary parašą, katalogą ir URL ir tik tada prideda nuotrauką prie produkto. Pasirašyta: katalogas, leidžiami formatai (`jpg, jpeg, png, webp, heic, heif`) ir įkėlimo transformacija (ilgiausia kraštinė iki 2000 px). Daugiausia 8 nuotraukos produktui, pirmoji yra pagrindinė.
+
+Railway → api service → Variables (reikšmės iš Cloudinary Console → Settings → API Keys):
+
+| Kintamasis              | Reikšmė                                                                   |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `CLOUDINARY_CLOUD_NAME` | Cloud name (pvz., `dxxxxxxxx`)                                            |
+| `CLOUDINARY_API_KEY`    | API Key                                                                   |
+| `CLOUDINARY_API_SECRET` | API Secret                                                                |
+| `CLOUDINARY_FOLDER`     | neprivaloma; numatyta `desert-web/production/products` (pagal `NODE_ENV`) |
+
+- API su `NODE_ENV=production` be pirmųjų trijų **nepasileidžia** (klaida Railway deploy loguose). Vystant be jų API veikia, o nuotraukų maršrutai grąžina 503 `IMAGES_NOT_CONFIGURED`.
+- Admin app (Vercel) Cloudinary kintamųjų **nereikia**: `cloudName` ir `apiKey` jis gauna iš API kartu su parašu, o paslaptis lieka tik Railway.
+- Šalinant nuotrauką ji ištrinama ir iš Cloudinary (po DB pakeitimo; jei Cloudinary nepasiekiamas, klaida tik užrašoma į API logą).
+- Naujas unikalus indeksas `products.images.publicId`: po šio pakeitimo paleisk `db:indexes` (Railway Pre-deploy Command tai padaro pats).
 
 #### DB indeksai
 
@@ -132,8 +150,8 @@ Duomenų modelis ir sprendimai aprašyti Claude projekte „Desert Web“ (`duom
 ## Kas toliau
 
 - [x] Admin prisijungimas (API + admin app)
-- [x] Admin produktų valdymas (`/admin/products`, be nuotraukų; archyvuojama `isActive: false`, trynimo nėra)
-- [ ] Produktų nuotraukos (Cloudinary įkėlimas)
+- [x] Admin produktų valdymas (`/admin/products`; archyvuojama `isActive: false`, trynimo nėra)
+- [x] Produktų nuotraukos (Cloudinary: tiesioginis pasirašytas įkėlimas, iki 8, rikiavimas, šalinimas)
 - [x] Admin pardavimo langų valdymas (`/admin/sale-windows`: kūrimas, kiekiai, skelbimas, atidaryti / uždaryti dabar, atšaukimas)
 - [x] Užsakymų valdymas (`/admin/orders`: sąrašas su filtrais, būsenos pirmyn, atšaukimas su kiekių grąžinimu)
 - [ ] Laiškai pirkėjui keičiantis užsakymo būsenai

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { SLUG_PATTERN } from '../slug';
-import { imageSchema, objectIdSchema } from './common';
+import { objectIdSchema } from './common';
+import type { AdminProductImageDto, PublicProductImageDto } from './product-image';
 
 const priceCentsSchema = z
   .number({ error: 'Įvesk kainą' })
@@ -22,7 +23,6 @@ export const productInputSchema = z.object({
     .regex(SLUG_PATTERN, 'Tik mažosios raidės, skaičiai ir brūkšneliai'),
   description: z.string().trim().max(5000, 'Per ilgas aprašymas').default(''),
   category: z.string().trim().min(1, 'Įvesk kategoriją').max(60, 'Per ilga kategorija'),
-  images: z.array(imageSchema).max(12).default([]),
   allergens: z
     .array(z.string().trim().min(1, 'Tuščias alergenas').max(60, 'Per ilgas alergenas'))
     .max(30, 'Per daug alergenų')
@@ -51,11 +51,10 @@ export const adminProductVariantInputSchema = productVariantInputSchema.extend({
 export type AdminProductVariantInput = z.infer<typeof adminProductVariantInputSchema>;
 
 /**
- * POST / PUT /admin/products. Be `images`: nuotraukos tvarkomos atskirai (Cloudinary),
- * todėl PUT esamų nuotraukų neliečia.
+ * POST / PUT /admin/products. Be `images`: nuotraukos tvarkomos atskirais maršrutais
+ * (Cloudinary, žr. product-image.ts), todėl PUT esamų nuotraukų neliečia.
  */
 export const adminProductInputSchema = productInputSchema
-  .omit({ images: true })
   .extend({
     variants: z
       .array(adminProductVariantInputSchema)
@@ -91,13 +90,19 @@ export interface ProductDto {
   slug: string;
   description: string;
   category: string;
-  images: { url: string; publicId: string }[];
+  /** Pagrindinė nuotrauka pirmoji. */
+  images: PublicProductImageDto[];
   allergens: string[];
   variants: ProductVariantDto[];
   specialOrder: { enabled: boolean; minQuantity: number };
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+/** /admin/products atsakymas: nuotraukos su ID (pagrindinė pirmoji). */
+export interface AdminProductDto extends Omit<ProductDto, 'images'> {
+  images: AdminProductImageDto[];
 }
 
 /** Klaidų kodai, kuriuos grąžina /admin/products (laukas `code` klaidos atsakyme). */

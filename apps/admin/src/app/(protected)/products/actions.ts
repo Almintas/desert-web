@@ -3,7 +3,7 @@
 import {
   type AdminProductInput,
   adminProductInputSchema,
-  type ProductDto,
+  type AdminProductDto,
   parseEurToCents,
   type VariantInUseErrorBody,
 } from '@desert-web/shared';
@@ -108,7 +108,10 @@ function apiErrorState(error: ApiError): ProductFormState {
   return { error: error.message };
 }
 
-/** Sukuria (productId = null) arba atnaujina produktą. Sėkmės atveju nukreipia į /products. */
+/**
+ * Sukuria (productId = null) arba atnaujina produktą. Po atnaujinimo nukreipia į /products,
+ * o sukūrus naują produktą į jo redagavimo puslapį (nuotraukoms pridėti).
+ */
 export async function saveProductAction(
   productId: string | null,
   _prev: ProductFormState,
@@ -132,8 +135,9 @@ export async function saveProductAction(
   }
 
   const body: AdminProductInput = parsed.data;
+  let saved: AdminProductDto;
   try {
-    await apiFetch<ProductDto>(
+    saved = await apiFetch<AdminProductDto>(
       productId ? `/admin/products/${encodeURIComponent(productId)}` : '/admin/products',
       { method: productId ? 'PUT' : 'POST', body, token },
     );
@@ -145,5 +149,6 @@ export async function saveProductAction(
     return { error: 'Nepavyko susisiekti su serveriu. Bandyk vėliau.' };
   }
 
-  redirect(`/products?saved=${productId ? 'updated' : 'created'}`);
+  // Naujas produktas: į redagavimo puslapį, kad iškart būtų galima pridėti nuotraukų.
+  redirect(productId ? '/products?saved=updated' : `/products/${saved.id}?created=1`);
 }

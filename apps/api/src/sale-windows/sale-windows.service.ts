@@ -8,6 +8,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Product } from '../products/product.schema';
+import { toPublicImages } from '../products/products.mapper';
 import { SaleWindow } from './sale-window.schema';
 
 @Injectable()
@@ -59,6 +60,7 @@ export class SaleWindowsService {
         productSlug: product.slug,
         variantName: variant.name,
         imageUrl: product.images[0]?.url ?? null,
+        images: toPublicImages(product),
         priceCents: item.priceCents,
         quantityAvailable: item.quantityAvailable,
         maxPerOrder: item.maxPerOrder ?? null,

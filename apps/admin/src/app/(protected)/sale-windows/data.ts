@@ -1,5 +1,5 @@
 import 'server-only';
-import type { AdminSaleWindowDto, ProductDto } from '@desert-web/shared';
+import type { AdminSaleWindowDto, AdminProductDto } from '@desert-web/shared';
 import { notFound } from 'next/navigation';
 import { ApiError, apiFetch } from '@/lib/api';
 import { requireAdmin } from '@/lib/dal';
@@ -29,7 +29,7 @@ export async function fetchSaleWindow(id: string): Promise<AdminSaleWindowDto> {
 
 /** Produktai prekių pasirinkimui (archyvuoti taip pat, kad būtų matyti esamų prekių vardai). */
 export async function fetchProductOptions(): Promise<ProductOption[]> {
-  const products = await apiFetch<ProductDto[]>('/admin/products', { token: await token() });
+  const products = await apiFetch<AdminProductDto[]>('/admin/products', { token: await token() });
   return products.map((p) => ({
     id: p.id,
     name: p.name,

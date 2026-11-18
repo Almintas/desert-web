@@ -5,6 +5,13 @@ const optionalString = z
   .optional()
   .transform((v) => (v && v.trim().length > 0 ? v.trim() : undefined));
 
+const CLOUDINARY_FOLDER_PATTERN = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/;
+const CLOUDINARY_REQUIRED = [
+  'CLOUDINARY_CLOUD_NAME',
+  'CLOUDINARY_API_KEY',
+  'CLOUDINARY_API_SECRET',
+] as const;
+
 export const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -35,9 +42,24 @@ export const envSchema = z
     ),
     RESEND_API_KEY: optionalString,
     EMAIL_FROM: optionalString,
-    CLOUDINARY_CLOUD_NAME: optionalString,
+    /**
+     * Produktų nuotraukos (Cloudinary). Produkcijoje privalomi visi trys (žr. superRefine);
+     * vystant ir testuose be jų nuotraukų maršrutai grąžina 503 IMAGES_NOT_CONFIGURED.
+     */
+    CLOUDINARY_CLOUD_NAME: optionalString.refine(
+      (v) => v === undefined || /^[A-Za-z0-9_-]+$/.test(v),
+      'CLOUDINARY_CLOUD_NAME gali turėti tik raides, skaičius, _ ir -',
+    ),
     CLOUDINARY_API_KEY: optionalString,
     CLOUDINARY_API_SECRET: optionalString,
+    /**
+     * Cloudinary katalogas produktų nuotraukoms. Numatyta desert-web/<NODE_ENV>/products,
+     * kad vystymo ir testų įkėlimai nesimaišytų su produkcija.
+     */
+    CLOUDINARY_FOLDER: optionalString.refine(
+      (v) => v === undefined || CLOUDINARY_FOLDER_PATTERN.test(v),
+      'CLOUDINARY_FOLDER: segmentai iš raidžių, skaičių, _ ir -, atskirti /',
+    ),
   })
   .superRefine((env, ctx) => {
     // Be paslapties visi prisijungimai per admin app skaičiuojami vienam IP (admin serverio),
@@ -51,7 +73,22 @@ export const envSchema = z
           'Nustatyk tą pačią reikšmę (bent 32 simboliai) ir API (Railway), ir admin app (Vercel).',
       });
     }
-  });
+    if (env.NODE_ENV === 'production') {
+      for (const key of CLOUDINARY_REQUIRED) {
+        if (env[key] === undefined) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [key],
+            message: `${key} privalomas produkcijoje (NODE_ENV=production): be jo neveiks produktų nuotraukos.`,
+          });
+        }
+      }
+    }
+  })
+  .transform((env) => ({
+    ...env,
+    CLOUDINARY_FOLDER: env.CLOUDINARY_FOLDER ?? `desert-web/${env.NODE_ENV}/products`,
+  }));
 
 export type Env = z.infer<typeof envSchema>;
 

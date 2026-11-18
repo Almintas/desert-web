@@ -1,4 +1,4 @@
-import type { ProductDto } from '@desert-web/shared';
+import type { AdminProductDto } from '@desert-web/shared';
 
 /** Server Action atsakymas formai (sėkmės atveju vyksta redirect, todėl jo čia nėra). */
 export interface ProductFormState {
@@ -26,7 +26,7 @@ export const FIELD = {
 } as const;
 
 export type ProductFormInitial = Pick<
-  ProductDto,
+  AdminProductDto,
   | 'name'
   | 'slug'
   | 'category'

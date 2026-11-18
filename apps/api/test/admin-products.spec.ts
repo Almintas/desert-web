@@ -314,10 +314,18 @@ describe('Admin produktai (/admin/products)', () => {
 
     it('nuotraukų (images) nepakeičia', async () => {
       const created = await createOk();
-      const images = [
-        { url: 'https://res.cloudinary.com/demo/a.jpg', publicId: 'desert/a' },
-        { url: 'https://res.cloudinary.com/demo/b.jpg', publicId: 'desert/b' },
-      ];
+      const image = (n: string) => ({
+        _id: new Types.ObjectId(),
+        publicId: `desert-web/test/products/${n}`,
+        version: 1700000000,
+        url: `https://res.cloudinary.com/demo/image/upload/v1700000000/desert-web/test/products/${n}.jpg`,
+        width: 1200,
+        height: 800,
+        format: 'jpg',
+        bytes: 123456,
+        createdAt: new Date('2026-01-01T10:00:00.000Z'),
+      });
+      const images = [image('a'), image('b')];
       await ctx.productModel.updateOne({ _id: created.id }, { $set: { images } });
 
       const res = await update(created.id, {
@@ -326,7 +334,19 @@ describe('Admin produktai (/admin/products)', () => {
       });
 
       expect(res.status).toBe(200);
-      expect(res.body.images).toEqual(images);
+      expect(res.body.images).toEqual(
+        images.map((i) => ({
+          id: i._id.toString(),
+          publicId: i.publicId,
+          version: i.version,
+          url: i.url,
+          width: i.width,
+          height: i.height,
+          format: i.format,
+          bytes: i.bytes,
+          createdAt: i.createdAt.toISOString(),
+        })),
+      );
       const stored = await ctx.productModel.findById(created.id).lean().exec();
       expect(stored!.images).toEqual(images);
       expect(stored!.name).toBe('Naujas pavadinimas');
