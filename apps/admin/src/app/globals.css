@@ -828,3 +828,167 @@ details.group > summary {
 .hint a {
   text-decoration: underline;
 }
+
+/* Produktų nuotraukos */
+
+.product-images {
+  max-width: 760px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.image-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.image-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.image-frame {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.image-frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.badge.main-image {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  background: var(--accent);
+  color: #fff;
+}
+
+.image-actions {
+  /* Rodyklės vienoje eilutėje, „Pašalinti“ per visą plotį: telpa ir siaurame (~150 px) langelyje. */
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+}
+
+.image-actions .button {
+  min-width: 0;
+  padding-left: 0.4rem;
+  padding-right: 0.4rem;
+}
+
+.image-actions .danger {
+  grid-column: 1 / -1;
+}
+
+.image-tile .confirm {
+  padding: 0.5rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+.upload-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.upload-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.upload-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--bg);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.upload-name {
+  flex: 1 1 160px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.upload-item progress {
+  flex: 1 1 120px;
+  accent-color: var(--accent);
+}
+
+.upload-status {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.upload-item.done .upload-status {
+  color: #067647;
+}
+
+.upload-item.error .upload-status {
+  color: #b42318;
+}
+
+.upload-item .field-error {
+  flex-basis: 100%;
+}
+
+.table .thumb-cell {
+  width: 1%;
+  padding-right: 0;
+}
+
+.thumb {
+  display: block;
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.thumb.placeholder {
+  background:
+    linear-gradient(135deg, transparent 46%, var(--border) 46%, var(--border) 54%, transparent 54%),
+    var(--bg);
+}
+
+@media (max-width: 720px) {
+  .image-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
