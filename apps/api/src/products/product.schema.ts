@@ -1,13 +1,38 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import type { HydratedDocument, Types } from 'mongoose';
 
-@Schema({ _id: false })
+/**
+ * Cloudinary nuotrauka. Kiekviena turi savo _id, kad maršrutuose nereikėtų publicId
+ * (jame yra pasvirųjų brūkšnių). Pirmoji masyve yra pagrindinė.
+ */
+@Schema()
 export class ProductImage {
+  _id!: Types.ObjectId;
+
+  @Prop({ required: true })
+  publicId!: string;
+
+  @Prop({ required: true })
+  version!: number;
+
+  /** Cloudinary secure_url (be transformacijų; pristatymui žr. cloudinaryImageUrl iš shared). */
   @Prop({ required: true })
   url!: string;
 
   @Prop({ required: true })
-  publicId!: string;
+  width!: number;
+
+  @Prop({ required: true })
+  height!: number;
+
+  @Prop({ required: true })
+  format!: string;
+
+  @Prop({ required: true })
+  bytes!: number;
+
+  @Prop({ required: true, default: () => new Date() })
+  createdAt!: Date;
 }
 export const ProductImageSchema = SchemaFactory.createForClass(ProductImage);
 
@@ -82,3 +107,9 @@ export type ProductDocument = HydratedDocument<Product>;
 export const ProductSchema = SchemaFactory.createForClass(Product);
 
 ProductSchema.index({ isActive: 1, category: 1 });
+// Ta pati Cloudinary nuotrauka negali priklausyti dviem produktams (šalinant vieną būtų
+// ištrinta ir kito nuotrauka). Viename dokumente dublikatus atmeta pridėjimo sąlyga.
+ProductSchema.index(
+  { 'images.publicId': 1 },
+  { unique: true, partialFilterExpression: { 'images.publicId': { $exists: true } } },
+);

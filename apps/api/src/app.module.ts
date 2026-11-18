@@ -8,6 +8,7 @@ import { AdminSaleWindowsModule } from './admin-sale-windows/admin-sale-windows.
 import { type Env, validateEnv } from './config/env';
 import { HealthModule } from './health/health.module';
 import { OrdersModule } from './orders/orders.module';
+import { ProductImagesModule } from './product-images/product-images.module';
 import { ProductsModule } from './products/products.module';
 import { SaleWindowsModule } from './sale-windows/sale-windows.module';
 
@@ -34,6 +35,7 @@ import { SaleWindowsModule } from './sale-windows/sale-windows.module';
     AdminProductsModule,
     AdminSaleWindowsModule,
     AdminOrdersModule,
+    ProductImagesModule,
   ],
 })
 export class AppModule {}

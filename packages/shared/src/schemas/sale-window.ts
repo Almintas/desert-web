@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { SaleWindowStatus } from '../enums';
 import type { SaleWindowPhase } from '../sale-window';
 import { objectIdSchema } from './common';
+import type { PublicProductImageDto } from './product-image';
 
 /** ISO data su laiko zona (admin app ją sudaro iš Vilniaus laiko, žr. vilniusLocalToUtc). */
 const isoDateSchema = z.iso
@@ -110,7 +111,10 @@ export interface PublicSaleWindowItemDto {
   productName: string;
   productSlug: string;
   variantName: string;
+  /** Pagrindinės nuotraukos URL (= images[0].url) arba null. */
   imageUrl: string | null;
+  /** Produkto nuotraukos, pagrindinė pirmoji. */
+  images: PublicProductImageDto[];
   priceCents: number;
   quantityAvailable: number;
   maxPerOrder: number | null;

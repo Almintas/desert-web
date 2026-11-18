@@ -1,7 +1,7 @@
 import {
   type AdminProductInput,
   adminProductInputSchema,
-  type ProductDto,
+  type AdminProductDto,
 } from '@desert-web/shared';
 import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { AdminAuthGuard } from '../admin-auth/admin-auth.guard';
@@ -15,19 +15,19 @@ export class AdminProductsController {
   constructor(private readonly products: AdminProductsService) {}
 
   @Get()
-  findAll(): Promise<ProductDto[]> {
+  findAll(): Promise<AdminProductDto[]> {
     return this.products.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string): Promise<ProductDto> {
+  findOne(@Param('id') id: string): Promise<AdminProductDto> {
     return this.products.findById(id);
   }
 
   @Post()
   create(
     @Body(new ZodValidationPipe(adminProductInputSchema)) body: AdminProductInput,
-  ): Promise<ProductDto> {
+  ): Promise<AdminProductDto> {
     return this.products.create(body);
   }
 
@@ -35,7 +35,7 @@ export class AdminProductsController {
   update(
     @Param('id') id: string,
     @Body(new ZodValidationPipe(adminProductInputSchema)) body: AdminProductInput,
-  ): Promise<ProductDto> {
+  ): Promise<AdminProductDto> {
     return this.products.update(id, body);
   }
 }

@@ -7,6 +7,7 @@ const REQUIRED_UNIQUE: [string, string][] = [
   ['orders', 'orderNumber'],
   ['orders', 'accessToken'],
   ['products', 'slug'],
+  ['products', 'images.publicId'],
   ['admins', 'email'],
   ['adminSessions', 'tokenHash'],
 ];

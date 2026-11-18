@@ -142,6 +142,7 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
           productSlug: expect.any(String),
           variantName: '1 kg',
           imageUrl: null,
+          images: [],
           productActive: true,
           priceCents: 2300,
           quantityTotal: 5,

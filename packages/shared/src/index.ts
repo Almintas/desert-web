@@ -7,6 +7,7 @@ export * from './sale-window';
 export * from './order-status';
 export * from './schemas/common';
 export * from './schemas/product';
+export * from './schemas/product-image';
 export * from './schemas/sale-window';
 export * from './schemas/order';
 export * from './schemas/special-order';

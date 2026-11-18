@@ -1,7 +1,7 @@
 import {
   type AdminProductInput,
   objectIdSchema,
-  type ProductDto,
+  type AdminProductDto,
   type ProductErrorCode,
   type VariantInUseErrorBody,
 } from '@desert-web/shared';
@@ -14,7 +14,7 @@ import {
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { type ClientSession, type Connection, type Model, Types } from 'mongoose';
 import { Product } from '../products/product.schema';
-import { toProductDto } from '../products/products.mapper';
+import { toAdminProductDto } from '../products/products.mapper';
 import { SaleWindow } from '../sale-windows/sale-window.schema';
 
 function productError(
@@ -61,24 +61,24 @@ export class AdminProductsService {
   ) {}
 
   /** Visi produktai, ir archyvuoti, pagal pavadinimą lietuviška abėcėle. */
-  async findAll(): Promise<ProductDto[]> {
+  async findAll(): Promise<AdminProductDto[]> {
     const products = await this.productModel
       .find()
       .collation({ locale: 'lt' })
       .sort({ name: 1, _id: 1 })
       .lean<Product[]>()
       .exec();
-    return products.map(toProductDto);
+    return products.map(toAdminProductDto);
   }
 
-  async findById(id: string): Promise<ProductDto> {
+  async findById(id: string): Promise<AdminProductDto> {
     if (!objectIdSchema.safeParse(id).success) throw productNotFound();
     const product = await this.productModel.findById(id).lean<Product>().exec();
     if (!product) throw productNotFound();
-    return toProductDto(product);
+    return toAdminProductDto(product);
   }
 
-  async create(input: AdminProductInput): Promise<ProductDto> {
+  async create(input: AdminProductInput): Promise<AdminProductDto> {
     // Naujas produktas dar neturi variantų, todėl bet koks `id` yra svetimas.
     const withId = input.variants.filter((v) => v.id).map((v) => v.id!);
     if (withId.length > 0) throw this.unknownVariants(withId);
@@ -89,7 +89,7 @@ export class AdminProductsService {
         ...editableFields(input),
         variants: input.variants.map((v) => ({ name: v.name, priceCents: v.priceCents })),
       });
-      return toProductDto(created.toObject<Product>());
+      return toAdminProductDto(created.toObject<Product>());
     } catch (error) {
       if (isDuplicateSlugError(error)) throw slugTaken();
       throw error;
@@ -109,14 +109,14 @@ export class AdminProductsService {
    * Transakcija: perskaitom produktą, tikrinam langus ir rašom vienu metu, todėl du
    * lygiagretūs PUT neperrašo vienas kito variantų (antrasis gauna WriteConflict ir kartojamas).
    */
-  async update(id: string, input: AdminProductInput): Promise<ProductDto> {
+  async update(id: string, input: AdminProductInput): Promise<AdminProductDto> {
     if (!objectIdSchema.safeParse(id).success) throw productNotFound();
 
     try {
       const updated = await this.connection.transaction((session) =>
         this.updateInSession(id, input, session),
       );
-      return toProductDto(updated);
+      return toAdminProductDto(updated);
     } catch (error) {
       if (isDuplicateSlugError(error)) throw slugTaken();
       throw error;
