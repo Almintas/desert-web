@@ -63,7 +63,9 @@ export default async function SaleWindowPage({
         </div>
         <div>
           <dt>Užsakymai</dt>
-          <dd>{w.ordersCount}</dd>
+          <dd>
+            <Link href={`/orders?window=${w.id}`}>Užsakymai ({w.ordersCount}) →</Link>
+          </dd>
         </div>
         <div>
           <dt>Parduota</dt>

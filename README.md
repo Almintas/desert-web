@@ -135,7 +135,8 @@ Duomenų modelis ir sprendimai aprašyti Claude projekte „Desert Web“ (`duom
 - [x] Admin produktų valdymas (`/admin/products`, be nuotraukų; archyvuojama `isActive: false`, trynimo nėra)
 - [ ] Produktų nuotraukos (Cloudinary įkėlimas)
 - [x] Admin pardavimo langų valdymas (`/admin/sale-windows`: kūrimas, kiekiai, skelbimas, atidaryti / uždaryti dabar, atšaukimas)
-- [ ] Užsakymų valdymas (sąrašas, atšaukimas, kiekių grąžinimas)
+- [x] Užsakymų valdymas (`/admin/orders`: sąrašas su filtrais, būsenos pirmyn, atšaukimas su kiekių grąžinimu)
+- [ ] Laiškai pirkėjui keičiantis užsakymo būsenai
 - [ ] Užsakymo kūrimas su atomine kiekio rezervacija ir limitu vienam pirkėjui
 - [ ] Laiškai per Resend (užsakymo patvirtinimas)
 - [ ] Specialūs užsakymai
