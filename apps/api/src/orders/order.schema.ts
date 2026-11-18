@@ -85,6 +85,33 @@ export class OrderPayment {
 }
 export const OrderPaymentSchema = SchemaFactory.createForClass(OrderPayment);
 
+/** Būsenos pakeitimas. adminId nėra, kai pakeitė sistema (pvz., pirkėjas sukūrė užsakymą). */
+@Schema({ _id: false })
+export class OrderStatusHistoryEntry {
+  @Prop({ type: String, enum: [...ORDER_STATUSES], required: true })
+  status!: OrderStatus;
+
+  @Prop({ required: true })
+  at!: Date;
+
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Admin' })
+  adminId?: Types.ObjectId;
+}
+export const OrderStatusHistoryEntrySchema = SchemaFactory.createForClass(OrderStatusHistoryEntry);
+
+@Schema({ _id: false })
+export class OrderCancellation {
+  @Prop({ trim: true })
+  reason?: string;
+
+  @Prop({ required: true })
+  cancelledAt!: Date;
+
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Admin' })
+  cancelledBy?: Types.ObjectId;
+}
+export const OrderCancellationSchema = SchemaFactory.createForClass(OrderCancellation);
+
 @Schema({ collection: 'orders', timestamps: true })
 export class Order {
   _id!: Types.ObjectId;
@@ -114,6 +141,13 @@ export class Order {
   @Prop({ type: String, enum: [...ORDER_STATUSES], default: 'pending' })
   status!: OrderStatus;
 
+  /** Seni užsakymai šio lauko neturi (žr. admin-orders.mapper). */
+  @Prop({ type: [OrderStatusHistoryEntrySchema], default: undefined })
+  statusHistory?: OrderStatusHistoryEntry[];
+
+  @Prop({ type: OrderCancellationSchema })
+  cancellation?: OrderCancellation;
+
   @Prop({ type: OrderPaymentSchema })
   payment?: OrderPayment;
 
@@ -131,5 +165,7 @@ export const OrderSchema = SchemaFactory.createForClass(Order);
 OrderSchema.index({ orderNumber: 1 }, { unique: true });
 OrderSchema.index({ accessToken: 1 }, { unique: true });
 OrderSchema.index({ saleWindowId: 1, status: 1 });
+OrderSchema.index({ createdAt: -1 });
+OrderSchema.index({ saleWindowId: 1, createdAt: -1 });
 OrderSchema.index({ saleWindowId: 1, 'customer.emailNormalized': 1 });
 OrderSchema.index({ saleWindowId: 1, 'customer.phoneNormalized': 1 });
