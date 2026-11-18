@@ -15,6 +15,8 @@ export interface SaleWindowFormState {
   /** Laukų klaidos pagal kelią kaip API `issues` (pvz., "closesAt", "items.0.quantityTotal"). */
   fieldErrors?: Record<string, string>;
   overlap?: OverlapWindow;
+  /** WINDOW_HAS_ORDERS: nuoroda į to lango užsakymų sąrašą. */
+  ordersHref?: string;
 }
 
 /** Produktas prekių pasirinkimui formoje. */

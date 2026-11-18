@@ -151,7 +151,10 @@ export async function saleWindowCommandAction(
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 401) redirect('/auth/clear');
-      return saleWindowApiErrorState(error);
+      const state = saleWindowApiErrorState(error);
+      return error.code === 'WINDOW_HAS_ORDERS'
+        ? { ...state, ordersHref: `/orders?window=${encodeURIComponent(windowId)}` }
+        : state;
     }
     return { error: 'Nepavyko susisiekti su serveriu. Bandyk vėliau.' };
   }

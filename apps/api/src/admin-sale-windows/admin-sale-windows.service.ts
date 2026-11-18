@@ -46,6 +46,34 @@ const hasOrders = (message: string) => windowError(ConflictException, 'WINDOW_HA
 
 const NOT_CANCELLED = { $ne: 'cancelled' } as const;
 
+const MINUTE_MS = 60_000;
+
+/**
+ * Admin forma laikus siunčia minutės tikslumu (datetime-local), o „Atidaryti dabar“ /
+ * „Uždaryti dabar“ juos išsaugo su sekundėmis. Jei pateiktas laikas lygus išsaugotam,
+ * nukirptam iki minutės, laikom, kad jis nekeistas, ir paliekam išsaugotą (su sekundėmis).
+ * Kitaip nepakeistas langas „pasislinktų“ atgal iki minutės pradžios: pvz., ką tik
+ * atidarytas langas imtų kirstis su ką tik uždarytu (WINDOW_OVERLAP).
+ */
+function keepStoredSeconds(input: AdminSaleWindowInput, stored: SaleWindow): AdminSaleWindowInput {
+  const keep = <T extends Date | undefined>(submitted: T, prev: Date | undefined): T =>
+    submitted && prev && submitted.getTime() === Math.floor(prev.getTime() / MINUTE_MS) * MINUTE_MS
+      ? (prev as T)
+      : submitted;
+
+  let opensAt = keep(input.opensAt, stored.opensAt);
+  let closesAt = keep(input.closesAt, stored.closesAt);
+  // Teoriškai išsaugotos sekundės galėtų sugadinti eiliškumą: tada imam pateiktus laikus.
+  if (closesAt <= opensAt) ({ opensAt, closesAt } = input);
+
+  const f = input.fulfillment;
+  let pickupFrom = keep(f.pickupFrom, stored.fulfillment?.pickupFrom);
+  let pickupTo = keep(f.pickupTo, stored.fulfillment?.pickupTo);
+  if (pickupFrom && pickupTo && pickupTo <= pickupFrom) ({ pickupFrom, pickupTo } = f);
+
+  return { ...input, opensAt, closesAt, fulfillment: { ...f, pickupFrom, pickupTo } };
+}
+
 @Injectable()
 export class AdminSaleWindowsService {
   constructor(
@@ -122,6 +150,7 @@ export class AdminSaleWindowsService {
     session: ClientSession,
   ): Promise<SaleWindow> {
     const stored = await this.loadEditable(id, session);
+    input = keepStoredSeconds(input, stored);
     const storedByVariant = new Map(stored.items.map((i) => [i.variantId.toString(), i]));
     await this.assertItemsValid(input.items, new Set(storedByVariant.keys()), session);
 

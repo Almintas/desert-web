@@ -50,18 +50,26 @@ const COMMANDS: Record<WindowCommand, CommandInfo> = {
   },
 };
 
-/** Kokie veiksmai galimi pagal būseną ir fazę (API taisykles tikrina pats). */
+/**
+ * Kokie veiksmai rodomi pagal fazę. „Grąžinti į juodraštį“ ir „Atšaukti“ rodomi ir tada,
+ * kai lange yra užsakymų: API juos atmeta (WINDOW_HAS_ORDERS), o klaida parodoma čia pat
+ * su nuoroda į lango užsakymus.
+ */
 function availableCommands(w: AdminSaleWindowDto): WindowCommand[] {
-  const noOrders = w.ordersCount === 0;
   switch (w.phase) {
     case 'draft':
-      return ['publish', 'open-now', ...(noOrders ? (['cancel', 'delete'] as const) : [])];
+      return [
+        'publish',
+        'open-now',
+        'cancel',
+        ...(w.ordersCount === 0 ? (['delete'] as const) : []),
+      ];
     case 'upcoming':
-      return ['open-now', ...(noOrders ? (['unpublish', 'cancel'] as const) : [])];
+      return ['open-now', 'unpublish', 'cancel'];
     case 'open':
-      return ['close-now', ...(noOrders ? (['unpublish', 'cancel'] as const) : [])];
+      return ['close-now', 'unpublish', 'cancel'];
     case 'closed':
-      return noOrders ? ['unpublish', 'cancel'] : [];
+      return ['unpublish', 'cancel'];
     case 'cancelled':
       return [];
   }
@@ -98,8 +106,9 @@ export function WindowActions({ saleWindow }: { saleWindow: AdminSaleWindowDto }
 
       {saleWindow.ordersCount > 0 ? (
         <p className="hint">
-          Lange yra užsakymų ({saleWindow.ordersCount}), todėl grąžinti į juodraštį, atšaukti ar
-          ištrinti jo negalima.
+          Lange yra užsakymų ({saleWindow.ordersCount}), todėl grąžinti į juodraštį ar atšaukti jo
+          negalima, kol jie neatšaukti.{' '}
+          <Link href={`/orders?window=${saleWindow.id}`}>Lango užsakymai</Link>
         </p>
       ) : null}
 
@@ -140,6 +149,13 @@ export function WindowActions({ saleWindow }: { saleWindow: AdminSaleWindowDto }
               </Link>{' '}
               ({formatShopDateTime(state.overlap.opensAt)} –{' '}
               {formatShopDateTime(state.overlap.closesAt)})
+            </p>
+          ) : null}
+          {state.ordersHref ? (
+            <p>
+              <Link href={state.ordersHref} className="strong">
+                Peržiūrėti lango užsakymus →
+              </Link>
             </p>
           ) : null}
         </div>

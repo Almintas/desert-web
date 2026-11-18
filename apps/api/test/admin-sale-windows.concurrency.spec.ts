@@ -156,6 +156,37 @@ describe('Admin pardavimo langai: lygiagretumas', () => {
     }
   });
 
+  it('lango atšaukimas lenktyniaujant su užsakymais: niekada atšauktas langas su užsakymais', async () => {
+    for (let round = 0; round < 5; round++) {
+      await ctx.saleWindowModel.deleteMany({});
+      await ctx.orderModel.deleteMany({});
+      const created = await createWindow(windowBody([item(product, 0, { quantityTotal: 50 })]));
+      await auth(http().post(`/admin/sale-windows/${created.id}/open-now`)).expect(200);
+      const variantId = product.variantIds[0]!;
+
+      const orders = Array.from({ length: 4 }, () =>
+        http()
+          .post('/orders')
+          .send(orderBody(created.id, [{ variantId, quantity: 1 }])),
+      );
+      const cancel = auth(http().post(`/admin/sale-windows/${created.id}/cancel`));
+      const all = await Promise.all([...orders.slice(0, 2), cancel, ...orders.slice(2)]);
+      const cancelRes = all[2]!;
+      expect(all.filter((r) => r.status >= 500)).toEqual([]);
+
+      const window = await ctx.saleWindowModel.findById(created.id).lean().exec();
+      const activeOrders = await ctx.orderModel.countDocuments({ status: { $ne: 'cancelled' } });
+      if (cancelRes.status === 200) {
+        expect(window!.status).toBe('cancelled');
+        expect(activeOrders).toBe(0);
+      } else {
+        expect([cancelRes.status, cancelRes.body.code]).toEqual([409, 'WINDOW_HAS_ORDERS']);
+        expect(window!.status).toBe('published');
+        expect(activeOrders).toBeGreaterThan(0);
+      }
+    }
+  });
+
   describe('lenktynės su produkto redagavimu (write skew)', () => {
     const removeSecondVariant = async (): Promise<AdminProductInput> => {
       const p = await ctx.productModel.findById(product.productId).lean().exec();

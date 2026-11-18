@@ -569,6 +569,84 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
     });
   });
 
+  describe('PUT be pakeitimų išsaugo laikų sekundes', () => {
+    const MINUTE = 60_000;
+    /** Kaip admin forma: datetime-local tikslumas yra minutė. */
+    const truncated = (isoValue: string) =>
+      new Date(Math.floor(new Date(isoValue).getTime() / MINUTE) * MINUTE).toISOString();
+
+    it('„Atidaryti dabar“, tada PUT be pakeitimų: opensAt lieka tiksliai toks pat', async () => {
+      const w = await createOk([item(cake)], {
+        fulfillment: {
+          pickupAvailable: true,
+          pickupFrom: '2027-01-10T08:00:42.000Z',
+          pickupTo: '2027-01-10T15:00:00.000Z',
+          deliveryAvailable: false,
+        },
+      });
+      const opened = await actionOk(w.id, 'open-now');
+      // Su labai maža tikimybe atidaryta lygiai 00 sekundžių; tada testas vis tiek galioja.
+      const body = bodyFrom(opened, {
+        opensAt: truncated(opened.opensAt),
+        closesAt: truncated(opened.closesAt),
+        fulfillment: {
+          pickupAvailable: true,
+          pickupFrom: truncated(opened.fulfillment.pickupFrom!),
+          pickupTo: opened.fulfillment.pickupTo!,
+          deliveryAvailable: false,
+        },
+      });
+
+      const res = await update(w.id, body);
+      expect(res.status).toBe(200);
+      expect(res.body.opensAt).toBe(opened.opensAt);
+      expect(res.body.closesAt).toBe(opened.closesAt);
+      expect(res.body.fulfillment.pickupFrom).toBe('2027-01-10T08:00:42.000Z');
+      expect(res.body.phase).toBe('open');
+    });
+
+    it('tikras pakeitimas pakeičia laiką (ir sekundės dingsta)', async () => {
+      const w = await createOk();
+      const opened = await actionOk(w.id, 'open-now');
+      const earlier = new Date(Math.floor(Date.parse(opened.opensAt) / MINUTE) * MINUTE - MINUTE);
+      const res = await update(w.id, bodyFrom(opened, { opensAt: earlier.toISOString() }));
+      expect(res.status).toBe(200);
+      expect(res.body.opensAt).toBe(earlier.toISOString());
+    });
+
+    it('uždarius A ir tuoj pat atidarius B, B išsaugojimas be pakeitimų nesukelia WINDOW_OVERLAP', async () => {
+      // Deterministiškai toje pačioje minutėje m: A uždarytas m+20 s, B atidarytas m+30 s.
+      const m = Math.floor(Date.now() / MINUTE) * MINUTE - MINUTE;
+      const a = await createOk([item(cake)], { title: 'A' });
+      const b = await createOk([item(cake)], { title: 'B' });
+      await ctx.saleWindowModel.updateOne(
+        { _id: a.id },
+        { status: 'published', opensAt: new Date(m - 3_600_000), closesAt: new Date(m + 20_000) },
+      );
+      await ctx.saleWindowModel.updateOne(
+        { _id: b.id },
+        {
+          status: 'published',
+          opensAt: new Date(m + 30_000),
+          closesAt: new Date(Date.now() + 3_600_000),
+        },
+      );
+      const stored = (await getOne(b.id)).body as AdminSaleWindowDto;
+      expect(stored.phase).toBe('open');
+
+      const unchanged = bodyFrom(stored, { opensAt: truncated(stored.opensAt) });
+      const res = await update(b.id, unchanged);
+      expect(res.status).toBe(200);
+      expect(res.body.opensAt).toBe(new Date(m + 30_000).toISOString());
+
+      // Kontrolė: tikrai pakeitus pradžią į kertančią A, persidengimas aptinkamas.
+      const overlapping = bodyFrom(stored, { opensAt: new Date(m - MINUTE).toISOString() });
+      const conflict = await update(b.id, overlapping);
+      expect(conflict.status).toBe(409);
+      expect(conflict.body).toMatchObject({ code: 'WINDOW_OVERLAP', window: { id: a.id } });
+    });
+  });
+
   describe('viešas GET /sale-windows/current', () => {
     const current = async () =>
       (await http().get('/sale-windows/current')).body as CurrentSaleWindowResponse;
