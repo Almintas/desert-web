@@ -8,7 +8,8 @@
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.spec.json --noEmit",
     "seed": "node --env-file=.env dist/scripts/seed.js",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "db:indexes": "node --env-file-if-exists=.env dist/scripts/sync-indexes.js"
   },
   "dependencies": {
     "@desert-web/shared": "workspace:*",

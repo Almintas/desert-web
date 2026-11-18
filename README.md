@@ -40,10 +40,10 @@ pnpm --filter @desert-web/api seed
 pnpm dev
 ```
 
-| Aplikacija | Adresas |
-| ---------- | ------- |
-| web        | http://localhost:3000 |
-| admin      | http://localhost:3001 |
+| Aplikacija | Adresas                                                                 |
+| ---------- | ----------------------------------------------------------------------- |
+| web        | http://localhost:3000                                                   |
+| admin      | http://localhost:3001                                                   |
 | api        | http://localhost:4000 (`/health`, `/products`, `/sale-windows/current`) |
 
 Po pirmo `pnpm install` **užcommitink `pnpm-lock.yaml`**: Railway ir Vercel jo reikia.
@@ -62,7 +62,19 @@ Naudingos komandos: `pnpm dev:web`, `pnpm dev:admin`, `pnpm dev:api`, `pnpm buil
    - **Healthcheck Path:** `/health`
    - **Watch Paths:** `apps/api/**`, `packages/shared/**` (kad nebūtų perdiegiama keičiant tik frontendą)
 3. Variables: `NODE_ENV=production`, `MONGODB_URI`, `CORS_ORIGINS` (web ir admin adresai per kablelį). `PORT` Railway nustato pats.
+   - **Pre-deploy Command:** `pnpm --filter @desert-web/api db:indexes`
 4. Settings → Networking → Generate Domain (arba prijunk `api.tavodomenas.lt`).
+
+#### DB indeksai
+
+Produkcijoje (`NODE_ENV=production`) Mongoose indeksų automatiškai nekuria, o unikalūs indeksai (`orders.orderNumber`, `orders.accessToken`, `products.slug` ir kt.) yra būtini. Juos sukuria `db:indexes`:
+
+```bash
+pnpm turbo run build --filter=@desert-web/api
+pnpm --filter @desert-web/api db:indexes
+```
+
+Paleisk **prieš pirmą produkcinį paleidimą ir po kiekvieno schemų pakeitimo**. Paprasčiausia nustatyti jį kaip Railway Pre-deploy Command (žr. aukščiau). Skriptas naudoja `createIndexes`: trūkstamus indeksus sukuria, esamų netrina.
 
 MongoDB Atlas → Network Access: leisk prisijungti iš Railway (paprasčiausia `0.0.0.0/0` su stipriu slaptažodžiu).
 
@@ -70,12 +82,12 @@ MongoDB Atlas → Network Access: leisk prisijungti iš Railway (paprasčiausia 
 
 Du atskiri Vercel projektai iš to paties repo:
 
-| Nustatymas      | web                                                      | admin                                                      |
-| --------------- | -------------------------------------------------------- | ---------------------------------------------------------- |
-| Root Directory  | `apps/web`                                               | `apps/admin`                                               |
-| Framework       | Next.js                                                  | Next.js                                                    |
-| Build Command   | `cd ../.. && pnpm turbo run build --filter=@desert-web/web` | `cd ../.. && pnpm turbo run build --filter=@desert-web/admin` |
-| Env             | `NEXT_PUBLIC_API_URL=https://<api domenas>`              | `NEXT_PUBLIC_API_URL=https://<api domenas>`                |
+| Nustatymas     | web                                                         | admin                                                         |
+| -------------- | ----------------------------------------------------------- | ------------------------------------------------------------- |
+| Root Directory | `apps/web`                                                  | `apps/admin`                                                  |
+| Framework      | Next.js                                                     | Next.js                                                       |
+| Build Command  | `cd ../.. && pnpm turbo run build --filter=@desert-web/web` | `cd ../.. && pnpm turbo run build --filter=@desert-web/admin` |
+| Env            | `NEXT_PUBLIC_API_URL=https://<api domenas>`                 | `NEXT_PUBLIC_API_URL=https://<api domenas>`                   |
 
 ## Pagrindinės taisyklės
 
