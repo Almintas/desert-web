@@ -12,6 +12,7 @@
     "dev:api": "turbo run dev --filter=@desert-web/api",
     "build": "turbo run build",
     "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
