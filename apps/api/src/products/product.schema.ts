@@ -64,6 +64,16 @@ export class Product {
   @Prop({ default: true })
   isActive!: boolean;
 
+  /**
+   * Tik konfliktui sukelti, ne duomenims. Kiekviena lango kūrimo / redagavimo transakcija
+   * padidina šį lauką visiems lange nurodytiems produktams. Taip lango transakcija ir
+   * produkto PUT transakcija (admin-products) rašo tą patį dokumentą, ir MongoDB vieną iš
+   * jų nutraukia su WriteConflict (be to būtų „write skew“: kiekviena skaito tai, ką
+   * rašo kita, bet nė viena nerašo to, ką skaito kita). Žr. AdminSaleWindowsService.
+   */
+  @Prop({ default: 0 })
+  saleWindowLinkVersion!: number;
+
   createdAt!: Date;
   updatedAt!: Date;
 }

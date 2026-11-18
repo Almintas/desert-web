@@ -125,6 +125,7 @@ export class OrdersService {
               notes: input.fulfillment.notes || undefined,
             },
             status: 'pending',
+            statusHistory: [{ status: 'pending', at: now }],
             payment: { status: 'unpaid' },
             accessToken,
           },

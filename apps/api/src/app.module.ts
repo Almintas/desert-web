@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AdminAuthModule } from './admin-auth/admin-auth.module';
+import { AdminOrdersModule } from './admin-orders/admin-orders.module';
 import { AdminProductsModule } from './admin-products/admin-products.module';
+import { AdminSaleWindowsModule } from './admin-sale-windows/admin-sale-windows.module';
 import { type Env, validateEnv } from './config/env';
 import { HealthModule } from './health/health.module';
 import { OrdersModule } from './orders/orders.module';
@@ -30,6 +32,8 @@ import { SaleWindowsModule } from './sale-windows/sale-windows.module';
     OrdersModule,
     AdminAuthModule,
     AdminProductsModule,
+    AdminSaleWindowsModule,
+    AdminOrdersModule,
   ],
 })
 export class AppModule {}

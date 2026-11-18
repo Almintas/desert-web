@@ -16,5 +16,6 @@ import { OrdersService } from './orders.service';
   ],
   controllers: [OrdersController],
   providers: [OrdersService],
+  exports: [MongooseModule], // Order modelis (admin langų valdymui)
 })
 export class OrdersModule {}
