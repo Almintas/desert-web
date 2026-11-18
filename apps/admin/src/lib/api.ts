@@ -6,12 +6,35 @@ import 'server-only';
  */
 export const API_URL = process.env.API_URL ?? 'http://localhost:4000';
 
+export interface ApiIssue {
+  path: string;
+  message: string;
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
     message: string,
+    /** Visas klaidos atsakymo body (pvz., `code`, `issues`), jei API grąžino JSON. */
+    public readonly body: unknown = null,
   ) {
     super(message);
+  }
+
+  /** Klaidos kodas iš API (pvz., SLUG_TAKEN), jei yra. */
+  get code(): string | undefined {
+    const code = (this.body as { code?: unknown } | null)?.code;
+    return typeof code === 'string' ? code : undefined;
+  }
+
+  /** ZodValidationPipe klaidos (400), jei yra. */
+  get issues(): ApiIssue[] {
+    const issues = (this.body as { issues?: unknown } | null)?.issues;
+    return Array.isArray(issues)
+      ? issues.filter(
+          (i): i is ApiIssue => !!i && typeof i.path === 'string' && typeof i.message === 'string',
+        )
+      : [];
   }
 }
 
@@ -47,7 +70,7 @@ export async function apiFetch<T>(path: string, options: ApiRequestOptions = {})
 
   if (!res.ok) {
     const body: unknown = await res.json().catch(() => null);
-    throw new ApiError(res.status, messageFrom(body, res.status));
+    throw new ApiError(res.status, messageFrom(body, res.status), body);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

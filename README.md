@@ -132,7 +132,9 @@ Duomenų modelis ir sprendimai aprašyti Claude projekte „Desert Web“ (`duom
 ## Kas toliau
 
 - [x] Admin prisijungimas (API + admin app)
-- [ ] Admin CRUD: produktai (su Cloudinary įkėlimu) ir pardavimo langai
+- [x] Admin produktų valdymas (`/admin/products`, be nuotraukų; archyvuojama `isActive: false`, trynimo nėra)
+- [ ] Produktų nuotraukos (Cloudinary įkėlimas)
+- [ ] Admin CRUD: pardavimo langai
 - [ ] Užsakymo kūrimas su atomine kiekio rezervacija ir limitu vienam pirkėjui
 - [ ] Laiškai per Resend (užsakymo patvirtinimas)
 - [ ] Specialūs užsakymai
