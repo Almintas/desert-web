@@ -112,6 +112,7 @@ Railway → api service → Variables (reikšmės iš Cloudinary Console → Set
 - Admin app (Vercel) Cloudinary kintamųjų **nereikia**: `cloudName` ir `apiKey` jis gauna iš API kartu su parašu, o paslaptis lieka tik Railway.
 - Šalinant nuotrauką ji ištrinama ir iš Cloudinary (po DB pakeitimo; jei Cloudinary nepasiekiamas, klaida tik užrašoma į API logą).
 - Naujas unikalus indeksas `products.images.publicId`: po šio pakeitimo paleisk `db:indexes` (Railway Pre-deploy Command tai padaro pats).
+- Naujas dalinis unikalus indeksas `orders.clientRequestId` (užsakymų idempotencija): taip pat sukuria `db:indexes`.
 
 #### DB indeksai
 
@@ -130,12 +131,16 @@ MongoDB Atlas → Network Access: leisk prisijungti iš Railway (paprasčiausia 
 
 Du atskiri Vercel projektai iš to paties repo:
 
-| Nustatymas     | web                                                         | admin                                                                                    |
-| -------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Root Directory | `apps/web`                                                  | `apps/admin`                                                                             |
-| Framework      | Next.js                                                     | Next.js                                                                                  |
-| Build Command  | `cd ../.. && pnpm turbo run build --filter=@desert-web/web` | `cd ../.. && pnpm turbo run build --filter=@desert-web/admin`                            |
-| Env            | `NEXT_PUBLIC_API_URL=https://<api domenas>`                 | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (privaloma, ta pati kaip Railway) |
+| Nustatymas     | web                                                                                                   | admin                                                                                    |
+| -------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Root Directory | `apps/web`                                                                                            | `apps/admin`                                                                             |
+| Framework      | Next.js                                                                                               | Next.js                                                                                  |
+| Build Command  | `cd ../.. && pnpm turbo run build --filter=@desert-web/web`                                           | `cd ../.. && pnpm turbo run build --filter=@desert-web/admin`                            |
+| Env            | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (ta pati kaip Railway), neprivaloma `SITE_URL` | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (privaloma, ta pati kaip Railway) |
+
+Web naršyklė į API nesikreipia: puslapius ir užsakymo pateikimą (Server Action) atlieka web Next.js serveris, todėl `NEXT_PUBLIC_API_URL` nebereikia (jei liko, naudojamas tik kaip atsarginis `API_URL`). Su `INTERNAL_API_SECRET` web serveris perduoda API tikrą pirkėjo IP (`X-Client-IP`), kurio prireiks užsakymų ribojimui; be jos užsakymai priimami, bet Vercel loguose rašoma klaida. `SITE_URL` (pvz., `https://desertai.lt`) naudojamas absoliutiems OG adresams.
+
+Pardavėjo vardas ir kontaktai (poraštė, `/privatumas`) yra `apps/web/src/lib/shop.ts` (`SELLER`, pažymėta TODO).
 
 ## Pagrindinės taisyklės
 
@@ -155,7 +160,9 @@ Duomenų modelis ir sprendimai aprašyti Claude projekte „Desert Web“ (`duom
 - [x] Admin pardavimo langų valdymas (`/admin/sale-windows`: kūrimas, kiekiai, skelbimas, atidaryti / uždaryti dabar, atšaukimas)
 - [x] Užsakymų valdymas (`/admin/orders`: sąrašas su filtrais, būsenos pirmyn, atšaukimas su kiekių grąžinimu)
 - [ ] Laiškai pirkėjui keičiantis užsakymo būsenai
-- [ ] Užsakymo kūrimas su atomine kiekio rezervacija ir limitu vienam pirkėjui
+- [x] Užsakymo kūrimas su atomine kiekio rezervacija ir limitu vienam pirkėjui (idempotentiškas pagal `clientRequestId`)
+- [x] Pirkėjų parduotuvė: krepšelis, užsakymas (tik atsiėmimas, apmokama atsiimant), užsakymo puslapis, `/privatumas`
+- [ ] Užsakymų ribojimas pagal pirkėjo IP (`req.clientIp` jau yra)
 - [ ] Laiškai per Resend (užsakymo patvirtinimas)
 - [ ] Specialūs užsakymai
 - [ ] Mokėjimai (tiekėjas dar nepasirinktas)
