@@ -24,6 +24,7 @@ import { SaleWindowsModule } from './sale-windows/sale-windows.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService<Env, true>) => ({
         uri: config.get('MONGODB_URI', { infer: true }),
+        dbName: config.get('MONGODB_DB_NAME', { infer: true }),
         // Indeksai kuriami automatiškai tik vystant; produkcijoje juos kuriam sąmoningai.
         autoIndex: config.get('NODE_ENV', { infer: true }) !== 'production',
       }),

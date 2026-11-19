@@ -189,3 +189,13 @@ describe('validateEnv: visi trūkstami kintamieji vienoje klaidoje', () => {
     }
   });
 });
+
+describe('validateEnv: MONGODB_DB_NAME', () => {
+  it('neprivalomas; nurodytas perduodamas, netinkamas atmetamas', () => {
+    expect(validateEnv(base).MONGODB_DB_NAME).toBeUndefined();
+    expect(validateEnv({ ...base, MONGODB_DB_NAME: 'desert-web' }).MONGODB_DB_NAME).toBe(
+      'desert-web',
+    );
+    expect(() => validateEnv({ ...base, MONGODB_DB_NAME: 'su tarpu' })).toThrow(/MONGODB_DB_NAME/);
+  });
+});

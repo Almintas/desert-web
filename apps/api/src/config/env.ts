@@ -26,6 +26,14 @@ export const envSchema = z
     PORT: z.coerce.number().int().positive().default(4000),
     /** Privalomas visur; tikrinamas superRefine, kad trūkstami kintamieji būtų išvardyti kartu. */
     MONGODB_URI: optionalString,
+    /**
+     * Neprivaloma: DB pavadinimas, jei jis turi skirtis nuo nurodyto MONGODB_URI (pvz., kai
+     * naudojamas kito projekto klasterio URI). Mongoose `dbName` turi pirmenybę prieš URI kelią.
+     */
+    MONGODB_DB_NAME: optionalString.refine(
+      (v) => v === undefined || /^[A-Za-z0-9_-]{1,63}$/.test(v),
+      'MONGODB_DB_NAME: tik raidės, skaičiai, _ ir - (iki 63 simbolių)',
+    ),
     CORS_ORIGINS: z
       .string()
       .default('http://localhost:3000,http://localhost:3001')
