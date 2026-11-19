@@ -164,3 +164,28 @@ describe('validateEnv: ribojimai ir kliento IP', () => {
     expect(() => validateEnv({ ...base, TRUST_X_REAL_IP: 'taip' })).toThrow(/TRUST_X_REAL_IP/);
   });
 });
+
+describe('validateEnv: visi trūkstami kintamieji vienoje klaidoje', () => {
+  it('be MONGODB_URI: aiški klaida', () => {
+    expect(() => validateEnv({})).toThrow(/MONGODB_URI: MONGODB_URI privalomas/);
+  });
+
+  it('produkcijoje be nieko: išvardijami visi privalomi kintamieji iš karto', () => {
+    let message = '';
+    try {
+      validateEnv({ NODE_ENV: 'production' });
+    } catch (error) {
+      message = (error as Error).message;
+    }
+    for (const key of [
+      'MONGODB_URI',
+      'INTERNAL_API_SECRET',
+      'TURNSTILE_SECRET_KEY',
+      'CLOUDINARY_CLOUD_NAME',
+      'CLOUDINARY_API_KEY',
+      'CLOUDINARY_API_SECRET',
+    ]) {
+      expect(message).toContain(`${key}: ${key} privalomas`);
+    }
+  });
+});
