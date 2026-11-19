@@ -6,7 +6,7 @@ import {
   ORDER_ITEM_ERROR_CODES,
   type OrderItemProblemDto,
 } from '@desert-web/shared';
-import { ApiError, apiFetch } from '@/lib/api';
+import { ApiError, apiFetch, TOO_MANY_REQUESTS_MESSAGE } from '@/lib/api';
 import { forwardedClientHeaders } from '@/lib/client-headers';
 import { loadCurrentWindows } from '@/lib/window';
 import type { CheckoutField, CheckoutState } from './checkout-state';
@@ -17,6 +17,10 @@ const FIELD_BY_PATH: Record<string, CheckoutField> = {
   'customer.phone': 'phone',
   'fulfillment.notes': 'notes',
 };
+
+const TURNSTILE_FAILED_MESSAGE = 'Nepavyko patvirtinti, kad esate ne robotas. Bandykite dar kartą.';
+const TURNSTILE_UNAVAILABLE_MESSAGE =
+  'Šiuo metu nepavyksta patikrinti užklausos. Bandykite dar kartą po minutės.';
 
 const CLOSED_MESSAGE =
   'Pardavimas ką tik baigėsi, todėl užsakymo pateikti nebegalima. Jūsų krepšelis neišsiųstas.';
@@ -71,6 +75,7 @@ export async function placeOrderAction(
     },
     items: parseItems(text(formData, 'items')),
     fulfillment: { method: 'pickup' as const, notes: notes || undefined },
+    turnstileToken: text(formData, 'turnstileToken').trim() || undefined,
   };
 
   const parsed = createOrderInputSchema.safeParse(input);
@@ -102,6 +107,7 @@ export async function placeOrderAction(
       headers: await forwardedClientHeaders(),
     });
   } catch (error) {
+    // Bet kokia klaida rodoma formoje (niekada ne bendras klaidos puslapis).
     if (!(error instanceof ApiError)) {
       console.error('[web] POST /orders nepavyko', error);
       return {
@@ -134,10 +140,23 @@ export async function placeOrderAction(
         message: 'Šiame pardavime atsiėmimas negalimas. Susisiekite su mumis.',
       };
     }
-    if (error.status === 429) {
+    if (error.status === 429 || code === 'TOO_MANY_REQUESTS') {
+      return { status: 'error', message: TOO_MANY_REQUESTS_MESSAGE };
+    }
+    if (code === 'TURNSTILE_FAILED') {
+      return { status: 'error', message: TURNSTILE_FAILED_MESSAGE };
+    }
+    if (code === 'TURNSTILE_UNAVAILABLE') {
+      return { status: 'error', message: TURNSTILE_UNAVAILABLE_MESSAGE };
+    }
+    if (code === 'FORBIDDEN_CLIENT') {
+      // Web ir API INTERNAL_API_SECRET nesutampa: konfigūracijos klaida, ne pirkėjo.
+      console.error(
+        '[web] API atmetė POST /orders: FORBIDDEN_CLIENT (patikrink INTERNAL_API_SECRET)',
+      );
       return {
         status: 'error',
-        message: 'Per daug bandymų per trumpą laiką. Palaukite minutę ir bandykite dar kartą.',
+        message: 'Parduotuvėje įvyko klaida. Bandykite dar kartą po minutės.',
       };
     }
     if (error.status === 400) {

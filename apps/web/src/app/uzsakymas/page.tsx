@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { webEnv } from '@/lib/env';
 import { loadCurrentWindows } from '@/lib/window';
 import { CheckoutForm } from './checkout-form';
 
@@ -41,7 +42,7 @@ export default async function CheckoutPage() {
         <Link href="/">← Atgal į prekes</Link>
       </p>
       <h1>Užsakymas</h1>
-      <CheckoutForm saleWindow={current.open} />
+      <CheckoutForm saleWindow={current.open} turnstileSiteKey={webEnv().turnstileSiteKey} />
     </>
   );
 }

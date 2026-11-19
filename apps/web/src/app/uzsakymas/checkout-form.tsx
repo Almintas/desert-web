@@ -14,6 +14,7 @@ import {
 import { PickupInfo } from '@/components/pickup-info';
 import { ProductImage } from '@/components/product-image';
 import { Stepper } from '@/components/stepper';
+import { Turnstile, type TurnstileHandle } from '@/components/turnstile';
 import { adjustCart, maxQuantity } from '@/lib/cart-logic';
 import { clearCart, useCart } from '@/lib/cart-store';
 import { forgetRequestId, getRequestId, resetRequestId } from '@/lib/request-id';
@@ -25,7 +26,17 @@ const INITIAL: CheckoutState = { status: 'idle' };
 
 type Values = Record<CheckoutField, string>;
 
-export function CheckoutForm({ saleWindow: initialWindow }: { saleWindow: PublicSaleWindowDto }) {
+const TURNSTILE_ERROR =
+  'Nepavyko patikrinti, kad esate ne robotas. Atnaujinkite puslapį ir bandykite dar kartą.';
+
+export function CheckoutForm({
+  saleWindow: initialWindow,
+  turnstileSiteKey,
+}: {
+  saleWindow: PublicSaleWindowDto;
+  /** Cloudflare Turnstile site key (NEXT_PUBLIC_TURNSTILE_SITE_KEY, žr. lib/env.ts). */
+  turnstileSiteKey: string;
+}) {
   const router = useRouter();
   const [saleWindow, setSaleWindow] = useState(initialWindow);
   const cart = useCart(saleWindow);
@@ -33,6 +44,9 @@ export function CheckoutForm({ saleWindow: initialWindow }: { saleWindow: Public
   const [values, setValues] = useState<Values>({ name: '', email: '', phone: '', notes: '' });
   const [requestId, setRequestId] = useState<string | null>(null);
   const [cartChanges, setCartChanges] = useState<string[]>([]);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileError, setTurnstileError] = useState(false);
+  const turnstile = useRef<TurnstileHandle>(null);
   const submitting = useRef(false);
   const handled = useRef<CheckoutState>(INITIAL);
   const messageRef = useRef<HTMLDivElement>(null);
@@ -48,6 +62,9 @@ export function CheckoutForm({ saleWindow: initialWindow }: { saleWindow: Public
     if (handled.current === state) return;
     handled.current = state;
     submitting.current = false;
+
+    // Turnstile tokenas vienkartinis: po kiekvieno nepavykusio bandymo reikia naujo.
+    if (state.status !== 'success') turnstile.current?.reset();
 
     switch (state.status) {
       case 'success':
@@ -80,10 +97,11 @@ export function CheckoutForm({ saleWindow: initialWindow }: { saleWindow: Public
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending || submitting.current || done || closed || !requestId) return;
+    if (pending || submitting.current || done || closed || !requestId || !turnstileToken) return;
     submitting.current = true;
     setCartChanges([]);
     const formData = new FormData(event.currentTarget);
+    formData.set('turnstileToken', turnstileToken);
     formData.set(
       'items',
       JSON.stringify(cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }))),
@@ -258,6 +276,24 @@ export function CheckoutForm({ saleWindow: initialWindow }: { saleWindow: Public
             ) : null}
           </div>
         ) : null}
+        <Turnstile
+          ref={turnstile}
+          siteKey={turnstileSiteKey}
+          onToken={(token) => {
+            setTurnstileToken(token);
+            if (token) setTurnstileError(false);
+          }}
+          onError={() => setTurnstileError(true)}
+        />
+        {turnstileError ? (
+          <p className="alert error" role="alert">
+            {TURNSTILE_ERROR}
+          </p>
+        ) : !turnstileToken && !done && !closed ? (
+          <p className="muted small" role="status">
+            Tikriname, ar esate ne robotas…
+          </p>
+        ) : null}
         <p className="privacy-line">
           Jūsų duomenis naudosime tik šiam užsakymui įvykdyti ir susisiekti dėl atsiėmimo.{' '}
           <Link href="/privatumas">Privatumas</Link>
@@ -265,7 +301,7 @@ export function CheckoutForm({ saleWindow: initialWindow }: { saleWindow: Public
         <button
           type="submit"
           className="button primary wide"
-          disabled={pending || done || closed || !requestId}
+          disabled={pending || done || closed || !requestId || !turnstileToken}
         >
           {done
             ? 'Užsakymas pateiktas…'

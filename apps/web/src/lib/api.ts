@@ -1,11 +1,5 @@
 import 'server-only';
-
-/**
- * API adresas. Kreipiamasi tik iš web Next.js serverio (puslapiai ir Server Actions),
- * todėl užtenka serverio kintamojo API_URL. NEXT_PUBLIC_API_URL paliktas suderinamumui.
- */
-export const API_URL =
-  process.env.API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+import { webEnv } from './env';
 
 export class ApiError extends Error {
   constructor(
@@ -29,17 +23,23 @@ function messageFrom(body: unknown, status: number): string {
   return `Užklausa nepavyko (${status})`;
 }
 
+/** Per daug bandymų (API 429): rodoma vietoje, ne klaidos puslapis. */
+export const TOO_MANY_REQUESTS_MESSAGE = 'Per daug bandymų. Pabandykite po kelių minučių.';
+
 export interface ApiRequestOptions {
   method?: 'GET' | 'POST';
   body?: unknown;
   headers?: Record<string, string>;
 }
 
-/** Kreipinys į API be talpinimo. Ne 2xx atsakymas virsta ApiError. */
+/**
+ * Kreipinys į API be talpinimo. Ne 2xx atsakymas virsta ApiError. API adresas: API_URL
+ * (tik serveryje: naršyklė į API nesikreipia; produkcijoje privalomas, žr. env.ts).
+ */
 export async function apiFetch<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = { Accept: 'application/json', ...options.headers };
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${webEnv().apiUrl}${path}`, {
     method: options.method ?? 'GET',
     headers,
     body: options.body === undefined ? undefined : JSON.stringify(options.body),

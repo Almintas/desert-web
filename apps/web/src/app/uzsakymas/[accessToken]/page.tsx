@@ -3,7 +3,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PickupInfo } from '@/components/pickup-info';
-import { ApiError, apiFetch } from '@/lib/api';
+import { ApiError, apiFetch, TOO_MANY_REQUESTS_MESSAGE } from '@/lib/api';
+import { forwardedClientHeaders } from '@/lib/client-headers';
 import { formatDateTime } from '@/lib/format';
 import { PAYMENT_TEXT } from '@/lib/shop';
 import { CopyLink } from './copy-link';
@@ -27,12 +28,16 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
 
 const ACCESS_TOKEN = /^[A-Za-z0-9_-]{32}$/;
 
-async function loadOrder(token: string): Promise<OrderAccessDto | 'not-found' | null> {
+async function loadOrder(token: string): Promise<OrderAccessDto | 'not-found' | 'too-many' | null> {
   if (!ACCESS_TOKEN.test(token)) return 'not-found';
   try {
-    return await apiFetch<OrderAccessDto>(`/orders/access/${encodeURIComponent(token)}`);
+    // Su pirkėjo IP: API riboja peržiūras pagal jį (60 per minutę), ne pagal web serverį.
+    return await apiFetch<OrderAccessDto>(`/orders/access/${encodeURIComponent(token)}`, {
+      headers: await forwardedClientHeaders(),
+    });
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return 'not-found';
+    if (error instanceof ApiError && error.status === 429) return 'too-many';
     console.error('[web] /orders/access nepavyko', error);
     return null;
   }
@@ -43,6 +48,14 @@ export default async function OrderPage({ params }: { params: Promise<{ accessTo
   const order = await loadOrder(accessToken);
 
   if (order === 'not-found') notFound();
+  if (order === 'too-many') {
+    return (
+      <section className="notice">
+        <h1>Užsakymo dabar parodyti negalime</h1>
+        <p>{TOO_MANY_REQUESTS_MESSAGE}</p>
+      </section>
+    );
+  }
   if (!order) {
     return (
       <section className="notice">

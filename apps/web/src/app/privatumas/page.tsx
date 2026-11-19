@@ -38,6 +38,10 @@ export default function PrivacyPage() {
         Krepšelis laikomas tik jūsų naršyklėje (vietinėje atmintyje), kol pateiksite užsakymą.
         Reklaminių ar sekimo slapukų nenaudojame.
       </p>
+      <p>
+        Užsakymo formą nuo robotų saugo „Cloudflare Turnstile“: pateikiant užsakymą Cloudflare
+        patikrina naršyklę ir jos IP adresą.
+      </p>
 
       <h2>Kaip su mumis susisiekti</h2>
       <p>
