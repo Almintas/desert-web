@@ -15,7 +15,7 @@ async function main() {
     throw new Error('Seed neleidžiamas produkcijoje');
   }
 
-  await mongoose.connect(uri);
+  await mongoose.connect(uri, { dbName: process.env.MONGODB_DB_NAME?.trim() || undefined });
   const ProductModel = mongoose.model(Product.name, ProductSchema);
   const SaleWindowModel = mongoose.model(SaleWindow.name, SaleWindowSchema);
 
