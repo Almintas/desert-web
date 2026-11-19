@@ -1,0 +1,92 @@
+import { utcToVilniusLocal } from '@desert-web/shared';
+import { createProduct, env, expect, loginAdmin, resetWindows, test } from './support';
+
+test.describe('Admin', () => {
+  test('prisijungimas: neteisingas slaptažodis rodo klaidą, teisingas įleidžia', async ({
+    page,
+  }) => {
+    await page.goto(`${env.adminUrl}/orders`);
+    await expect(page).toHaveURL(/\/login/);
+
+    await page.getByLabel('El. paštas').fill(env.adminEmail);
+    await page.getByLabel('Slaptažodis').fill('neteisingas-slaptazodis');
+    await page.getByRole('button', { name: 'Prisijungti' }).click();
+    await expect(page.locator('main').getByRole('alert')).toBeVisible();
+    await expect(page).toHaveURL(/\/login/);
+
+    await loginAdmin(page);
+    await page.goto(`${env.adminUrl}/orders`);
+    await expect(page.getByRole('heading', { name: 'Užsakymai', level: 1 })).toBeVisible();
+  });
+
+  test('produktas su nuotraukomis (Cloudinary įkėlimas perimamas)', async ({ page }) => {
+    await loginAdmin(page);
+    await page.goto(`${env.adminUrl}/products/new`);
+    const name = `Pistacijų makaronai ${Date.now()}`;
+    await page.getByLabel('Pavadinimas').first().fill(name);
+    await page.getByLabel('Kategorija').fill('makaronai');
+    const variant = page.locator('.variant-row').first();
+    await variant.getByLabel('Pavadinimas').fill('6 vnt.');
+    await variant.getByLabel('Kaina, €').fill('9,90');
+    await page.getByRole('button', { name: 'Sukurti produktą' }).click();
+    await expect(page).toHaveURL(/\/products\/[a-f0-9]{24}\?created=1/);
+
+    const images = page.locator('.product-images');
+    await expect(images.getByText('0 iš 8')).toBeVisible();
+    await images.locator('input[type=file]').setInputFiles([
+      { name: 'pirma.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('pirma') },
+      { name: 'antra.png', mimeType: 'image/png', buffer: Buffer.from('antra') },
+    ]);
+    await expect(images.getByText('2 iš 8')).toBeVisible();
+    await expect(images.locator('.image-tile img')).toHaveCount(2);
+
+    // Po perkrovimo nuotraukos lieka (išsaugotos API).
+    await page.reload();
+    await expect(page.locator('.product-images .image-tile img')).toHaveCount(2);
+  });
+
+  test('lango skelbimas: be atsiėmimo informacijos atmetamas, su ja paskelbiamas', async ({
+    page,
+  }) => {
+    await resetWindows();
+    const product = await createProduct(`Medaus tortas ${Date.now()}`);
+    await loginAdmin(page);
+    await page.goto(`${env.adminUrl}/sale-windows/new`);
+
+    const title = `Savaitgalio pardavimas ${Date.now()}`;
+    await page.getByLabel('Pavadinimas').fill(title);
+    await page.getByLabel('Atidaroma').fill(utcToVilniusLocal(new Date(Date.now() + 24 * 3600e3)));
+    await page.getByLabel('Uždaroma').fill(utcToVilniusLocal(new Date(Date.now() + 48 * 3600e3)));
+    await page
+      .getByRole('combobox', { name: 'Produktas', exact: true })
+      .selectOption({ label: product.name });
+    await page.getByRole('combobox', { name: 'Variantas', exact: true }).selectOption({ index: 1 });
+    await page.getByLabel('Kaina').fill('25,00');
+    await page.getByLabel('Kiekis', { exact: true }).fill('12');
+    await page.getByRole('button', { name: 'Sukurti juodraštį' }).click();
+    await expect(page).toHaveURL(/\/sale-windows\/[a-f0-9]{24}\?done=created/);
+
+    // Be atsiėmimo vietos ir laiko paskelbti negalima: klaida su nuoroda į redagavimą.
+    await page.getByRole('button', { name: 'Paskelbti' }).click();
+    await page.getByRole('button', { name: 'Taip, paskelbti' }).click();
+    const alert = page.locator('main').getByRole('alert');
+    await expect(alert).toContainText('atsiėmimo');
+    await alert.getByRole('link', { name: /Nurodyti atsiėmimo vietą ir laiką/ }).click();
+
+    await page.getByLabel(/Atsiėmimo vieta/).fill('Gedimino pr. 1, Vilnius');
+    await page
+      .getByLabel(/Atsiimti nuo/)
+      .fill(utcToVilniusLocal(new Date(Date.now() + 50 * 3600e3)));
+    await page
+      .getByLabel(/Atsiimti iki/)
+      .fill(utcToVilniusLocal(new Date(Date.now() + 52 * 3600e3)));
+    await page.getByRole('button', { name: 'Išsaugoti' }).click();
+    await expect(page).toHaveURL(/done=saved/);
+
+    await page.getByRole('button', { name: 'Paskelbti' }).click();
+    await page.getByRole('button', { name: 'Taip, paskelbti' }).click();
+    await expect(page).toHaveURL(/done=publish/);
+    await expect(page.locator('.badge.phase-upcoming').first()).toHaveText('Paskelbtas');
+    await resetWindows();
+  });
+});

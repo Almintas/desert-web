@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { CountersModule } from '../counters/counters.module';
 import { ProductsModule } from '../products/products.module';
 import { SaleWindowsModule } from '../sale-windows/sale-windows.module';
+import { TurnstileModule } from '../turnstile/turnstile.module';
 import { Order, OrderSchema } from './order.schema';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
@@ -13,6 +14,7 @@ import { OrdersService } from './orders.service';
     ProductsModule, // eksportuoja Product modelį
     SaleWindowsModule, // eksportuoja SaleWindow modelį
     CountersModule,
+    TurnstileModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

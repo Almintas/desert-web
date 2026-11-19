@@ -6,8 +6,10 @@ import {
   isSaleWindowOpen,
   normalizeEmail,
   normalizePhone,
-  type OrderDto,
+  type OrderAccessDto,
   type OrderErrorCode,
+  type OrderItemProblemDto,
+  type PaymentMethod,
 } from '@desert-web/shared';
 import {
   BadRequestException,
@@ -17,12 +19,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import type { ClientSession, Connection, Model, Types } from 'mongoose';
+import { type ClientSession, type Connection, type Model, mongo, type Types } from 'mongoose';
 import { CountersService } from '../counters/counters.service';
 import { Product } from '../products/product.schema';
 import { SaleWindow, type SaleWindowItem } from '../sale-windows/sale-window.schema';
+import { TurnstileService } from '../turnstile/turnstile.service';
 import { Order, type OrderItem } from './order.schema';
-import { toOrderDto } from './orders.mapper';
+import { toOrderAccessDto, toOrderDto } from './orders.mapper';
 
 /** Užsakymo eilutė, suporuota su lango preke. */
 interface OrderLine {
@@ -42,6 +45,35 @@ function orderError(
   return new Exception({ code, message, ...extra });
 }
 
+/**
+ * Prekių klaida su `details.items` (kurios eilutės ir kiek dar leidžiama). Pirmos eilutės
+ * `variantId` paliekamas ir viršutiniame lygyje (suderinamumui su ankstesniais klientais).
+ */
+function itemError(
+  Exception: new (body: object) => Error,
+  code: OrderErrorCode,
+  message: string,
+  items: OrderItemProblemDto[],
+  extra: Record<string, unknown> = {},
+): Error {
+  return orderError(Exception, code, message, {
+    variantId: items[0]?.variantId,
+    ...extra,
+    details: { items },
+  });
+}
+
+const PAYMENT_METHOD: PaymentMethod = 'on_pickup';
+
+/** Rezultatas su požymiu, ar užsakymas sukurtas dabar (201), ar rastas pagal clientRequestId (200). */
+export interface CreateOrderResult {
+  response: CreateOrderResponse;
+  created: boolean;
+}
+
+const isDuplicateKeyError = (error: unknown): boolean =>
+  error instanceof mongo.MongoServerError && error.code === 11000;
+
 @Injectable()
 export class OrdersService {
   constructor(
@@ -50,6 +82,7 @@ export class OrdersService {
     @InjectModel(SaleWindow.name) private readonly saleWindowModel: Model<SaleWindow>,
     @InjectModel(Product.name) private readonly productModel: Model<Product>,
     private readonly countersService: CountersService,
+    private readonly turnstile: TurnstileService,
   ) {}
 
   /**
@@ -61,12 +94,56 @@ export class OrdersService {
    * tame pačiame lange gauna WriteConflict ir driveris transakciją pakartoja. Taip
    * kiekiai ir limitas vienam pirkėjui visada skaičiuojami nuo naujausių duomenų.
    */
-  async create(input: CreateOrderInput): Promise<CreateOrderResponse> {
+  async create(
+    input: CreateOrderInput,
+    context: { clientIp?: string } = {},
+  ): Promise<CreateOrderResult> {
+    // Pakartojimas jau sukurto užsakymo (tas pats clientRequestId, langas ir el. paštas)
+    // grąžinamas be Turnstile: pirkėjas, kuriam dingo atsakymas, neturi gauti klaidos.
+    const replay = await this.findByClientRequestId(input);
+    if (replay) return replay;
+
+    // Tik naujam užsakymui: tokenas tikrinamas PRIEŠ transakciją, todėl nepavykus
+    // niekas nerezervuojama. idempotency_key = clientRequestId, kad lygiagretus to paties
+    // pateikimo dublikatas (dvigubas paspaudimas) negautų timeout-or-duplicate.
+    await this.turnstile.verify(input.turnstileToken, {
+      remoteIp: context.clientIp,
+      idempotencyKey: input.clientRequestId,
+    });
+
+    try {
+      return await this.createOnce(input);
+    } catch (error) {
+      // Lygiagretus dublikatas, kurio transakcija commit'ino tarp mūsų patikrinimo ir įrašo.
+      // Paprastai tai baigiasi WriteConflict ir driverio pakartojimu (tada transakcijos
+      // pradžioje dublikatą jau randam), bet E11000 atveju grąžinam esamą užsakymą čia.
+      if (isDuplicateKeyError(error)) {
+        const existing = await this.findByClientRequestId(input);
+        if (existing) return existing;
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Viskas vyksta vienoje transakcijoje: idempotencijos patikrinimas, lango tikrinimas,
+   * limitai, kiekių rezervavimas (vienas atominis updateOne su sąlyga quantityAvailable >=
+   * kiekis) ir užsakymo įrašas. Kiekvienas užsakymas rašo į tą patį lango dokumentą, todėl
+   * lygiagretūs užsakymai tame pačiame lange gauna WriteConflict ir driveris transakciją
+   * pakartoja. Taip kiekiai, limitas vienam pirkėjui ir clientRequestId patikrinimas visada
+   * remiasi naujausiais duomenimis: pakartotas dublikatas randa jau sukurtą užsakymą ir
+   * kiekio antrą kartą nerezervuoja.
+   */
+  private async createOnce(input: CreateOrderInput): Promise<CreateOrderResult> {
     const emailNormalized = normalizeEmail(input.customer.email);
     const phoneNormalized = normalizePhone(input.customer.phone);
     const accessToken = randomBytes(24).toString('base64url');
 
-    const order = await this.connection.transaction(async (session) => {
+    return this.connection.transaction(async (session): Promise<CreateOrderResult> => {
+      // Pirmiausia idempotencija: pakartojimas grąžina užsakymą net jei langas jau uždarytas.
+      const existing = await this.findByClientRequestId(input, session);
+      if (existing) return existing;
+
       // Laikas imamas kiekvieno bandymo metu (transakcija gali būti kartojama).
       const now = new Date();
 
@@ -126,27 +203,63 @@ export class OrdersService {
             },
             status: 'pending',
             statusHistory: [{ status: 'pending', at: now }],
-            payment: { status: 'unpaid' },
+            payment: { status: 'unpaid', method: PAYMENT_METHOD },
             accessToken,
+            clientRequestId: input.clientRequestId,
           },
         ],
         { session },
       );
       if (!created) throw new InternalServerErrorException('Nepavyko sukurti užsakymo');
-      return created.toObject<Order>();
+      return {
+        response: { order: toOrderDto(created.toObject<Order>()), accessToken },
+        created: true,
+      };
     });
-
-    return { order: toOrderDto(order), accessToken };
   }
 
-  /** Pirkėjo užsakymo peržiūra pagal slaptą nuorodą. */
-  async findByAccessToken(accessToken: string): Promise<OrderDto> {
+  /**
+   * Jau sukurtas užsakymas su tuo pačiu clientRequestId. Grąžinamas tik tam pačiam langui ir
+   * tam pačiam pirkėjui (el. paštas): ID nėra slaptas raktas, todėl svetimam užklausos
+   * pakartojimui užsakymo (ir accessToken) neatiduodam.
+   */
+  private async findByClientRequestId(
+    input: CreateOrderInput,
+    session?: ClientSession,
+  ): Promise<CreateOrderResult | null> {
+    const query = this.orderModel.findOne({ clientRequestId: input.clientRequestId });
+    if (session) query.session(session);
+    const order = await query.lean<Order>().exec();
+    if (!order) return null;
+
+    const sameRequest =
+      order.saleWindowId.equals(input.saleWindowId) &&
+      order.customer.emailNormalized === normalizeEmail(input.customer.email);
+    if (!sameRequest) {
+      throw orderError(
+        ConflictException,
+        'IDEMPOTENCY_CONFLICT',
+        'Ši užklausa jau panaudota kitam užsakymui. Atnaujinkite puslapį ir bandykite dar kartą.',
+      );
+    }
+    return {
+      response: { order: toOrderDto(order), accessToken: order.accessToken },
+      created: false,
+    };
+  }
+
+  /** Pirkėjo užsakymo peržiūra pagal slaptą nuorodą (su lango pavadinimu ir atsiėmimu). */
+  async findByAccessToken(accessToken: string): Promise<OrderAccessDto> {
     const notFound = new NotFoundException('Užsakymas nerastas');
     if (!ACCESS_TOKEN_PATTERN.test(accessToken)) throw notFound;
 
     const order = await this.orderModel.findOne({ accessToken }).lean<Order>().exec();
     if (!order) throw notFound;
-    return toOrderDto(order);
+    const saleWindow = await this.saleWindowModel
+      .findById(order.saleWindowId, { title: 1, fulfillment: 1 })
+      .lean<Pick<SaleWindow, '_id' | 'title' | 'fulfillment'>>()
+      .exec();
+    return toOrderAccessDto(order, saleWindow);
   }
 
   private assertFulfillmentAvailable(saleWindow: SaleWindow, method: 'pickup' | 'delivery'): void {
@@ -164,26 +277,42 @@ export class OrdersService {
   }
 
   private matchLines(saleWindow: SaleWindow, requested: CreateOrderInput['items']): OrderLine[] {
-    return requested.map(({ variantId, quantity }) => {
+    const notInWindow: OrderItemProblemDto[] = [];
+    const overMax: OrderItemProblemDto[] = [];
+    const lines: OrderLine[] = [];
+    for (const { variantId, quantity } of requested) {
       const windowItem = saleWindow.items.find((i) => i.variantId.equals(variantId));
       if (!windowItem) {
-        throw orderError(
-          BadRequestException,
-          'ITEM_NOT_IN_WINDOW',
-          'Šios prekės nėra šiame pardavimo lange',
-          { variantId },
-        );
+        notInWindow.push({ variantId, requested: quantity, allowed: 0 });
+        continue;
       }
       if (windowItem.maxPerOrder && quantity > windowItem.maxPerOrder) {
-        throw orderError(
-          BadRequestException,
-          'MAX_PER_ORDER_EXCEEDED',
-          `Vienu užsakymu galima pirkti ne daugiau kaip ${windowItem.maxPerOrder} vnt.`,
-          { variantId, max: windowItem.maxPerOrder },
-        );
+        overMax.push({ variantId, requested: quantity, allowed: windowItem.maxPerOrder });
       }
-      return { variantId, quantity, windowItem };
-    });
+      lines.push({ variantId, quantity, windowItem });
+    }
+
+    if (notInWindow.length > 0) {
+      throw itemError(
+        BadRequestException,
+        'ITEM_NOT_IN_WINDOW',
+        'Šios prekės nėra šiame pardavimo lange',
+        notInWindow,
+      );
+    }
+    if (overMax.length > 0) {
+      const max = overMax[0]!.allowed;
+      throw itemError(
+        BadRequestException,
+        'MAX_PER_ORDER_EXCEEDED',
+        overMax.length === 1
+          ? `Vienu užsakymu galima pirkti ne daugiau kaip ${max} vnt.`
+          : 'Kai kurių prekių vienu užsakymu galima pirkti mažiau',
+        overMax,
+        { max },
+      );
+    }
+    return lines;
   }
 
   /**
@@ -219,22 +348,34 @@ export class OrdersService {
       .session(session)
       .exec();
 
+    const exceeded: (OrderItemProblemDto & { max: number })[] = [];
     for (const line of limited) {
       const max = line.windowItem.maxPerCustomer!;
       const alreadyOrdered =
         previous.find((p) => p._id.equals(line.windowItem.variantId))?.quantity ?? 0;
       if (alreadyOrdered + line.quantity > max) {
-        const remaining = Math.max(0, max - alreadyOrdered);
-        throw orderError(
-          ConflictException,
-          'MAX_PER_CUSTOMER_EXCEEDED',
-          remaining > 0
-            ? `Šios prekės vienam pirkėjui dar galite užsakyti ${remaining} vnt.`
-            : 'Šios prekės jau užsakėte maksimalų kiekį',
-          { variantId: line.variantId, max, remaining },
-        );
+        exceeded.push({
+          variantId: line.variantId,
+          requested: line.quantity,
+          allowed: Math.max(0, max - alreadyOrdered),
+          max,
+        });
       }
     }
+    if (exceeded.length === 0) return;
+
+    const first = exceeded[0]!;
+    throw itemError(
+      ConflictException,
+      'MAX_PER_CUSTOMER_EXCEEDED',
+      exceeded.length > 1
+        ? 'Kai kurių prekių vienam pirkėjui galima užsakyti mažiau'
+        : first.allowed > 0
+          ? `Šios prekės vienam pirkėjui dar galite užsakyti ${first.allowed} vnt.`
+          : 'Šios prekės jau užsakėte maksimalų kiekį',
+      exceeded.map(({ variantId, requested, allowed }) => ({ variantId, requested, allowed })),
+      { max: first.max, remaining: first.allowed },
+    );
   }
 
   /** Aiški klaida pirkėjui, kurių prekių nebeužtenka (pagal transakcijos momentinį vaizdą). */
@@ -247,9 +388,17 @@ export class OrdersService {
         available: l.windowItem.quantityAvailable,
       }));
     if (short.length > 0) {
-      throw orderError(ConflictException, 'INSUFFICIENT_STOCK', 'Kai kurių prekių nebeužtenka', {
-        items: short,
-      });
+      throw itemError(
+        ConflictException,
+        'INSUFFICIENT_STOCK',
+        'Kai kurių prekių nebeužtenka',
+        short.map((s) => ({
+          variantId: s.variantId,
+          requested: s.requested,
+          allowed: s.available,
+        })),
+        { items: short },
+      );
     }
   }
 
@@ -265,14 +414,22 @@ export class OrdersService {
       .exec();
     const productsById = new Map(products.map((p) => [p._id.toString(), p]));
 
-    return lines.map((line) => {
+    const unavailable = lines.filter((line) => {
       const product = productsById.get(line.windowItem.productId.toString());
-      const variant = product?.variants.find((v) => v._id.equals(line.windowItem.variantId));
-      if (!product || !variant) {
-        throw orderError(BadRequestException, 'ITEM_UNAVAILABLE', 'Prekė nebeparduodama', {
-          variantId: line.variantId,
-        });
-      }
+      return !product?.variants.some((v) => v._id.equals(line.windowItem.variantId));
+    });
+    if (unavailable.length > 0) {
+      throw itemError(
+        BadRequestException,
+        'ITEM_UNAVAILABLE',
+        'Prekė nebeparduodama',
+        unavailable.map((l) => ({ variantId: l.variantId, requested: l.quantity, allowed: 0 })),
+      );
+    }
+
+    return lines.map((line) => {
+      const product = productsById.get(line.windowItem.productId.toString())!;
+      const variant = product.variants.find((v) => v._id.equals(line.windowItem.variantId))!;
       return {
         productId: product._id,
         variantId: variant._id,
@@ -325,7 +482,32 @@ export class OrdersService {
 
     if (result.modifiedCount !== 1) {
       // Neturėtų nutikti po assertStock, bet tai paskutinė apsauga nuo perpardavimo.
-      throw orderError(ConflictException, 'INSUFFICIENT_STOCK', 'Kai kurių prekių nebeužtenka');
+      // Kad klientas žinotų, ką pakeisti, perskaitom dabartinius kiekius.
+      const fresh = await this.saleWindowModel
+        .findById(saleWindowId, { items: 1 })
+        .session(session)
+        .lean<Pick<SaleWindow, 'items'>>()
+        .exec();
+      const short = lines
+        .map((l) => ({
+          variantId: l.variantId,
+          requested: l.quantity,
+          available:
+            fresh?.items.find((i) => i.variantId.equals(l.windowItem.variantId))
+              ?.quantityAvailable ?? 0,
+        }))
+        .filter((l) => l.available < l.requested);
+      throw itemError(
+        ConflictException,
+        'INSUFFICIENT_STOCK',
+        'Kai kurių prekių nebeužtenka',
+        short.map((l) => ({
+          variantId: l.variantId,
+          requested: l.requested,
+          allowed: l.available,
+        })),
+        { items: short },
+      );
     }
   }
 }

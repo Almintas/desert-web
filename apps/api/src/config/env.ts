@@ -1,9 +1,17 @@
+import { TURNSTILE_SITEVERIFY_URL, TURNSTILE_TEST_KEYS } from '@desert-web/shared';
 import { z } from 'zod';
 
 const optionalString = z
   .string()
   .optional()
   .transform((v) => (v && v.trim().length > 0 ? v.trim() : undefined));
+
+const positiveInt = (fallback: number) => z.coerce.number().int().positive().default(fallback);
+
+const booleanString = z
+  .enum(['true', 'false', '1', '0', ''])
+  .optional()
+  .transform((v) => (v === undefined || v === '' ? undefined : v === 'true' || v === '1'));
 
 const CLOUDINARY_FOLDER_PATTERN = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/;
 const CLOUDINARY_REQUIRED = [
@@ -31,6 +39,29 @@ export const envSchema = z
     /** Kiek nesėkmingų / bet kokių prisijungimo bandymų leidžiama iš vieno IP per langą. */
     ADMIN_LOGIN_RATE_LIMIT: z.coerce.number().int().positive().default(5),
     ADMIN_LOGIN_RATE_WINDOW_SECONDS: z.coerce.number().int().positive().default(60),
+    /**
+     * Užsakymų ribojimas vienam IP (žr. common/rate-limits.ts). Numatytos reikšmės skirtos
+     * produkcijai; keičiami tik testuose ir e2e.
+     */
+    ORDER_RATE_LIMIT_SHORT: positiveInt(5),
+    ORDER_RATE_WINDOW_SHORT_SECONDS: positiveInt(10 * 60),
+    ORDER_RATE_LIMIT_DAILY: positiveInt(20),
+    ORDER_RATE_WINDOW_DAILY_SECONDS: positiveInt(24 * 60 * 60),
+    ORDER_ACCESS_RATE_LIMIT: positiveInt(60),
+    ORDER_ACCESS_RATE_WINDOW_SECONDS: positiveInt(60),
+    /**
+     * Ar kliento IP imti iš X-Real-IP (be patikimo X-Client-IP). Railway viešas edge šią
+     * antraštę nustato pats (https://docs.railway.com/networking/public-networking/specs-and-limits),
+     * o X-Forwarded-For grandinėje gali būti keli Railway šuoliai. Numatyta: true produkcijoje.
+     */
+    TRUST_X_REAL_IP: booleanString,
+    /**
+     * Cloudflare Turnstile secret. Produkcijoje privalomas; vystant ir testuose numatytas
+     * Cloudflare testinis „visada praeina“ raktas.
+     */
+    TURNSTILE_SECRET_KEY: optionalString,
+    /** Tik testams / e2e (vietinis Cloudflare pakaitalas). Numatyta: Cloudflare siteverify. */
+    TURNSTILE_VERIFY_URL: z.url().default(TURNSTILE_SITEVERIFY_URL),
     /**
      * Bendra paslaptis su admin Next.js serveriu: su ja admin app perduoda tikrą naršyklės IP
      * prisijungimų ribojimui (X-Client-IP). Produkcijoje privaloma (žr. superRefine žemiau);
@@ -73,6 +104,15 @@ export const envSchema = z
           'Nustatyk tą pačią reikšmę (bent 32 simboliai) ir API (Railway), ir admin app (Vercel).',
       });
     }
+    if (env.NODE_ENV === 'production' && env.TURNSTILE_SECRET_KEY === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['TURNSTILE_SECRET_KEY'],
+        message:
+          'TURNSTILE_SECRET_KEY privalomas produkcijoje (NODE_ENV=production): be jo užsakymų ' +
+          'apsauga nuo robotų neveiks. Reikšmė: Cloudflare → Turnstile → valdiklis → Secret key.',
+      });
+    }
     if (env.NODE_ENV === 'production') {
       for (const key of CLOUDINARY_REQUIRED) {
         if (env[key] === undefined) {
@@ -88,6 +128,8 @@ export const envSchema = z
   .transform((env) => ({
     ...env,
     CLOUDINARY_FOLDER: env.CLOUDINARY_FOLDER ?? `desert-web/${env.NODE_ENV}/products`,
+    TRUST_X_REAL_IP: env.TRUST_X_REAL_IP ?? env.NODE_ENV === 'production',
+    TURNSTILE_SECRET_KEY: env.TURNSTILE_SECRET_KEY ?? TURNSTILE_TEST_KEYS.secretPass,
   }));
 
 export type Env = z.infer<typeof envSchema>;

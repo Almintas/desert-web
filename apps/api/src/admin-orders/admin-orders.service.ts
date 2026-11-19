@@ -17,7 +17,13 @@ import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { type ClientSession, type Connection, type Model, type FilterQuery, Types } from 'mongoose';
 import { Order } from '../orders/order.schema';
 import { SaleWindow } from '../sale-windows/sale-window.schema';
-import { toAdminOrderDto, toAdminOrderListItemDto, type WindowTitles } from './admin-orders.mapper';
+import { AdminAccountsService } from '../admin-auth/admin-accounts.service';
+import {
+  adminIdsOf,
+  toAdminOrderDto,
+  toAdminOrderListItemDto,
+  type WindowTitles,
+} from './admin-orders.mapper';
 
 function orderError(
   Exception: new (body: object) => Error,
@@ -31,6 +37,16 @@ function orderError(
 const notFound = () => orderError(NotFoundException, 'ORDER_NOT_FOUND', 'Užsakymas nerastas');
 
 const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Telefono pradžia be šalies kodo: tik skaitmenys (galima su tarpais / brūkšneliais), kurie
+ * prasideda 8, 370 arba +370. Pvz., "8612" → "612", "+370 612" → "612". Kitaip null.
+ */
+export function localPhonePrefix(q: string): string | null {
+  const compact = q.replace(/[\s\-()]/g, '');
+  const match = /^(?:\+370|370|8)(\d+)$/.exec(compact);
+  return match ? match[1]! : null;
+}
 
 /** Kodėl perėjimas `from -> to` negalimas (lietuviškas pranešimas). */
 function transitionMessage(from: OrderStatus, to: OrderStatus): string {
@@ -47,6 +63,7 @@ export class AdminOrdersService {
     @InjectConnection() private readonly connection: Connection,
     @InjectModel(Order.name) private readonly orderModel: Model<Order>,
     @InjectModel(SaleWindow.name) private readonly saleWindowModel: Model<SaleWindow>,
+    private readonly adminAccounts: AdminAccountsService,
   ) {}
 
   /** Naujausi pirmi. counts skaičiuojami be būsenos filtro (skirtukams). */
@@ -94,7 +111,15 @@ export class AdminOrdersService {
     if (!objectIdSchema.safeParse(id).success) throw notFound();
     const order = await this.orderModel.findById(id).lean<Order>().exec();
     if (!order) throw notFound();
-    return toAdminOrderDto(order, await this.windowTitles([order]));
+    return this.toDto(order);
+  }
+
+  private async toDto(order: Order): Promise<AdminOrderDto> {
+    const [titles, emails] = await Promise.all([
+      this.windowTitles([order]),
+      this.adminAccounts.emailsByIds(adminIdsOf(order)),
+    ]);
+    return toAdminOrderDto(order, titles, emails);
   }
 
   /**
@@ -108,6 +133,7 @@ export class AdminOrdersService {
    * 1. Sąlyginis findOneAndUpdate (`status` vis dar viena iš leidžiamų). Jei du adminai
    *    atšaukia vienu metu, antrasis po pakartojimo sąlygos nebeatitinka ir gauna 409,
    *    todėl kiekiai grąžinami tik kartą.
+   *    Pereinant į completed tame pačiame įraše pažymima payment.status = 'paid' ir paidAt.
    * 2. Atšaukiant: $inc kiekvienos prekės quantityAvailable lange (arrayFilters pagal
    *    variantId), net jei langas jau uždarytas ar pasibaigęs. Tai rašo lango dokumentą,
    *    kaip ir POST /orders bei lango PUT, todėl lygiagrečios transakcijos konfliktuoja
@@ -139,6 +165,8 @@ export class AdminOrdersService {
                     },
                   }
                 : {}),
+              // Apmokama atsiimant: įvykdytas užsakymas reiškia, kad pirkėjas sumokėjo.
+              ...(to === 'completed' ? { 'payment.status': 'paid', 'payment.paidAt': now } : {}),
             },
             $push: { statusHistory: { status: to, at: now, adminId } },
           },
@@ -167,7 +195,7 @@ export class AdminOrdersService {
     });
 
     // Čia vėliau: pranešimas pirkėjui apie būsenos pakeitimą (Resend).
-    return toAdminOrderDto(updated, await this.windowTitles([updated]));
+    return this.toDto(updated);
   }
 
   /** Grąžina atšaukto užsakymo kiekius į langą (vienas atominis $inc su arrayFilters). */
@@ -209,6 +237,11 @@ export class AdminOrdersService {
         { 'customer.phoneNormalized': contains(normalizePhone(q)) },
         { 'customer.phoneNormalized': contains(digits) },
       );
+      // Lietuviškas numeris dalimis: "8612" ar "+370612" randa "+37061234567" (be 8 / 370).
+      const local = localPhonePrefix(q);
+      if (local) {
+        conditions.push({ 'customer.phoneNormalized': new RegExp(`^\\+370${local}`) });
+      }
     }
     return conditions;
   }

@@ -13,6 +13,18 @@ export function saleWindowApiErrorState(
   const index = typeof body.variantId === 'string' ? variantIndex(body.variantId) : -1;
 
   switch (error.code) {
+    case 'PICKUP_INFO_REQUIRED':
+      return {
+        error: error.message,
+        fieldErrors: Object.fromEntries(
+          (Array.isArray((body as { missing?: unknown }).missing)
+            ? ((body as { missing: string[] }).missing ?? [])
+            : []
+          )
+            .filter((field) => field !== 'pickupAvailable')
+            .map((field) => [`fulfillment.${field}`, 'Privaloma paskelbtam langui']),
+        ),
+      };
     case 'WINDOW_OVERLAP':
       return { error: error.message, overlap: body.window };
     case 'QUANTITY_BELOW_SOLD':

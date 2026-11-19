@@ -1,8 +1,13 @@
+import { randomUUID } from 'node:crypto';
 import type { ModuleMetadata } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
-import type { AdminSaleWindowDto, AdminSaleWindowInputBody } from '@desert-web/shared';
+import {
+  type AdminSaleWindowDto,
+  type AdminSaleWindowInputBody,
+  TURNSTILE_TEST_KEYS,
+} from '@desert-web/shared';
 import type { Connection, Model } from 'mongoose';
 import { Types } from 'mongoose';
 import request from 'supertest';
@@ -13,6 +18,11 @@ import { Counter } from '../src/counters/counter.schema';
 import { Order } from '../src/orders/order.schema';
 import { Product } from '../src/products/product.schema';
 import { SaleWindow } from '../src/sale-windows/sale-window.schema';
+import {
+  SITEVERIFY_CLIENT,
+  type SiteverifyClient,
+  type SiteverifyRequest,
+} from '../src/turnstile/siteverify';
 
 const MINUTE = 60_000;
 const HOUR = 3_600_000;
@@ -27,16 +37,33 @@ export interface TestContext {
 }
 
 /**
+ * Cloudflare siteverify pakaitalas testams (jokių tinklo užklausų). Elgiasi kaip Cloudflare
+ * testiniai secret key (https://developers.cloudflare.com/turnstile/troubleshooting/testing/):
+ * "1x…" priima tik XXXX.DUMMY.TOKEN.XXXX, "2x…" visada atmeta, "3x…" grąžina timeout-or-duplicate.
+ */
+export const fakeSiteverify: SiteverifyClient = async ({ secret, response }: SiteverifyRequest) => {
+  if (secret.startsWith('1x') && response === TURNSTILE_TEST_KEYS.dummyToken) {
+    return { success: true, hostname: 'example.com', 'error-codes': [] };
+  }
+  if (secret.startsWith('3x')) return { success: false, 'error-codes': ['timeout-or-duplicate'] };
+  return { success: false, 'error-codes': ['invalid-input-response'] };
+};
+
+/**
  * Paleidžia tikrą AppModule (MONGODB_URI nustato global-setup.ts) su tais pačiais
- * nustatymais kaip main.ts. `extra` leidžia pridėti tik testams skirtus controllerius.
+ * nustatymais kaip main.ts. `extra` leidžia pridėti tik testams skirtus controllerius,
+ * `siteverify` pakeičia Cloudflare klientą (numatyta: fakeSiteverify).
  */
 export async function createTestContext(
-  extra: Pick<ModuleMetadata, 'imports' | 'controllers'> = {},
+  extra: Pick<ModuleMetadata, 'imports' | 'controllers'> & { siteverify?: SiteverifyClient } = {},
 ): Promise<TestContext> {
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule, ...(extra.imports ?? [])],
     controllers: extra.controllers ?? [],
-  }).compile();
+  })
+    .overrideProvider(SITEVERIFY_CLIENT)
+    .useValue(extra.siteverify ?? fakeSiteverify)
+    .compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>({ logger: false });
   configureApp(app);
   await app.init();
@@ -107,6 +134,7 @@ export async function createSaleWindow(
     closesInMinutes?: number;
     pickupAvailable?: boolean;
     deliveryAvailable?: boolean;
+    pickupLocation?: string;
   },
 ): Promise<SaleWindow> {
   const now = Date.now();
@@ -117,6 +145,9 @@ export async function createSaleWindow(
     closesAt: new Date(now + (options.closesInMinutes ?? 60) * MINUTE),
     fulfillment: {
       pickupAvailable: options.pickupAvailable ?? true,
+      pickupLocation: options.pickupLocation,
+      pickupFrom: options.pickupLocation ? new Date(now + 2 * HOUR) : undefined,
+      pickupTo: options.pickupLocation ? new Date(now + 4 * HOUR) : undefined,
       deliveryAvailable: options.deliveryAvailable ?? true,
     },
     items: options.items.map((i) => ({
@@ -158,9 +189,19 @@ export function orderBody(
   overrides: {
     customer?: { name: string; email: string; phone: string };
     fulfillment?: { method: 'pickup' | 'delivery'; address?: string; notes?: string };
+    /** Numatyta: naujas UUID (kiekvienas kvietimas yra atskiras pirkėjo bandymas). */
+    clientRequestId?: string;
+    /** Numatyta: Cloudflare testinis tokenas; null: be tokeno. */
+    turnstileToken?: string | null;
   } = {},
 ) {
+  const token =
+    overrides.turnstileToken === undefined
+      ? TURNSTILE_TEST_KEYS.dummyToken
+      : (overrides.turnstileToken ?? undefined);
   return {
+    clientRequestId: overrides.clientRequestId ?? randomUUID(),
+    ...(token === undefined ? {} : { turnstileToken: token }),
     saleWindowId: saleWindowId.toString(),
     customer: overrides.customer ?? uniqueCustomer(),
     items: items.map((i) => ({ variantId: i.variantId.toString(), quantity: i.quantity })),
@@ -212,7 +253,13 @@ export function windowBody(
     title: 'Kalėdinis pardavimas',
     opensAt: iso(24),
     closesAt: iso(48),
-    fulfillment: { pickupAvailable: true, pickupLocation: 'Vilnius', deliveryAvailable: false },
+    fulfillment: {
+      pickupAvailable: true,
+      pickupLocation: 'Vilnius',
+      pickupFrom: iso(50),
+      pickupTo: iso(52),
+      deliveryAvailable: false,
+    },
     items,
     ...overrides,
   };
@@ -230,6 +277,8 @@ export function bodyFrom(
     fulfillment: {
       pickupAvailable: w.fulfillment.pickupAvailable,
       pickupLocation: w.fulfillment.pickupLocation ?? undefined,
+      pickupFrom: w.fulfillment.pickupFrom ?? undefined,
+      pickupTo: w.fulfillment.pickupTo ?? undefined,
       deliveryAvailable: w.fulfillment.deliveryAvailable,
     },
     items: w.items.map((i) => ({

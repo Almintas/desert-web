@@ -1,7 +1,7 @@
 import { type AdminDto, type AdminRole, normalizeEmail } from '@desert-web/shared';
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import type { Model } from 'mongoose';
+import type { Model, Types } from 'mongoose';
 import { Admin } from './admin.schema';
 import { AdminSession } from './admin-session.schema';
 import { toAdminDto } from './admin.mapper';
@@ -28,6 +28,17 @@ export class AdminAccountsService {
     @InjectModel(Admin.name) private readonly adminModel: Model<Admin>,
     @InjectModel(AdminSession.name) private readonly sessionModel: Model<AdminSession>,
   ) {}
+
+  /** ID → el. paštas. Ištrinti adminai į rezultatą nepatenka (kviečiantysis rodo atsarginį tekstą). */
+  async emailsByIds(ids: Types.ObjectId[]): Promise<Map<string, string>> {
+    const unique = [...new Set(ids.map((id) => id.toString()))];
+    if (unique.length === 0) return new Map();
+    const admins = await this.adminModel
+      .find({ _id: { $in: unique } }, { email: 1 })
+      .lean<Pick<Admin, '_id' | 'email'>[]>()
+      .exec();
+    return new Map(admins.map((a) => [a._id.toString(), a.email]));
+  }
 
   async create(email: string, role: AdminRole, password: string): Promise<AdminDto> {
     const normalized = normalizeEmail(email);

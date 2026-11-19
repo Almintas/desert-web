@@ -148,6 +148,11 @@ describe('Admin autentifikacija (/admin/auth)', () => {
       const blocked = await login({ email: 'ona@example.com', password: PASSWORD });
       expect(blocked.status).toBe(429);
       expect(blocked.body.message).toBe('Per daug bandymų prisijungti. Pabandyk vėliau.');
+      expect(blocked.body.code).toBe('TOO_MANY_REQUESTS');
+      const window = ctx.app.get(ConfigService<Env, true>).get('ADMIN_LOGIN_RATE_WINDOW_SECONDS');
+      const retryAfter = Number(blocked.headers['retry-after']);
+      expect(retryAfter).toBeGreaterThan(0);
+      expect(retryAfter).toBeLessThanOrEqual(window);
 
       // Kitas IP (pagal X-Forwarded-For, nes įjungtas trust proxy) neužblokuotas.
       ip = '10.255.255.1';

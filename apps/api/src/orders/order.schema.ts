@@ -74,6 +74,7 @@ export class OrderPayment {
   @Prop({ type: String, enum: [...PAYMENT_STATUSES], default: 'unpaid' })
   status!: PaymentStatus;
 
+  /** PaymentMethod ('on_pickup'). Seni užsakymai šio lauko neturi. */
   @Prop()
   method?: string;
 
@@ -155,6 +156,13 @@ export class Order {
   @Prop({ required: true })
   accessToken!: string;
 
+  /**
+   * Kliento sugeneruotas UUID (POST /orders idempotencija). Seni užsakymai jo neturi,
+   * todėl unikalus indeksas dalinis (tik kur laukas yra eilutė).
+   */
+  @Prop()
+  clientRequestId?: string;
+
   createdAt!: Date;
   updatedAt!: Date;
 }
@@ -164,6 +172,10 @@ export const OrderSchema = SchemaFactory.createForClass(Order);
 
 OrderSchema.index({ orderNumber: 1 }, { unique: true });
 OrderSchema.index({ accessToken: 1 }, { unique: true });
+OrderSchema.index(
+  { clientRequestId: 1 },
+  { unique: true, partialFilterExpression: { clientRequestId: { $type: 'string' } } },
+);
 OrderSchema.index({ saleWindowId: 1, status: 1 });
 OrderSchema.index({ createdAt: -1 });
 OrderSchema.index({ saleWindowId: 1, createdAt: -1 });

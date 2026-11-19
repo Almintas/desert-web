@@ -1,0 +1,80 @@
+import { TURNSTILE_TEST_KEYS } from '@desert-web/shared';
+
+/**
+ * Web serverio aplinkos kintamieji. Be `server-only`, nes naudojama ir instrumentation.ts.
+ *
+ * Produkcijoje (NODE_ENV=production) privalomi API_URL, INTERNAL_API_SECRET ir
+ * NEXT_PUBLIC_TURNSTILE_SITE_KEY: be jų užsakymai neveiktų (API produkcijoje POST /orders
+ * priima tik su paslaptimi ir Turnstile tokenu), todėl serveris nepasileidžia (žr.
+ * instrumentation.ts). Vystant naudojamos vietinės numatytosios reikšmės ir Cloudflare
+ * testinis „visada praeina“ site key.
+ */
+export interface WebEnv {
+  apiUrl: string;
+  internalApiSecret: string | undefined;
+  turnstileSiteKey: string;
+}
+
+const trimmed = (v: string | undefined) => (v && v.trim().length > 0 ? v.trim() : undefined);
+
+/**
+ * NEXT_PUBLIC_ reikšmę Next įrašo į kodą builde, todėl ją būtina skaityti tiesiogiai
+ * `process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY` (ne per kintamąjį raktą).
+ */
+const SITE_KEY = trimmed(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+
+export function validateWebEnv(raw: NodeJS.ProcessEnv = process.env): WebEnv {
+  const production = raw.NODE_ENV === 'production';
+  const apiUrl = trimmed(raw.API_URL);
+  const secret = trimmed(raw.INTERNAL_API_SECRET);
+  const siteKey = raw === process.env ? SITE_KEY : trimmed(raw.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+
+  const issues: string[] = [];
+  if (apiUrl !== undefined && !/^https?:\/\/[^\s]+$/.test(apiUrl)) {
+    issues.push('API_URL: turi būti http(s) adresas, pvz., https://api.desertai.lt');
+  }
+  if (secret !== undefined && secret.length < 32) {
+    issues.push('INTERNAL_API_SECRET: turi būti bent 32 simbolių');
+  }
+  if (production) {
+    if (apiUrl === undefined) {
+      issues.push(
+        'API_URL: privalomas produkcijoje (NODE_ENV=production). Nustatyk API adresą ' +
+          '(Railway domeną) web projekto aplinkoje (Vercel).',
+      );
+    }
+    if (secret === undefined) {
+      issues.push(
+        'INTERNAL_API_SECRET: privalomas produkcijoje (NODE_ENV=production): be jo API ' +
+          'užsakymų nepriima. Nustatyk tą pačią reikšmę (bent 32 simboliai) ir API (Railway), ' +
+          'ir web (Vercel).',
+      );
+    }
+    if (siteKey === undefined) {
+      issues.push(
+        'NEXT_PUBLIC_TURNSTILE_SITE_KEY: privalomas produkcijoje (NODE_ENV=production). ' +
+          'Reikšmė: Cloudflare → Turnstile → valdiklis → Site key. Įrašoma builde, todėl ' +
+          'pakeitus reikia perdiegti.',
+      );
+    }
+  }
+  if (issues.length > 0) {
+    throw new Error(
+      `Netinkami aplinkos kintamieji (web):\n${issues.map((i) => `  - ${i}`).join('\n')}`,
+    );
+  }
+
+  return {
+    apiUrl: apiUrl ?? 'http://localhost:4000',
+    internalApiSecret: secret,
+    turnstileSiteKey: siteKey ?? TURNSTILE_TEST_KEYS.siteKeyPass,
+  };
+}
+
+let cached: WebEnv | undefined;
+
+/** Patikrinti kintamieji (pirmą kartą patikrinama ir įsimenama). */
+export function webEnv(): WebEnv {
+  cached ??= validateWebEnv();
+  return cached;
+}

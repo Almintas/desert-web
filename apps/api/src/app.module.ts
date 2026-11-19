@@ -10,6 +10,7 @@ import { HealthModule } from './health/health.module';
 import { OrdersModule } from './orders/orders.module';
 import { ProductImagesModule } from './product-images/product-images.module';
 import { ProductsModule } from './products/products.module';
+import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { SaleWindowsModule } from './sale-windows/sale-windows.module';
 
 @Module({
@@ -27,6 +28,7 @@ import { SaleWindowsModule } from './sale-windows/sale-windows.module';
         autoIndex: config.get('NODE_ENV', { infer: true }) !== 'production',
       }),
     }),
+    RateLimitModule,
     HealthModule,
     ProductsModule,
     SaleWindowsModule,

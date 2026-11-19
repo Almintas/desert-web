@@ -1,8 +1,11 @@
 import type { AdminOrderDto, AdminOrderListItemDto } from '@desert-web/shared';
+import type { Types } from 'mongoose';
 import type { Order } from '../orders/order.schema';
 import { toOrderDto } from '../orders/orders.mapper';
 
 export type WindowTitles = Map<string, string>;
+/** Admino ID → el. paštas (istorijai). Ištrintų adminų čia nėra. */
+export type AdminEmails = Map<string, string>;
 
 function windowRef(o: Order, titles: WindowTitles) {
   const id = o.saleWindowId.toString();
@@ -23,7 +26,11 @@ export function toAdminOrderListItemDto(o: Order, titles: WindowTitles): AdminOr
   };
 }
 
-export function toAdminOrderDto(o: Order, titles: WindowTitles): AdminOrderDto {
+export function toAdminOrderDto(
+  o: Order,
+  titles: WindowTitles,
+  adminEmails: AdminEmails = new Map(),
+): AdminOrderDto {
   // Užsakymai, sukurti prieš atsirandant statusHistory, jos neturi (arba ji prasideda nuo
   // pirmo admino pakeitimo): sukūrimą rodom kaip „pending“ įrašą su createdAt.
   const stored = o.statusHistory ?? [];
@@ -38,6 +45,7 @@ export function toAdminOrderDto(o: Order, titles: WindowTitles): AdminOrderDto {
       status: h.status,
       at: h.at.toISOString(),
       adminId: h.adminId?.toString() ?? null,
+      adminEmail: h.adminId ? (adminEmails.get(h.adminId.toString()) ?? null) : null,
     })),
     cancellation: o.cancellation
       ? {
@@ -47,4 +55,11 @@ export function toAdminOrderDto(o: Order, titles: WindowTitles): AdminOrderDto {
         }
       : null,
   };
+}
+
+/** Adminų ID iš būsenų istorijos ir atšaukimo (el. paštams rasti). */
+export function adminIdsOf(o: Order): Types.ObjectId[] {
+  const ids = (o.statusHistory ?? []).flatMap((h) => (h.adminId ? [h.adminId] : []));
+  if (o.cancellation?.cancelledBy) ids.push(o.cancellation.cancelledBy);
+  return ids;
 }

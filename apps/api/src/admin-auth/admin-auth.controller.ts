@@ -5,8 +5,8 @@ import {
   adminLoginInputSchema,
 } from '@desert-web/shared';
 import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import type { AdminRequest } from './admin-request';
 import { AdminAuthGuard } from './admin-auth.guard';
 import { AdminAuthService } from './admin-auth.service';
@@ -16,10 +16,10 @@ import { CurrentAdmin } from './current-admin.decorator';
 export class AdminAuthController {
   constructor(private readonly auth: AdminAuthService) {}
 
-  /** Ribojamas pagal IP (ADMIN_LOGIN_RATE_LIMIT per ADMIN_LOGIN_RATE_WINDOW_SECONDS). */
+  /** Ribojamas pagal req.clientIp (ADMIN_LOGIN_RATE_LIMIT per ADMIN_LOGIN_RATE_WINDOW_SECONDS). */
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(ThrottlerGuard)
+  @RateLimit('admin-login')
   login(
     @Body(new ZodValidationPipe(adminLoginInputSchema)) body: AdminLoginInput,
   ): Promise<AdminLoginResponse> {

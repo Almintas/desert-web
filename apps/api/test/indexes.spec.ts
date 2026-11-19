@@ -6,6 +6,7 @@ import { createTestContext, type TestContext } from './helpers';
 const REQUIRED_UNIQUE: [string, string][] = [
   ['orders', 'orderNumber'],
   ['orders', 'accessToken'],
+  ['orders', 'clientRequestId'],
   ['products', 'slug'],
   ['products', 'images.publicId'],
   ['admins', 'email'],
