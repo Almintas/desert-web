@@ -2,6 +2,7 @@ import {
   type AdminSaleWindowDto,
   type AdminSaleWindowInput,
   getSaleWindowPhase,
+  missingPickupInfo,
   objectIdSchema,
   type SaleWindowErrorCode,
 } from '@desert-web/shared';
@@ -45,6 +46,22 @@ const invalidStatus = (message: string) =>
 const hasOrders = (message: string) => windowError(ConflictException, 'WINDOW_HAS_ORDERS', message);
 
 const NOT_CANCELLED = { $ne: 'cancelled' } as const;
+
+/**
+ * Paskelbtas langas turi turėti atsiėmimo vietą ir laiką: pirkėjai užsako tik atsiėmimui,
+ * o užsakymo puslapis yra vienintelė vieta, kur jie tai sužino. Juodraščiams netaikoma.
+ */
+function assertPickupInfo(fulfillment: Parameters<typeof missingPickupInfo>[0] | undefined): void {
+  const missing = missingPickupInfo(fulfillment ?? {});
+  if (missing.length > 0) {
+    throw windowError(
+      ConflictException,
+      'PICKUP_INFO_REQUIRED',
+      'Prieš skelbiant langą nurodyk atsiėmimo vietą ir laiką (nuo ir iki).',
+      { missing },
+    );
+  }
+}
 
 const MINUTE_MS = 60_000;
 
@@ -188,6 +205,8 @@ export class AdminSaleWindowsService {
       return { ...this.itemFields(i), quantityAvailable: i.quantityTotal - sold };
     });
 
+    if (stored.status === 'published') assertPickupInfo(input.fulfillment);
+
     const timesChanged =
       stored.opensAt.getTime() !== input.opensAt.getTime() ||
       stored.closesAt.getTime() !== input.closesAt.getTime();
@@ -208,13 +227,14 @@ export class AdminSaleWindowsService {
     return updated;
   }
 
-  /** draft -> published (jei nesikerta su kitu paskelbtu langu). */
+  /** draft -> published (jei nesikerta su kitu paskelbtu langu ir turi atsiėmimo info). */
   publish(id: string): Promise<AdminSaleWindowDto> {
     return this.mutate(id, async (w, session, now) => {
       if (w.status !== 'draft') throw invalidStatus('Paskelbti galima tik juodraštį');
       if (w.closesAt <= now) {
         throw invalidStatus('Lango pabaiga jau praėjo. Pirmiau pakeisk lango laikus.');
       }
+      assertPickupInfo(w.fulfillment);
       await this.assertNoOverlap(w._id, w.opensAt, w.closesAt, session);
       return { status: 'published' };
     });
@@ -250,6 +270,7 @@ export class AdminSaleWindowsService {
       if (w.closesAt <= now) {
         throw invalidStatus('Lango pabaiga jau praėjo. Pirmiau pakeisk uždarymo laiką.');
       }
+      assertPickupInfo(w.fulfillment);
       await this.assertNoOverlap(w._id, now, w.closesAt, session);
       return { status: 'published', opensAt: now };
     });

@@ -14,6 +14,11 @@ export const orderItemInputSchema = z.object({
 
 export const createOrderInputSchema = z
   .object({
+    /**
+     * Kliento sugeneruotas UUID vienam pateikimo bandymui (pakartojant tas pats). Užsakymas su
+     * jau naudotu ID nekuriamas iš naujo: grąžinamas pirmasis (200 vietoj 201).
+     */
+    clientRequestId: z.uuid('Netinkamas užklausos ID'),
     saleWindowId: objectIdSchema,
     customer: customerInputSchema,
     items: z.array(orderItemInputSchema).min(1).max(50),
@@ -51,13 +56,58 @@ export interface OrderDto {
 }
 
 /**
- * POST /orders atsakymas. accessToken grąžinamas tik vieną kartą: frontas iš jo
+ * POST /orders atsakymas: 201 naujam užsakymui, 200 pakartotinei užklausai su tuo pačiu
+ * clientRequestId (tas pats užsakymas ir tas pats accessToken). Frontas iš accessToken
  * sudaro pirkėjo nuorodą į užsakymą (GET /orders/access/:accessToken).
  */
 export interface CreateOrderResponse {
   order: OrderDto;
   accessToken: string;
 }
+
+/**
+ * GET /orders/access/:accessToken: užsakymas su lango pavadinimu ir atsiėmimo informacija,
+ * kad pirkėjo užsakymo puslapiui nereikėtų kitų užklausų.
+ */
+export interface OrderAccessDto extends OrderDto {
+  saleWindow: {
+    id: string;
+    title: string;
+    pickupLocation: string | null;
+    pickupFrom: string | null;
+    pickupTo: string | null;
+  };
+}
+
+/**
+ * Viena probleminė užsakymo eilutė (`details.items` klaidos atsakyme).
+ * `allowed`: kiek šios prekės dabar dar galima užsakyti (0: nebegalima visai).
+ */
+export interface OrderItemProblemDto {
+  variantId: string;
+  requested: number;
+  allowed: number;
+}
+
+/**
+ * Prekių klaidų (ITEM_NOT_IN_WINDOW, ITEM_UNAVAILABLE, MAX_PER_ORDER_EXCEEDED,
+ * MAX_PER_CUSTOMER_EXCEEDED, INSUFFICIENT_STOCK) atsakymo body. `details.items` išvardija
+ * visas tos rūšies problemines eilutes.
+ */
+export interface OrderItemErrorBody {
+  code: OrderErrorCode;
+  message: string;
+  details: { items: OrderItemProblemDto[] };
+}
+
+/** Klaidos, kurių `details.items` nurodo, kurias krepšelio eilutes reikia pakeisti. */
+export const ORDER_ITEM_ERROR_CODES = [
+  'ITEM_NOT_IN_WINDOW',
+  'ITEM_UNAVAILABLE',
+  'MAX_PER_ORDER_EXCEEDED',
+  'MAX_PER_CUSTOMER_EXCEEDED',
+  'INSUFFICIENT_STOCK',
+] as const satisfies readonly OrderErrorCode[];
 
 /** Klaidų kodai, kuriuos grąžina POST /orders ir /admin/orders (laukas `code` klaidos atsakyme). */
 export const ORDER_ERROR_CODES = [
@@ -69,6 +119,8 @@ export const ORDER_ERROR_CODES = [
   'MAX_PER_ORDER_EXCEEDED',
   'MAX_PER_CUSTOMER_EXCEEDED',
   'INSUFFICIENT_STOCK',
+  /** 409: tas pats clientRequestId jau panaudotas kitam pirkėjui ar kitame lange. */
+  'IDEMPOTENCY_CONFLICT',
   /** Admin: 404. */
   'ORDER_NOT_FOUND',
   /** Admin: 409, būsenos keisti taip negalima (atgal, iš galutinės, pakartotinis atšaukimas). */

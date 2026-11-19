@@ -62,7 +62,7 @@ async function main() {
       closesAt: new Date(now + 2 * day),
       fulfillment: {
         pickupAvailable: true,
-        pickupLocation: 'Vilnius (adresas bus nurodytas laiške)',
+        pickupLocation: 'Vilnius, Gedimino pr. 1',
         pickupFrom: new Date(now + 3 * day),
         pickupTo: new Date(now + 3 * day + 6 * hour),
         deliveryAvailable: false,
@@ -78,7 +78,13 @@ async function main() {
       status: 'published',
       opensAt: new Date(now + 10 * day),
       closesAt: new Date(now + 13 * day),
-      fulfillment: { pickupAvailable: true, deliveryAvailable: false },
+      fulfillment: {
+        pickupAvailable: true,
+        pickupLocation: 'Vilnius, Gedimino pr. 1',
+        pickupFrom: new Date(now + 14 * day),
+        pickupTo: new Date(now + 14 * day + 6 * hour),
+        deliveryAvailable: false,
+      },
       items: [
         { productId: macarons._id, variantId: m12._id, priceCents: 2400, quantityTotal: 50, quantityAvailable: 50, maxPerCustomer: 3 },
       ],

@@ -99,6 +99,30 @@ export const adminSaleWindowInputSchema = z
       seen.add(item.variantId);
     });
   });
+/** Atsiėmimo laukai, privalomi paskelbtam langui (PICKUP_INFO_REQUIRED). */
+export const PICKUP_INFO_FIELDS = [
+  'pickupAvailable',
+  'pickupLocation',
+  'pickupFrom',
+  'pickupTo',
+] as const;
+export type PickupInfoField = (typeof PICKUP_INFO_FIELDS)[number];
+
+/** Kurių atsiėmimo laukų trūksta, kad langą būtų galima paskelbti. */
+export function missingPickupInfo(f: {
+  pickupAvailable?: boolean | null;
+  pickupLocation?: string | null;
+  pickupFrom?: Date | string | null;
+  pickupTo?: Date | string | null;
+}): PickupInfoField[] {
+  const missing: PickupInfoField[] = [];
+  if (!f.pickupAvailable) missing.push('pickupAvailable');
+  if (!f.pickupLocation?.trim()) missing.push('pickupLocation');
+  if (!f.pickupFrom) missing.push('pickupFrom');
+  if (!f.pickupTo) missing.push('pickupTo');
+  return missing;
+}
+
 /** Įvestis (ką siunčia klientas: datos kaip ISO eilutės). */
 export type AdminSaleWindowInputBody = z.input<typeof adminSaleWindowInputSchema>;
 /** Po validacijos (datos kaip Date). */
@@ -174,6 +198,11 @@ export const SALE_WINDOW_ERROR_CODES = [
   'ITEM_HAS_ORDERS',
   /** 409: grąžinti į juodraštį, atšaukti ar ištrinti negalima, nes yra neatšauktų užsakymų. */
   'WINDOW_HAS_ORDERS',
+  /**
+   * 409: skelbti / atidaryti (ar keisti paskelbtą langą) be atsiėmimo informacijos negalima
+   * (`missing`: trūkstami laukai, pvz. ["pickupLocation", "pickupFrom"]).
+   */
+  'PICKUP_INFO_REQUIRED',
   /** 409: atšauktas langas tik skaitomas. */
   'WINDOW_CANCELLED',
   /** 409: veiksmas negalimas dabartinėje būsenoje (pvz., uždaryti neatidarytą langą). */

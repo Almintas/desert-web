@@ -129,8 +129,8 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
         fulfillment: {
           pickupAvailable: true,
           pickupLocation: 'Vilnius',
-          pickupFrom: null,
-          pickupTo: null,
+          pickupFrom: body.fulfillment.pickupFrom,
+          pickupTo: body.fulfillment.pickupTo,
           deliveryAvailable: false,
         },
       });
@@ -580,6 +580,7 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
       const w = await createOk([item(cake)], {
         fulfillment: {
           pickupAvailable: true,
+          pickupLocation: 'Vilnius',
           pickupFrom: '2027-01-10T08:00:42.000Z',
           pickupTo: '2027-01-10T15:00:00.000Z',
           deliveryAvailable: false,
@@ -592,6 +593,7 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
         closesAt: truncated(opened.closesAt),
         fulfillment: {
           pickupAvailable: true,
+          pickupLocation: 'Vilnius',
           pickupFrom: truncated(opened.fulfillment.pickupFrom!),
           pickupTo: opened.fulfillment.pickupTo!,
           deliveryAvailable: false,

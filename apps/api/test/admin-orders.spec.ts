@@ -271,8 +271,25 @@ describe('Admin užsakymai (/admin/orders)', () => {
       expect(dto.status).toBe(to);
       expect(dto.statusHistory.map((h) => h.status)).toEqual(['pending', ...path, to]);
       expect(dto.statusHistory.at(-1)!.adminId).toBe(adminId);
+      // Apmokama atsiimant: apmokėta tik įvykdžius, tame pačiame įraše.
+      if (to === 'completed') {
+        expect(dto.payment).toEqual({
+          status: 'paid',
+          method: 'on_pickup',
+          paidAt: dto.statusHistory.at(-1)!.at,
+        });
+      } else {
+        expect(dto.payment).toEqual({ status: 'unpaid', method: 'on_pickup', paidAt: null });
+      }
       // Būsenos keitimas kiekių nekeičia.
       await expectStockConsistent();
+    });
+
+    it('atšauktas užsakymas lieka neapmokėtas', async () => {
+      const { id } = await placeOrder([{ variantId: cake.variantIds[0]!, quantity: 1 }]);
+      const res = await cancel(id);
+      expect(res.status).toBe(200);
+      expect((res.body as AdminOrderDto).payment?.status).toBe('unpaid');
     });
 
     const REFUSED: [OrderStatus[], OrderStatus, RegExp][] = [

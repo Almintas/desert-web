@@ -19,6 +19,10 @@ export type FulfillmentMethod = (typeof FULFILLMENT_METHODS)[number];
 export const PAYMENT_STATUSES = ['unpaid', 'paid', 'refunded'] as const;
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 
+/** Kol kas tik apmokėjimas atsiimant (internetinių mokėjimų nėra). */
+export const PAYMENT_METHODS = ['on_pickup'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
 export const ADMIN_ROLES = ['owner', 'staff'] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 

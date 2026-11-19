@@ -101,9 +101,20 @@ describe('Užsakymai (POST /orders, GET /orders/access/:token)', () => {
       expect(stored?.items[0]?.productName).toBe('Medaus tortas');
       expect(stored?.items[0]?.variantName).toBe('1 kg');
 
+      expect(order.payment).toEqual({ status: 'unpaid', method: 'on_pickup', paidAt: null });
+
       const view = await request(ctx.app.getHttpServer()).get(`/orders/access/${accessToken}`);
       expect(view.status).toBe(200);
-      expect(view.body).toEqual(order);
+      expect(view.body).toEqual({
+        ...order,
+        saleWindow: {
+          id: window._id.toString(),
+          title: 'Savaitgalio pardavimas',
+          pickupLocation: null,
+          pickupFrom: null,
+          pickupTo: null,
+        },
+      });
 
       const second = await post(
         orderBody(window._id, [{ variantId: cake.variantIds[0]!, quantity: 1 }]),

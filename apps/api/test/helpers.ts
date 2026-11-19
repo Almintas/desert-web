@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { ModuleMetadata } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
@@ -107,6 +108,7 @@ export async function createSaleWindow(
     closesInMinutes?: number;
     pickupAvailable?: boolean;
     deliveryAvailable?: boolean;
+    pickupLocation?: string;
   },
 ): Promise<SaleWindow> {
   const now = Date.now();
@@ -117,6 +119,9 @@ export async function createSaleWindow(
     closesAt: new Date(now + (options.closesInMinutes ?? 60) * MINUTE),
     fulfillment: {
       pickupAvailable: options.pickupAvailable ?? true,
+      pickupLocation: options.pickupLocation,
+      pickupFrom: options.pickupLocation ? new Date(now + 2 * HOUR) : undefined,
+      pickupTo: options.pickupLocation ? new Date(now + 4 * HOUR) : undefined,
       deliveryAvailable: options.deliveryAvailable ?? true,
     },
     items: options.items.map((i) => ({
@@ -158,9 +163,12 @@ export function orderBody(
   overrides: {
     customer?: { name: string; email: string; phone: string };
     fulfillment?: { method: 'pickup' | 'delivery'; address?: string; notes?: string };
+    /** Numatyta: naujas UUID (kiekvienas kvietimas yra atskiras pirkėjo bandymas). */
+    clientRequestId?: string;
   } = {},
 ) {
   return {
+    clientRequestId: overrides.clientRequestId ?? randomUUID(),
     saleWindowId: saleWindowId.toString(),
     customer: overrides.customer ?? uniqueCustomer(),
     items: items.map((i) => ({ variantId: i.variantId.toString(), quantity: i.quantity })),
@@ -212,7 +220,13 @@ export function windowBody(
     title: 'Kalėdinis pardavimas',
     opensAt: iso(24),
     closesAt: iso(48),
-    fulfillment: { pickupAvailable: true, pickupLocation: 'Vilnius', deliveryAvailable: false },
+    fulfillment: {
+      pickupAvailable: true,
+      pickupLocation: 'Vilnius',
+      pickupFrom: iso(50),
+      pickupTo: iso(52),
+      deliveryAvailable: false,
+    },
     items,
     ...overrides,
   };
@@ -230,6 +244,8 @@ export function bodyFrom(
     fulfillment: {
       pickupAvailable: w.fulfillment.pickupAvailable,
       pickupLocation: w.fulfillment.pickupLocation ?? undefined,
+      pickupFrom: w.fulfillment.pickupFrom ?? undefined,
+      pickupTo: w.fulfillment.pickupTo ?? undefined,
       deliveryAvailable: w.fulfillment.deliveryAvailable,
     },
     items: w.items.map((i) => ({

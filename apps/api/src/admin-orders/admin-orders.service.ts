@@ -108,6 +108,7 @@ export class AdminOrdersService {
    * 1. Sąlyginis findOneAndUpdate (`status` vis dar viena iš leidžiamų). Jei du adminai
    *    atšaukia vienu metu, antrasis po pakartojimo sąlygos nebeatitinka ir gauna 409,
    *    todėl kiekiai grąžinami tik kartą.
+   *    Pereinant į completed tame pačiame įraše pažymima payment.status = 'paid' ir paidAt.
    * 2. Atšaukiant: $inc kiekvienos prekės quantityAvailable lange (arrayFilters pagal
    *    variantId), net jei langas jau uždarytas ar pasibaigęs. Tai rašo lango dokumentą,
    *    kaip ir POST /orders bei lango PUT, todėl lygiagrečios transakcijos konfliktuoja
@@ -139,6 +140,8 @@ export class AdminOrdersService {
                     },
                   }
                 : {}),
+              // Apmokama atsiimant: įvykdytas užsakymas reiškia, kad pirkėjas sumokėjo.
+              ...(to === 'completed' ? { 'payment.status': 'paid', 'payment.paidAt': now } : {}),
             },
             $push: { statusHistory: { status: to, at: now, adminId } },
           },
