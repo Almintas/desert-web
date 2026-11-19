@@ -1,8 +1,9 @@
 packages:
-  - "apps/*"
-  - "packages/*"
+  - 'apps/*'
+  - 'packages/*'
+  - 'e2e'
 
 # pnpm 10 nepaleidžia priklausomybių install skriptų, kol jie neleisti aiškiai.
 onlyBuiltDependencies:
-  - "@nestjs/core"
-  - "sharp"
+  - '@nestjs/core'
+  - 'sharp'

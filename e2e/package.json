@@ -1,0 +1,18 @@
+{
+  "name": "@desert-web/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright e2e testai: API, web ir admin produkcijos režimu su laikina MongoDB.",
+  "type": "module",
+  "scripts": {
+    "e2e": "node scripts/run.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@desert-web/shared": "workspace:*",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22.0.0",
+    "mongodb-memory-server": "^11.3.0",
+    "typescript": "^5.9.0"
+  }
+}
