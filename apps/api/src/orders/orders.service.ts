@@ -23,6 +23,7 @@ import { type ClientSession, type Connection, type Model, mongo, type Types } fr
 import { CountersService } from '../counters/counters.service';
 import { Product } from '../products/product.schema';
 import { SaleWindow, type SaleWindowItem } from '../sale-windows/sale-window.schema';
+import { TurnstileService } from '../turnstile/turnstile.service';
 import { Order, type OrderItem } from './order.schema';
 import { toOrderAccessDto, toOrderDto } from './orders.mapper';
 
@@ -81,6 +82,7 @@ export class OrdersService {
     @InjectModel(SaleWindow.name) private readonly saleWindowModel: Model<SaleWindow>,
     @InjectModel(Product.name) private readonly productModel: Model<Product>,
     private readonly countersService: CountersService,
+    private readonly turnstile: TurnstileService,
   ) {}
 
   /**
@@ -92,7 +94,23 @@ export class OrdersService {
    * tame pačiame lange gauna WriteConflict ir driveris transakciją pakartoja. Taip
    * kiekiai ir limitas vienam pirkėjui visada skaičiuojami nuo naujausių duomenų.
    */
-  async create(input: CreateOrderInput): Promise<CreateOrderResult> {
+  async create(
+    input: CreateOrderInput,
+    context: { clientIp?: string } = {},
+  ): Promise<CreateOrderResult> {
+    // Pakartojimas jau sukurto užsakymo (tas pats clientRequestId, langas ir el. paštas)
+    // grąžinamas be Turnstile: pirkėjas, kuriam dingo atsakymas, neturi gauti klaidos.
+    const replay = await this.findByClientRequestId(input);
+    if (replay) return replay;
+
+    // Tik naujam užsakymui: tokenas tikrinamas PRIEŠ transakciją, todėl nepavykus
+    // niekas nerezervuojama. idempotency_key = clientRequestId, kad lygiagretus to paties
+    // pateikimo dublikatas (dvigubas paspaudimas) negautų timeout-or-duplicate.
+    await this.turnstile.verify(input.turnstileToken, {
+      remoteIp: context.clientIp,
+      idempotencyKey: input.clientRequestId,
+    });
+
     try {
       return await this.createOnce(input);
     } catch (error) {

@@ -1,6 +1,8 @@
+import { TURNSTILE_SITEVERIFY_URL, TURNSTILE_TEST_KEYS } from '@desert-web/shared';
 import { validateEnv } from '../src/config/env';
 
 const SECRET = 'a'.repeat(32);
+const TURNSTILE = { TURNSTILE_SECRET_KEY: 'cloudflare-turnstile-paslaptis' };
 const base = { MONGODB_URI: 'mongodb://localhost:27017/desert-web' };
 const CLOUDINARY = {
   CLOUDINARY_CLOUD_NAME: 'desert-cloud',
@@ -30,6 +32,7 @@ describe('validateEnv: INTERNAL_API_SECRET', () => {
     const env = validateEnv({
       ...base,
       ...CLOUDINARY,
+      ...TURNSTILE,
       NODE_ENV: 'production',
       INTERNAL_API_SECRET: SECRET,
     });
@@ -47,7 +50,12 @@ describe('validateEnv: INTERNAL_API_SECRET', () => {
 });
 
 describe('validateEnv: Cloudinary', () => {
-  const production = { ...base, NODE_ENV: 'production', INTERNAL_API_SECRET: SECRET };
+  const production = {
+    ...base,
+    ...TURNSTILE,
+    NODE_ENV: 'production',
+    INTERNAL_API_SECRET: SECRET,
+  };
 
   it.each(['development', 'test'])(
     'NODE_ENV=%s: neprivalomi, katalogas pagal aplinką',
@@ -87,4 +95,72 @@ describe('validateEnv: Cloudinary', () => {
       );
     },
   );
+});
+
+describe('validateEnv: Turnstile', () => {
+  const production = {
+    ...base,
+    ...CLOUDINARY,
+    NODE_ENV: 'production',
+    INTERNAL_API_SECRET: SECRET,
+  };
+
+  it.each(['development', 'test'])(
+    'NODE_ENV=%s: be rakto naudojamas Cloudflare testinis „visada praeina“',
+    (nodeEnv) => {
+      const env = validateEnv({ ...base, NODE_ENV: nodeEnv });
+      expect(env.TURNSTILE_SECRET_KEY).toBe(TURNSTILE_TEST_KEYS.secretPass);
+      expect(env.TURNSTILE_VERIFY_URL).toBe(TURNSTILE_SITEVERIFY_URL);
+    },
+  );
+
+  it.each([undefined, '', '   '])(
+    'produkcijoje TURNSTILE_SECRET_KEY=%j: nepasileidžia',
+    (value) => {
+      expect(() => validateEnv({ ...production, TURNSTILE_SECRET_KEY: value })).toThrow(
+        /TURNSTILE_SECRET_KEY: TURNSTILE_SECRET_KEY privalomas produkcijoje/,
+      );
+    },
+  );
+
+  it('produkcijoje su raktu: naudojamas jis (testinis numatytasis netaikomas)', () => {
+    const env = validateEnv({ ...production, ...TURNSTILE });
+    expect(env.TURNSTILE_SECRET_KEY).toBe(TURNSTILE.TURNSTILE_SECRET_KEY);
+  });
+});
+
+describe('validateEnv: ribojimai ir kliento IP', () => {
+  it('numatyti užsakymų ribojimai: 5 / 10 min., 20 / parą, peržiūra 60 / min.', () => {
+    const env = validateEnv(base);
+    expect([
+      env.ORDER_RATE_LIMIT_SHORT,
+      env.ORDER_RATE_WINDOW_SHORT_SECONDS,
+      env.ORDER_RATE_LIMIT_DAILY,
+      env.ORDER_RATE_WINDOW_DAILY_SECONDS,
+      env.ORDER_ACCESS_RATE_LIMIT,
+      env.ORDER_ACCESS_RATE_WINDOW_SECONDS,
+    ]).toEqual([5, 600, 20, 86_400, 60, 60]);
+  });
+
+  it('ribojimus galima pakeisti per aplinką; netinkama reikšmė atmetama', () => {
+    expect(validateEnv({ ...base, ORDER_RATE_LIMIT_SHORT: '2' }).ORDER_RATE_LIMIT_SHORT).toBe(2);
+    expect(() => validateEnv({ ...base, ORDER_RATE_LIMIT_SHORT: '0' })).toThrow(
+      /ORDER_RATE_LIMIT_SHORT/,
+    );
+  });
+
+  it('TRUST_X_REAL_IP: numatyta tik produkcijoje, galima nurodyti aiškiai', () => {
+    expect(validateEnv(base).TRUST_X_REAL_IP).toBe(false);
+    expect(
+      validateEnv({
+        ...base,
+        ...CLOUDINARY,
+        ...TURNSTILE,
+        NODE_ENV: 'production',
+        INTERNAL_API_SECRET: SECRET,
+      }).TRUST_X_REAL_IP,
+    ).toBe(true);
+    expect(validateEnv({ ...base, TRUST_X_REAL_IP: 'true' }).TRUST_X_REAL_IP).toBe(true);
+    expect(() => validateEnv({ ...base, TRUST_X_REAL_IP: 'taip' })).toThrow(/TRUST_X_REAL_IP/);
+  });
 });

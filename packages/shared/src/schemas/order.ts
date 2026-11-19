@@ -23,6 +23,12 @@ export const createOrderInputSchema = z
     customer: customerInputSchema,
     items: z.array(orderItemInputSchema).min(1).max(50),
     fulfillment: fulfillmentInputSchema,
+    /**
+     * Cloudflare Turnstile atsakymo tokenas (iki 2048 simbolių). Neprivalomas schemoje, nes
+     * pakartojimui jau sukurto užsakymo (tas pats clientRequestId) jo nereikia; naujas
+     * užsakymas be galiojančio tokeno atmetamas su 403 TURNSTILE_FAILED.
+     */
+    turnstileToken: z.string().trim().min(1).max(2048).optional(),
   })
   .refine((o) => new Set(o.items.map((i) => i.variantId)).size === o.items.length, {
     message: 'Ta pati prekė kartojasi',
@@ -121,6 +127,14 @@ export const ORDER_ERROR_CODES = [
   'INSUFFICIENT_STOCK',
   /** 409: tas pats clientRequestId jau panaudotas kitam pirkėjui ar kitame lange. */
   'IDEMPOTENCY_CONFLICT',
+  /** 403: Turnstile tokeno nėra, jis netinkamas arba pasibaigęs. */
+  'TURNSTILE_FAILED',
+  /** 503: Cloudflare nepasiekiamas (užsakymas nepriimamas, fail closed). */
+  'TURNSTILE_UNAVAILABLE',
+  /** 403: produkcijoje POST /orders priimamas tik iš web serverio (INTERNAL_API_SECRET). */
+  'FORBIDDEN_CLIENT',
+  /** 429: per daug bandymų iš vieno IP (antraštė Retry-After). */
+  'TOO_MANY_REQUESTS',
   /** Admin: 404. */
   'ORDER_NOT_FOUND',
   /** Admin: 409, būsenos keisti taip negalima (atgal, iš galutinės, pakartotinis atšaukimas). */

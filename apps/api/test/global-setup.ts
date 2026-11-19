@@ -17,4 +17,11 @@ export default async function globalSetup(): Promise<void> {
   process.env.MONGODB_URI = replSet.getUri('desert-web-test');
   process.env.NODE_ENV = 'test';
   process.env.INTERNAL_API_SECRET = 'testams-skirta-vidine-paslaptis-0123456789';
+  // Testai siunčia daug užsakymų iš vieno IP: ribojimai išjungiami (didelės ribos), o jų
+  // testai (rate-limit.spec.ts) nustato savo reikšmes.
+  process.env.ORDER_RATE_LIMIT_SHORT = '100000';
+  process.env.ORDER_RATE_LIMIT_DAILY = '100000';
+  process.env.ORDER_ACCESS_RATE_LIMIT = '100000';
+  // Cloudflare testinis „visada praeina“ secret (siteverify testuose pakeistas, žr. helpers.ts).
+  process.env.TURNSTILE_SECRET_KEY = '1x0000000000000000000000000000000AA';
 }
