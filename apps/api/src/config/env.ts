@@ -24,7 +24,8 @@ export const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(4000),
-    MONGODB_URI: z.string().min(1, 'MONGODB_URI privalomas'),
+    /** Privalomas visur; tikrinamas superRefine, kad trūkstami kintamieji būtų išvardyti kartu. */
+    MONGODB_URI: optionalString,
     CORS_ORIGINS: z
       .string()
       .default('http://localhost:3000,http://localhost:3001')
@@ -93,6 +94,13 @@ export const envSchema = z
     ),
   })
   .superRefine((env, ctx) => {
+    if (env.MONGODB_URI === undefined) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MONGODB_URI'],
+        message: 'MONGODB_URI privalomas (MongoDB Atlas connection string).',
+      });
+    }
     // Be paslapties visi prisijungimai per admin app skaičiuojami vienam IP (admin serverio),
     // todėl bet kas galėtų keliais bandymais užblokuoti prisijungimą visiems adminams.
     if (env.NODE_ENV === 'production' && env.INTERNAL_API_SECRET === undefined) {
@@ -127,6 +135,7 @@ export const envSchema = z
   })
   .transform((env) => ({
     ...env,
+    MONGODB_URI: env.MONGODB_URI as string,
     CLOUDINARY_FOLDER: env.CLOUDINARY_FOLDER ?? `desert-web/${env.NODE_ENV}/products`,
     TRUST_X_REAL_IP: env.TRUST_X_REAL_IP ?? env.NODE_ENV === 'production',
     TURNSTILE_SECRET_KEY: env.TURNSTILE_SECRET_KEY ?? TURNSTILE_TEST_KEYS.secretPass,
