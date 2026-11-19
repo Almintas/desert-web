@@ -78,17 +78,17 @@ function readSaleWindowForm(formData: FormData) {
     };
   });
 
-  const pickupAvailable = formData.get('fulfillment.pickupAvailable') === 'on';
   const input = {
     title: text(formData, 'title'),
     opensAt: date('opensAt', true),
     closesAt: date('closesAt', true),
+    // Kol kas tik atsiėmimas: pristatymas visada išjungtas (lieka duomenų modelyje).
     fulfillment: {
-      pickupAvailable,
+      pickupAvailable: true,
       pickupLocation: text(formData, 'fulfillment.pickupLocation') || undefined,
       pickupFrom: date('fulfillment.pickupFrom', false),
       pickupTo: date('fulfillment.pickupTo', false),
-      deliveryAvailable: formData.get('fulfillment.deliveryAvailable') === 'on',
+      deliveryAvailable: false,
     },
     items,
   };
@@ -152,9 +152,13 @@ export async function saleWindowCommandAction(
     if (error instanceof ApiError) {
       if (error.status === 401) redirect('/auth/clear');
       const state = saleWindowApiErrorState(error);
-      return error.code === 'WINDOW_HAS_ORDERS'
-        ? { ...state, ordersHref: `/orders?window=${encodeURIComponent(windowId)}` }
-        : state;
+      if (error.code === 'WINDOW_HAS_ORDERS') {
+        return { ...state, ordersHref: `/orders?window=${encodeURIComponent(windowId)}` };
+      }
+      if (error.code === 'PICKUP_INFO_REQUIRED') {
+        return { ...state, editHref: `/sale-windows/${encodeURIComponent(windowId)}/edit` };
+      }
+      return state;
     }
     return { error: 'Nepavyko susisiekti su serveriu. Bandyk vėliau.' };
   }

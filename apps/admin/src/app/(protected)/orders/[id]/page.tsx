@@ -2,7 +2,12 @@ import { formatEur, formatShopDateTime } from '@desert-web/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { fetchOrder } from '../data';
-import { FULFILLMENT_LABELS, ORDER_STATUS_LABELS } from '../labels';
+import {
+  FULFILLMENT_LABELS,
+  ORDER_STATUS_LABELS,
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_STATUS_LABELS,
+} from '../labels';
 import { OrderActions } from '../order-actions';
 import { OrderStatusBadge } from '../status-badge';
 
@@ -81,6 +86,30 @@ export default async function OrderPage({
           <dt>{FULFILLMENT_LABELS[fulfillment.method]}</dt>
           <dd>
             {fulfillment.method === 'delivery' ? (fulfillment.address ?? '—') : 'Pirkėjas atsiims'}
+          </dd>
+        </div>
+        <div>
+          <dt>Apmokėjimas</dt>
+          <dd>
+            {order.payment ? (
+              <>
+                <span className={order.payment.status === 'paid' ? 'strong' : undefined}>
+                  {PAYMENT_STATUS_LABELS[order.payment.status]}
+                </span>
+                <span className="muted small">
+                  {order.payment.method
+                    ? `Mokama ${PAYMENT_METHOD_LABELS[order.payment.method] ?? order.payment.method}`
+                    : null}
+                  {order.payment.paidAt
+                    ? ` · ${formatShopDateTime(order.payment.paidAt)}`
+                    : order.payment.status === 'unpaid' && order.status !== 'cancelled'
+                      ? ' · bus apmokėtas pažymėjus įvykdytu'
+                      : null}
+                </span>
+              </>
+            ) : (
+              '—'
+            )}
           </dd>
         </div>
       </dl>

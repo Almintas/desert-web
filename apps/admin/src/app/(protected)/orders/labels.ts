@@ -1,4 +1,4 @@
-import type { FulfillmentMethod, OrderStatus } from '@desert-web/shared';
+import type { FulfillmentMethod, OrderStatus, PaymentStatus } from '@desert-web/shared';
 
 /** Būsena (vienaskaita: ženkleliai, istorija). */
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
@@ -31,4 +31,14 @@ export const ORDER_STATUS_ACTIONS: Record<OrderStatus, string> = {
 export const FULFILLMENT_LABELS: Record<FulfillmentMethod, string> = {
   pickup: 'Atsiėmimas',
   delivery: 'Pristatymas',
+};
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  unpaid: 'Neapmokėtas',
+  paid: 'Apmokėtas',
+  refunded: 'Grąžinti pinigai',
+};
+
+export const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  on_pickup: 'atsiimant',
 };

@@ -53,13 +53,11 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
   const [opensAt, setOpensAt] = useState(initial ? utcToVilniusLocal(initial.opensAt) : '');
   const [closesAt, setClosesAt] = useState(initial ? utcToVilniusLocal(initial.closesAt) : '');
   const f = initial?.fulfillment;
-  const [pickupAvailable, setPickupAvailable] = useState(f?.pickupAvailable ?? true);
   const [pickupLocation, setPickupLocation] = useState(f?.pickupLocation ?? '');
   const [pickupFrom, setPickupFrom] = useState(
     f?.pickupFrom ? utcToVilniusLocal(f.pickupFrom) : '',
   );
   const [pickupTo, setPickupTo] = useState(f?.pickupTo ? utcToVilniusLocal(f.pickupTo) : '');
-  const [deliveryAvailable, setDeliveryAvailable] = useState(f?.deliveryAvailable ?? false);
 
   const emptyRow = (): ItemRow => ({
     key: nextKey(),
@@ -193,66 +191,51 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
       </fieldset>
 
       <fieldset>
-        <legend>Atsiėmimas ir pristatymas</legend>
-        <label className="checkbox">
+        <legend>Atsiėmimas</legend>
+        {/* Kol kas tik atsiėmimas: pristatymas lieka duomenų modelyje, bet išjungtas. */}
+        <input type="hidden" name="fulfillment.pickupAvailable" value="on" />
+        <p className="hint">
+          Pirkėjai užsakymus atsiima patys. Vietą ir laiką jie mato parduotuvėje ir užsakymo
+          puslapyje, todėl jie <strong>privalomi skelbiant</strong> langą. Juodraštį galima
+          išsaugoti ir be jų.
+        </p>
+        <label>
+          Atsiėmimo vieta <span className="required-mark">(privaloma skelbiant)</span>
           <input
-            type="checkbox"
-            name="fulfillment.pickupAvailable"
-            checked={pickupAvailable}
-            onChange={(e) => setPickupAvailable(e.target.checked)}
+            name="fulfillment.pickupLocation"
+            value={pickupLocation}
+            onChange={(e) => setPickupLocation(e.target.value)}
+            maxLength={300}
+            placeholder="pvz., Gedimino pr. 1, Vilnius"
+            aria-invalid={Boolean(errors['fulfillment.pickupLocation'])}
           />
-          Galima atsiimti
+          <FieldError message={errors['fulfillment.pickupLocation']} />
         </label>
-        {pickupAvailable ? (
-          <>
-            <label>
-              Atsiėmimo vieta
-              <input
-                name="fulfillment.pickupLocation"
-                value={pickupLocation}
-                onChange={(e) => setPickupLocation(e.target.value)}
-                maxLength={300}
-                placeholder="pvz., Gedimino pr. 1, Vilnius"
-                aria-invalid={Boolean(errors['fulfillment.pickupLocation'])}
-              />
-              <FieldError message={errors['fulfillment.pickupLocation']} />
-            </label>
-            <div className="grid-2">
-              <label>
-                Atsiimti nuo
-                <input
-                  type="datetime-local"
-                  name="fulfillment.pickupFrom"
-                  value={pickupFrom}
-                  onChange={(e) => setPickupFrom(e.target.value)}
-                  aria-invalid={Boolean(errors['fulfillment.pickupFrom'])}
-                />
-                <FieldError message={errors['fulfillment.pickupFrom']} />
-              </label>
-              <label>
-                Atsiimti iki
-                <input
-                  type="datetime-local"
-                  name="fulfillment.pickupTo"
-                  value={pickupTo}
-                  onChange={(e) => setPickupTo(e.target.value)}
-                  aria-invalid={Boolean(errors['fulfillment.pickupTo'])}
-                />
-                <FieldError message={errors['fulfillment.pickupTo']} />
-              </label>
-            </div>
-            <p className="hint">Neprivaloma. Taip pat Lietuvos laiku.</p>
-          </>
-        ) : null}
-        <label className="checkbox">
-          <input
-            type="checkbox"
-            name="fulfillment.deliveryAvailable"
-            checked={deliveryAvailable}
-            onChange={(e) => setDeliveryAvailable(e.target.checked)}
-          />
-          Galimas pristatymas
-        </label>
+        <div className="grid-2">
+          <label>
+            Atsiimti nuo <span className="required-mark">(privaloma skelbiant)</span>
+            <input
+              type="datetime-local"
+              name="fulfillment.pickupFrom"
+              value={pickupFrom}
+              onChange={(e) => setPickupFrom(e.target.value)}
+              aria-invalid={Boolean(errors['fulfillment.pickupFrom'])}
+            />
+            <FieldError message={errors['fulfillment.pickupFrom']} />
+          </label>
+          <label>
+            Atsiimti iki <span className="required-mark">(privaloma skelbiant)</span>
+            <input
+              type="datetime-local"
+              name="fulfillment.pickupTo"
+              value={pickupTo}
+              onChange={(e) => setPickupTo(e.target.value)}
+              aria-invalid={Boolean(errors['fulfillment.pickupTo'])}
+            />
+            <FieldError message={errors['fulfillment.pickupTo']} />
+          </label>
+        </div>
+        <p className="hint">Lietuvos laiku.</p>
         <FieldError message={errors.fulfillment} />
       </fieldset>
 

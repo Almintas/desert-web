@@ -1,4 +1,4 @@
-import { formatEur, formatShopDateTime } from '@desert-web/shared';
+import { formatEur, formatShopDateTime, missingPickupInfo } from '@desert-web/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { fetchSaleWindow, quantitySummary } from '../data';
@@ -49,6 +49,13 @@ export default async function SaleWindowPage({
         <p className="alert info">Atšauktas langas tik skaitomas.</p>
       ) : null}
 
+      {w.phase !== 'cancelled' && missingPickupInfo(f).length > 0 ? (
+        <p className="alert info">
+          Nenurodyta atsiėmimo vieta arba laikas: be jų lango paskelbti negalima.{' '}
+          <Link href={`/sale-windows/${w.id}/edit`}>Redaguoti</Link>
+        </p>
+      ) : null}
+
       {/* key: po veiksmo (redirect į tą patį puslapį) patvirtinimo būsena išvaloma. */}
       <WindowActions key={w.updatedAt} saleWindow={w} />
 
@@ -89,10 +96,6 @@ export default async function SaleWindowPage({
               'Ne'
             )}
           </dd>
-        </div>
-        <div>
-          <dt>Pristatymas</dt>
-          <dd>{f.deliveryAvailable ? 'Taip' : 'Ne'}</dd>
         </div>
       </dl>
 

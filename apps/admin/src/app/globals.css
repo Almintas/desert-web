@@ -992,3 +992,9 @@ details.group > summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+.required-mark {
+  font-weight: 400;
+  font-size: 0.85em;
+  color: var(--muted);
+}

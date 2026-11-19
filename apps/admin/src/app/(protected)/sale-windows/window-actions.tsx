@@ -158,6 +158,13 @@ export function WindowActions({ saleWindow }: { saleWindow: AdminSaleWindowDto }
               </Link>
             </p>
           ) : null}
+          {state.editHref ? (
+            <p>
+              <Link href={state.editHref} className="strong">
+                Nurodyti atsiėmimo vietą ir laiką →
+              </Link>
+            </p>
+          ) : null}
         </div>
       ) : null}
     </section>
