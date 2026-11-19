@@ -68,9 +68,30 @@ async function main() {
         deliveryAvailable: false,
       },
       items: [
-        { productId: macarons._id, variantId: m6._id, priceCents: 1200, quantityTotal: 30, quantityAvailable: 30, maxPerCustomer: 4 },
-        { productId: macarons._id, variantId: m12._id, priceCents: 2200, quantityTotal: 15, quantityAvailable: 15, maxPerCustomer: 2 },
-        { productId: tart._id, variantId: t1._id, priceCents: 450, quantityTotal: 40, quantityAvailable: 40, maxPerOrder: 6 },
+        {
+          productId: macarons._id,
+          variantId: m6._id,
+          priceCents: 1200,
+          quantityTotal: 30,
+          quantityAvailable: 30,
+          maxPerCustomer: 4,
+        },
+        {
+          productId: macarons._id,
+          variantId: m12._id,
+          priceCents: 2200,
+          quantityTotal: 15,
+          quantityAvailable: 15,
+          maxPerCustomer: 2,
+        },
+        {
+          productId: tart._id,
+          variantId: t1._id,
+          priceCents: 450,
+          quantityTotal: 40,
+          quantityAvailable: 40,
+          maxPerOrder: 6,
+        },
       ],
     },
     {
@@ -86,7 +107,14 @@ async function main() {
         deliveryAvailable: false,
       },
       items: [
-        { productId: macarons._id, variantId: m12._id, priceCents: 2400, quantityTotal: 50, quantityAvailable: 50, maxPerCustomer: 3 },
+        {
+          productId: macarons._id,
+          variantId: m12._id,
+          priceCents: 2400,
+          quantityTotal: 50,
+          quantityAvailable: 50,
+          maxPerCustomer: 3,
+        },
       ],
     },
   ]);

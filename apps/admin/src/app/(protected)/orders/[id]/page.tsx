@@ -163,7 +163,7 @@ export default async function OrderPage({
             <OrderStatusBadge status={h.status} />
             <span>{formatShopDateTime(h.at)}</span>
             <span className="muted small">
-              {h.adminId ? 'pakeitė adminas' : 'pateikė pirkėjas'}
+              {h.adminId ? `pakeitė ${h.adminEmail ?? 'ištrintas adminas'}` : 'pateikė pirkėjas'}
             </span>
           </li>
         ))}

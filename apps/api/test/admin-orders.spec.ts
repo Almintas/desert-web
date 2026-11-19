@@ -6,6 +6,10 @@ import type {
 } from '@desert-web/shared';
 import { Types } from 'mongoose';
 import request from 'supertest';
+import { getModelToken } from '@nestjs/mongoose';
+import type { Model } from 'mongoose';
+import { Admin } from '../src/admin-auth/admin.schema';
+import { localPhonePrefix } from '../src/admin-orders/admin-orders.service';
 import {
   clearDatabase,
   createProduct,
@@ -134,7 +138,7 @@ describe('Admin užsakymai (/admin/orders)', () => {
       });
       expect(dto.customer.email).toMatch(/@example\.com$/);
       expect(dto.statusHistory).toEqual([
-        { status: 'pending', at: expect.any(String), adminId: null },
+        { status: 'pending', at: expect.any(String), adminId: null, adminEmail: null },
       ]);
       expect(
         Math.abs(Date.parse(dto.statusHistory[0]!.at) - Date.parse(dto.createdAt)),
@@ -149,7 +153,7 @@ describe('Admin užsakymai (/admin/orders)', () => {
       );
       const before = (await getOne(id)).body as AdminOrderDto;
       expect(before.statusHistory).toEqual([
-        { status: 'pending', at: before.createdAt, adminId: null },
+        { status: 'pending', at: before.createdAt, adminId: null, adminEmail: null },
       ]);
 
       // Pirmas admino pakeitimas: sukūrimo įrašas vis tiek rodomas pirmas.
@@ -249,6 +253,49 @@ describe('Admin užsakymai (/admin/orders)', () => {
       expect(await search('612 345')).toEqual([ona.id]);
       expect(await search('nieko')).toEqual([]);
       expect(await search('(.*')).toEqual([]); // regex simboliai ekranuojami
+    });
+
+    it('paieška: telefono pradžia su 8, 370 ar +370 randa numerį be šio prefikso', async () => {
+      const ona = await placeOrder([{ variantId: cake.variantIds[0]!, quantity: 1 }], {
+        customer: { name: 'Ona', email: 'ona@example.com', phone: '+37061234567' },
+      });
+      const petras = await placeOrder([{ variantId: cake.variantIds[0]!, quantity: 1 }], {
+        customer: { name: 'Petras', email: 'petras@example.com', phone: '+37069999999' },
+      });
+      const search = async (q: string) =>
+        ((await list({ q })).body as AdminOrderListResponse).items.map((o) => o.id);
+
+      for (const q of ['8612', '8 612', '370612', '+370612', '+370 612', '86123']) {
+        expect([q, await search(q)]).toEqual([q, [ona.id]]);
+      }
+      expect(await search('8699')).toEqual([petras.id]);
+      // „8“ be tolesnių skaitmenų ar trumpa užklausa paieškos nesugadina.
+      expect(await search('8613')).toEqual([]);
+      expect((await search('86')).length).toBe(0);
+    });
+  });
+
+  describe('būsenų istorija: admino el. paštas', () => {
+    it('rodomas pakeitusio admino el. paštas; sistemos įrašas be el. pašto', async () => {
+      const email = (await auth(http().get('/admin/auth/me'))).body.email as string;
+      const { id } = await placeOrder([{ variantId: cake.variantIds[0]!, quantity: 1 }]);
+      const dto = (await setStatus(id, 'confirmed').expect(200)).body as AdminOrderDto;
+      expect(dto.statusHistory.map((h) => [h.status, h.adminId, h.adminEmail])).toEqual([
+        ['pending', null, null],
+        ['confirmed', adminId, email],
+      ]);
+      expect((await getOne(id)).body.statusHistory[1].adminEmail).toBe(email);
+    });
+
+    it('ištrintas adminas: adminId lieka, adminEmail null', async () => {
+      const { id } = await placeOrder([{ variantId: cake.variantIds[0]!, quantity: 1 }]);
+      await setStatus(id, 'confirmed').expect(200);
+      const adminModel = ctx.app.get<Model<Admin>>(getModelToken(Admin.name));
+      await adminModel.deleteOne({ _id: adminId });
+      // Sesija tikrinama per admino dokumentą, todėl kitas adminas skaito užsakymą.
+      token = await loginAdmin(ctx, 'staff');
+      const entry = (await getOne(id)).body.statusHistory[1];
+      expect(entry).toMatchObject({ status: 'confirmed', adminId, adminEmail: null });
     });
   });
 
@@ -436,5 +483,21 @@ describe('Admin užsakymai (/admin/orders)', () => {
       expect(again.status).toBe(201);
       await expectStockConsistent(limited.id);
     });
+  });
+});
+
+describe('localPhonePrefix', () => {
+  it.each([
+    ['8612', '612'],
+    ['8 612 34', '61234'],
+    ['370612', '612'],
+    ['+370612', '612'],
+    ['+370 (612) 34-5', '612345'],
+  ])('%s → %s', (q, expected) => {
+    expect(localPhonePrefix(q)).toBe(expected);
+  });
+
+  it.each(['612', 'ona', '8a12', '+371612', '', '8', '+370'])('%s → null', (q) => {
+    expect(localPhonePrefix(q)).toBeNull();
   });
 });

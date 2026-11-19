@@ -210,6 +210,8 @@ export interface OrderStatusHistoryEntryDto {
   at: string;
   /** null: pakeitė sistema (pvz., užsakymo sukūrimas). */
   adminId: string | null;
+  /** Admino el. paštas; null, kai pakeitė sistema arba adminas ištrintas (adminId lieka). */
+  adminEmail: string | null;
 }
 
 export interface AdminOrderDto extends OrderDto {
