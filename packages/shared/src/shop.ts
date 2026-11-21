@@ -3,10 +3,10 @@ export const SHOP_NAME = 'Desert Web';
 
 /**
  * Pardavėjo duomenys: rodomi poraštėje, privatumo puslapyje ir laiškuose (Reply-To pirkėjui).
- * TODO: prieš paleidžiant įrašyti tikrą pardavėjo vardą (ar įmonę) ir kontaktus.
+ * TODO: prieš paleidžiant įrašyti tikrus pardavėjo kontaktus (el. paštą ir telefoną).
  */
 export const SELLER = {
-  name: 'TODO: pardavėjo vardas arba įmonė',
+  name: 'Ieva Macarons',
   email: 'todo@example.com',
   phone: '+370 600 00000',
 } as const;

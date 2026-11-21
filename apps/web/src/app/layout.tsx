@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="site-footer-inner">
             <p className="footer-shop">{SHOP_NAME}</p>
             <p>
-              Pardavėjas: {SELLER.name}
+              Pardavėja: {SELLER.name}
               <br />
               <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a>
               {' · '}
