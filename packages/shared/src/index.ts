@@ -4,6 +4,7 @@ export * from './time';
 export * from './slug';
 export * from './customer';
 export * from './turnstile';
+export * from './shop';
 export * from './sale-window';
 export * from './order-status';
 export * from './schemas/common';

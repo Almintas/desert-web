@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { SELLER, SHOP_DESCRIPTION, SHOP_NAME } from '@/lib/shop';
+import { SELLER, SHOP_NAME } from '@desert-web/shared';
+import { SHOP_DESCRIPTION } from '@/lib/shop';
 import './globals.css';
 
 export const metadata: Metadata = {

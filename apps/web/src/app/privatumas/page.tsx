@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SELLER, SHOP_NAME } from '@/lib/shop';
+import { SELLER, SHOP_NAME } from '@desert-web/shared';
 
 export const metadata: Metadata = {
   title: 'Privatumas',
