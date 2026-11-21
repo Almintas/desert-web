@@ -104,7 +104,7 @@ Trukmė: apie 30–40 s su buildu (kai turbo talpykloje jo nėra) ir apie 25 s s
    - **Start Command:** `pnpm --filter @desert-web/api start`
    - **Healthcheck Path:** `/health`
    - **Watch Paths:** `apps/api/**`, `packages/shared/**` (kad nebūtų perdiegiama keičiant tik frontendą)
-3. Variables: `NODE_ENV=production`, `MONGODB_URI`, `CORS_ORIGINS` (web ir admin adresai per kablelį), `INTERNAL_API_SECRET` (žr. [Admin prisijungimas](#admin-prisijungimas)), `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (žr. [Produktų nuotraukos](#produktų-nuotraukos-cloudinary)), `TURNSTILE_SECRET_KEY` (žr. [Apsauga nuo robotų](#užsakymų-apsauga-nuo-robotų)). `PORT` Railway nustato pats. Neprivalomi: `ADMIN_SESSION_TTL_DAYS`, `ADMIN_LOGIN_RATE_LIMIT`, `ADMIN_LOGIN_RATE_WINDOW_SECONDS`, `CLOUDINARY_FOLDER`, `ORDER_RATE_*`, `ORDER_ACCESS_RATE_*`, `TRUST_X_REAL_IP`.
+3. Variables: `NODE_ENV=production`, `MONGODB_URI`, `CORS_ORIGIN` (web ir admin adresai per kablelį), neprivaloma `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `INTERNAL_API_SECRET` (žr. [Admin prisijungimas](#admin-prisijungimas)), `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (žr. [Produktų nuotraukos](#produktų-nuotraukos-cloudinary)), `TURNSTILE_SECRET_KEY` (žr. [Apsauga nuo robotų](#užsakymų-apsauga-nuo-robotų)). `PORT` Railway nustato pats. Neprivalomi: `ADMIN_SESSION_TTL_DAYS`, `ADMIN_LOGIN_RATE_LIMIT`, `ADMIN_LOGIN_RATE_WINDOW_SECONDS`, `CLOUDINARY_FOLDER`, `ORDER_RATE_*`, `ORDER_ACCESS_RATE_*`, `TRUST_X_REAL_IP`.
    - **Pre-deploy Command:** `pnpm --filter @desert-web/api db:indexes`
 4. Settings → Networking → Generate Domain (arba prijunk `api.tavodomenas.lt`).
 

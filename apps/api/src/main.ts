@@ -13,7 +13,7 @@ async function bootstrap() {
   const config = app.get<ConfigService<Env, true>>(ConfigService);
 
   app.enableCors({
-    origin: config.get('CORS_ORIGINS', { infer: true }),
+    origin: config.get('CORS_ORIGIN', { infer: true }),
     credentials: true,
   });
   app.enableShutdownHooks();

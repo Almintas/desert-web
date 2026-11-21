@@ -34,7 +34,7 @@ export const envSchema = z
       (v) => v === undefined || /^[A-Za-z0-9_-]{1,63}$/.test(v),
       'MONGODB_DB_NAME: only letters, digits, _ and - (up to 63 characters)',
     ),
-    CORS_ORIGINS: z
+    CORS_ORIGIN: z
       .string()
       .default('http://localhost:3000,http://localhost:3001')
       .transform((v) =>
@@ -81,7 +81,7 @@ export const envSchema = z
       'INTERNAL_API_SECRET must be at least 32 characters',
     ),
     RESEND_API_KEY: optionalString,
-    EMAIL_FROM: optionalString,
+    RESEND_FROM_EMAIL: optionalString,
     /**
      * Produktų nuotraukos (Cloudinary). Produkcijoje privalomi visi trys (žr. superRefine);
      * vystant ir testuose be jų nuotraukų maršrutai grąžina 503 IMAGES_NOT_CONFIGURED.

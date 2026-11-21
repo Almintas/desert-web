@@ -254,7 +254,7 @@ async function main() {
     NODE_ENV: 'production',
     PORT: String(apiPort),
     MONGODB_URI: mongoUri,
-    CORS_ORIGINS: `${webUrl},${adminUrl}`,
+    CORS_ORIGIN: `${webUrl},${adminUrl}`,
     INTERNAL_API_SECRET: internalSecret,
     CLOUDINARY_CLOUD_NAME: CLOUDINARY.cloudName,
     CLOUDINARY_API_KEY: CLOUDINARY.apiKey,
