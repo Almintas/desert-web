@@ -26,6 +26,21 @@ export const adminLoginInputSchema = z.object({
 });
 export type AdminLoginInput = z.infer<typeof adminLoginInputSchema>;
 
+/** POST /admin/admins: owner sukuria naują adminą. */
+export const adminCreateInputSchema = z.object({
+  email: adminEmailSchema,
+  password: adminPasswordSchema,
+  role: adminRoleSchema,
+});
+export type AdminCreateInput = z.infer<typeof adminCreateInputSchema>;
+
+/** Klaidų kodai, kuriuos grąžina /admin/admins (laukas `code` klaidos atsakyme). */
+export const ADMIN_ERROR_CODES = [
+  /** 409: adminas su tokiu el. paštu jau yra. */
+  'ADMIN_EMAIL_TAKEN',
+] as const;
+export type AdminErrorCode = (typeof ADMIN_ERROR_CODES)[number];
+
 export interface AdminDto {
   id: string;
   email: string;

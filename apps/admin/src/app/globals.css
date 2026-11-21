@@ -1013,3 +1013,16 @@ details.group > summary {
   font-size: 0.85em;
   color: var(--muted);
 }
+
+/* Apžvalga: administratoriai (tik owner) */
+
+.admins {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 760px;
+}
+
+.admins > h2 {
+  margin-bottom: 0;
+}

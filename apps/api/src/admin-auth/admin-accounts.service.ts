@@ -21,7 +21,10 @@ export class AdminNotFoundError extends Error {
   }
 }
 
-/** Adminų paskyrų valdymas (naudoja admin:create skriptas). Slaptažodis turi būti jau validuotas. */
+/**
+ * Adminų paskyrų valdymas (naudoja admin:create skriptas ir /admin/admins).
+ * Slaptažodis turi būti jau validuotas.
+ */
 @Injectable()
 export class AdminAccountsService {
   constructor(
@@ -40,17 +43,33 @@ export class AdminAccountsService {
     return new Map(admins.map((a) => [a._id.toString(), a.email]));
   }
 
+  /** Visi adminai, seniausi pirmi. */
+  async list(): Promise<AdminDto[]> {
+    const admins = await this.adminModel
+      .find()
+      .sort({ createdAt: 1, _id: 1 })
+      .lean<Admin[]>()
+      .exec();
+    return admins.map(toAdminDto);
+  }
+
   async create(email: string, role: AdminRole, password: string): Promise<AdminDto> {
     const normalized = normalizeEmail(email);
     if (await this.adminModel.exists({ email: normalized })) {
       throw new AdminExistsError(normalized);
     }
-    const admin = await this.adminModel.create({
-      email: normalized,
-      role,
-      passwordHash: await hashPassword(password),
-    });
-    return toAdminDto(admin.toObject());
+    try {
+      const admin = await this.adminModel.create({
+        email: normalized,
+        role,
+        passwordHash: await hashPassword(password),
+      });
+      return toAdminDto(admin.toObject());
+    } catch (error) {
+      // Lygiagretus kūrimas tuo pačiu el. paštu: unikalus indeksas.
+      if ((error as { code?: unknown }).code === 11000) throw new AdminExistsError(normalized);
+      throw error;
+    }
   }
 
   /** Pakeičia slaptažodį (ir rolę, jei nurodyta) ir ištrina visas admino sesijas. */

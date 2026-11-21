@@ -42,7 +42,7 @@ pnpm dev
 
 ### Pirmas adminas
 
-Viešos registracijos nėra. Adminą sukuria `admin:create` (slaptažodis bent 12 simbolių, įvedamas nerodant):
+Viešos registracijos nėra. Pirmą adminą sukuria `admin:create` (slaptažodis bent 12 simbolių, įvedamas nerodant). Vėliau savininkas (`owner`) naujus adminus gali kurti admin pradžios puslapyje, skiltyje „Administratoriai“:
 
 ```bash
 pnpm turbo run build --filter=@desert-web/api
