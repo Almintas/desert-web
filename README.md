@@ -32,7 +32,7 @@ cp apps/api/.env.example apps/api/.env          # įrašyk MONGODB_URI
 cp apps/web/.env.example apps/web/.env.local
 cp apps/admin/.env.example apps/admin/.env.local
 
-# (nebūtina) pavyzdiniai duomenys: 2 produktai, 1 atidarytas ir 1 būsimas langas
+# (nebūtina) pavyzdiniai duomenys: 7 produktai, 1 atidarytas ir 1 būsimas langas
 pnpm turbo run build --filter=@desert-web/api
 pnpm --filter @desert-web/api seed
 
