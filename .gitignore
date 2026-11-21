@@ -32,3 +32,6 @@ Thumbs.db
 
 # tests
 coverage/
+
+# api: laiškų peržiūra (pnpm --filter @desert-web/api email:preview)
+apps/api/tmp/

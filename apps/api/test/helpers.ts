@@ -15,6 +15,9 @@ import { AdminAccountsService } from '../src/admin-auth/admin-accounts.service';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/app.setup';
 import { Counter } from '../src/counters/counter.schema';
+import { EMAIL_SENDER } from '../src/notifications/email-sender';
+import { InMemoryEmailSender } from '../src/notifications/in-memory-email-sender';
+import { OrderNotificationsService } from '../src/notifications/order-notifications.service';
 import { Order } from '../src/orders/order.schema';
 import { Product } from '../src/products/product.schema';
 import { SaleWindow } from '../src/sale-windows/sale-window.schema';
@@ -34,6 +37,9 @@ export interface TestContext {
   saleWindowModel: Model<SaleWindow>;
   orderModel: Model<Order>;
   counterModel: Model<Counter>;
+  /** Laiškai niekada nesiunčiami į Resend: visi lieka čia (siunčiami tik su RESEND_API_KEY). */
+  emails: InMemoryEmailSender;
+  notifications: OrderNotificationsService;
 }
 
 /**
@@ -57,12 +63,15 @@ export const fakeSiteverify: SiteverifyClient = async ({ secret, response }: Sit
 export async function createTestContext(
   extra: Pick<ModuleMetadata, 'imports' | 'controllers'> & { siteverify?: SiteverifyClient } = {},
 ): Promise<TestContext> {
+  const emails = new InMemoryEmailSender();
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule, ...(extra.imports ?? [])],
     controllers: extra.controllers ?? [],
   })
     .overrideProvider(SITEVERIFY_CLIENT)
     .useValue(extra.siteverify ?? fakeSiteverify)
+    .overrideProvider(EMAIL_SENDER)
+    .useValue(emails)
     .compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>({ logger: false });
   configureApp(app);
@@ -80,6 +89,8 @@ export async function createTestContext(
     saleWindowModel: app.get(getModelToken(SaleWindow.name)),
     orderModel: app.get(getModelToken(Order.name)),
     counterModel: app.get(getModelToken(Counter.name)),
+    emails,
+    notifications: app.get(OrderNotificationsService),
   };
 }
 

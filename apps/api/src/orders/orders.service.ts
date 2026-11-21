@@ -21,6 +21,7 @@ import {
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { type ClientSession, type Connection, type Model, mongo, type Types } from 'mongoose';
 import { CountersService } from '../counters/counters.service';
+import { OrderNotificationsService } from '../notifications/order-notifications.service';
 import { Product } from '../products/product.schema';
 import { SaleWindow, type SaleWindowItem } from '../sale-windows/sale-window.schema';
 import { TurnstileService } from '../turnstile/turnstile.service';
@@ -83,6 +84,7 @@ export class OrdersService {
     @InjectModel(Product.name) private readonly productModel: Model<Product>,
     private readonly countersService: CountersService,
     private readonly turnstile: TurnstileService,
+    private readonly notifications: OrderNotificationsService,
   ) {}
 
   /**
@@ -112,7 +114,11 @@ export class OrdersService {
     });
 
     try {
-      return await this.createOnce(input);
+      const { order, ...result } = await this.createOnce(input);
+      // Tik naujam užsakymui ir tik po commit'o: transakcija galėjo būti kartojama, bet
+      // createOnce grąžina paskutinio (sėkmingo) bandymo rezultatą. Laiškai siunčiami fone.
+      if (result.created && order) this.notifications.orderCreated(order);
+      return result;
     } catch (error) {
       // Lygiagretus dublikatas, kurio transakcija commit'ino tarp mūsų patikrinimo ir įrašo.
       // Paprastai tai baigiasi WriteConflict ir driverio pakartojimu (tada transakcijos
@@ -134,88 +140,90 @@ export class OrdersService {
    * remiasi naujausiais duomenimis: pakartotas dublikatas randa jau sukurtą užsakymą ir
    * kiekio antrą kartą nerezervuoja.
    */
-  private async createOnce(input: CreateOrderInput): Promise<CreateOrderResult> {
+  private async createOnce(
+    input: CreateOrderInput,
+  ): Promise<CreateOrderResult & { order?: Order }> {
     const emailNormalized = normalizeEmail(input.customer.email);
     const phoneNormalized = normalizePhone(input.customer.phone);
     const accessToken = randomBytes(24).toString('base64url');
 
-    return this.connection.transaction(async (session): Promise<CreateOrderResult> => {
-      // Pirmiausia idempotencija: pakartojimas grąžina užsakymą net jei langas jau uždarytas.
-      const existing = await this.findByClientRequestId(input, session);
-      if (existing) return existing;
+    return this.connection.transaction(
+      async (session): Promise<CreateOrderResult & { order?: Order }> => {
+        // Pirmiausia idempotencija: pakartojimas grąžina užsakymą net jei langas jau uždarytas.
+        const existing = await this.findByClientRequestId(input, session);
+        if (existing) return existing;
 
-      // Laikas imamas kiekvieno bandymo metu (transakcija gali būti kartojama).
-      const now = new Date();
+        // Laikas imamas kiekvieno bandymo metu (transakcija gali būti kartojama).
+        const now = new Date();
 
-      const saleWindow = await this.saleWindowModel
-        .findById(input.saleWindowId)
-        .session(session)
-        .lean<SaleWindow>()
-        .exec();
-      if (!saleWindow) {
-        throw orderError(NotFoundException, 'SALE_WINDOW_NOT_FOUND', 'Pardavimo langas nerastas');
-      }
-      if (!isSaleWindowOpen(saleWindow, now)) {
-        throw orderError(
-          ConflictException,
-          'SALE_WINDOW_CLOSED',
-          'Šiuo metu užsakymai nepriimami: pardavimo langas uždarytas',
+        const saleWindow = await this.saleWindowModel
+          .findById(input.saleWindowId)
+          .session(session)
+          .lean<SaleWindow>()
+          .exec();
+        if (!saleWindow) {
+          throw orderError(NotFoundException, 'SALE_WINDOW_NOT_FOUND', 'Pardavimo langas nerastas');
+        }
+        if (!isSaleWindowOpen(saleWindow, now)) {
+          throw orderError(
+            ConflictException,
+            'SALE_WINDOW_CLOSED',
+            'Šiuo metu užsakymai nepriimami: pardavimo langas uždarytas',
+          );
+        }
+
+        this.assertFulfillmentAvailable(saleWindow, input.fulfillment.method);
+        const lines = this.matchLines(saleWindow, input.items);
+        await this.assertCustomerLimits(
+          saleWindow._id,
+          lines,
+          emailNormalized,
+          phoneNormalized,
+          session,
         );
-      }
+        this.assertStock(lines);
+        const items = await this.buildItemSnapshots(lines, session);
+        await this.reserveStock(saleWindow._id, lines, now, session);
 
-      this.assertFulfillmentAvailable(saleWindow, input.fulfillment.method);
-      const lines = this.matchLines(saleWindow, input.items);
-      await this.assertCustomerLimits(
-        saleWindow._id,
-        lines,
-        emailNormalized,
-        phoneNormalized,
-        session,
-      );
-      this.assertStock(lines);
-      const items = await this.buildItemSnapshots(lines, session);
-      await this.reserveStock(saleWindow._id, lines, now, session);
+        const year = getShopYear(now);
+        const seq = await this.countersService.next(`order-${year}`, session);
+        const orderNumber = `DW-${year}-${String(seq).padStart(4, '0')}`;
 
-      const year = getShopYear(now);
-      const seq = await this.countersService.next(`order-${year}`, session);
-      const orderNumber = `DW-${year}-${String(seq).padStart(4, '0')}`;
-
-      const [created] = await this.orderModel.create(
-        [
-          {
-            orderNumber,
-            saleWindowId: saleWindow._id,
-            customer: {
-              name: input.customer.name,
-              email: input.customer.email.trim(),
-              emailNormalized,
-              phone: input.customer.phone,
-              phoneNormalized,
+        const [created] = await this.orderModel.create(
+          [
+            {
+              orderNumber,
+              saleWindowId: saleWindow._id,
+              customer: {
+                name: input.customer.name,
+                email: input.customer.email.trim(),
+                emailNormalized,
+                phone: input.customer.phone,
+                phoneNormalized,
+              },
+              items,
+              totalCents: items.reduce((sum, i) => sum + i.lineTotalCents, 0),
+              currency: 'EUR',
+              fulfillment: {
+                method: input.fulfillment.method,
+                address:
+                  input.fulfillment.method === 'delivery' ? input.fulfillment.address : undefined,
+                notes: input.fulfillment.notes || undefined,
+              },
+              status: 'pending',
+              statusHistory: [{ status: 'pending', at: now }],
+              payment: { status: 'unpaid', method: PAYMENT_METHOD },
+              accessToken,
+              clientRequestId: input.clientRequestId,
             },
-            items,
-            totalCents: items.reduce((sum, i) => sum + i.lineTotalCents, 0),
-            currency: 'EUR',
-            fulfillment: {
-              method: input.fulfillment.method,
-              address:
-                input.fulfillment.method === 'delivery' ? input.fulfillment.address : undefined,
-              notes: input.fulfillment.notes || undefined,
-            },
-            status: 'pending',
-            statusHistory: [{ status: 'pending', at: now }],
-            payment: { status: 'unpaid', method: PAYMENT_METHOD },
-            accessToken,
-            clientRequestId: input.clientRequestId,
-          },
-        ],
-        { session },
-      );
-      if (!created) throw new InternalServerErrorException('Failed to create order');
-      return {
-        response: { order: toOrderDto(created.toObject<Order>()), accessToken },
-        created: true,
-      };
-    });
+          ],
+          { session },
+        );
+        if (!created) throw new InternalServerErrorException('Failed to create order');
+        const order = created.toObject<Order>();
+        return { response: { order: toOrderDto(order), accessToken }, created: true, order };
+      },
+    );
   }
 
   /**

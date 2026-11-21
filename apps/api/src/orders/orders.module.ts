@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { CountersModule } from '../counters/counters.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { ProductsModule } from '../products/products.module';
 import { SaleWindowsModule } from '../sale-windows/sale-windows.module';
 import { TurnstileModule } from '../turnstile/turnstile.module';
@@ -15,6 +16,7 @@ import { OrdersService } from './orders.service';
     SaleWindowsModule, // eksportuoja SaleWindow modelį
     CountersModule,
     TurnstileModule,
+    NotificationsModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],
