@@ -6,6 +6,9 @@
  *
  * Slaptažodis įvedamas interaktyviai (nerodomas) arba per ADMIN_PASSWORD (neinteraktyviai).
  * Prieš tai: pnpm turbo run build --filter=@desert-web/api
+ *
+ * Railway Pre-deploy Command vykdomas be shell, todėl kelias komandas reikia apgaubti:
+ *   sh -c 'pnpm --filter @desert-web/api db:indexes && pnpm --filter @desert-web/api admin:create ...'
  */
 import 'reflect-metadata';
 import { createInterface } from 'node:readline';
