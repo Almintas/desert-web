@@ -9,8 +9,8 @@ function assertBuildEnv(phase: string): void {
   if (phase !== PHASE_PRODUCTION_BUILD || process.env.VERCEL_ENV !== 'production') return;
   if (!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY?.trim()) {
     throw new Error(
-      'Netinkami aplinkos kintamieji (web):\n  - NEXT_PUBLIC_TURNSTILE_SITE_KEY: privalomas ' +
-        'produkcijoje. Reikšmė: Cloudflare → Turnstile → valdiklis → Site key.',
+      'Invalid environment variables (web):\n  - NEXT_PUBLIC_TURNSTILE_SITE_KEY: required ' +
+        'in production. Value: Cloudflare → Turnstile → widget → Site key.',
     );
   }
 }

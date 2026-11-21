@@ -31,8 +31,8 @@ async function forwardedClientHeaders(): Promise<Record<string, string>> {
   if (!secret) {
     if (process.env.NODE_ENV === 'production') {
       console.error(
-        '[admin] INTERNAL_API_SECRET nenustatytas: produkcijoje prisijungimas atmetamas. ' +
-          'Nustatyk tą pačią reikšmę kaip API (Railway) admin projekto aplinkoje (Vercel).',
+        '[admin] INTERNAL_API_SECRET is not set: login is rejected in production. ' +
+          'Set the same value as the API (Railway) in the admin project environment (Vercel).',
       );
       throw new MissingInternalSecretError(MISSING_SECRET_MESSAGE);
     }

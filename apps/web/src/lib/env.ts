@@ -31,36 +31,36 @@ export function validateWebEnv(raw: NodeJS.ProcessEnv = process.env): WebEnv {
 
   const issues: string[] = [];
   if (apiUrl !== undefined && !/^https?:\/\/[^\s]+$/.test(apiUrl)) {
-    issues.push('API_URL: turi būti http(s) adresas, pvz., https://api.desertai.lt');
+    issues.push('API_URL: must be an http(s) URL, e.g. https://api.desertai.lt');
   }
   if (secret !== undefined && secret.length < 32) {
-    issues.push('INTERNAL_API_SECRET: turi būti bent 32 simbolių');
+    issues.push('INTERNAL_API_SECRET: must be at least 32 characters');
   }
   if (production) {
     if (apiUrl === undefined) {
       issues.push(
-        'API_URL: privalomas produkcijoje (NODE_ENV=production). Nustatyk API adresą ' +
-          '(Railway domeną) web projekto aplinkoje (Vercel).',
+        'API_URL: required in production (NODE_ENV=production). Set the API URL ' +
+          '(Railway domain) in the web project environment (Vercel).',
       );
     }
     if (secret === undefined) {
       issues.push(
-        'INTERNAL_API_SECRET: privalomas produkcijoje (NODE_ENV=production): be jo API ' +
-          'užsakymų nepriima. Nustatyk tą pačią reikšmę (bent 32 simboliai) ir API (Railway), ' +
-          'ir web (Vercel).',
+        'INTERNAL_API_SECRET: required in production (NODE_ENV=production): without it the API ' +
+          'rejects orders. Set the same value (at least 32 characters) on both the API (Railway) ' +
+          'and web (Vercel).',
       );
     }
     if (siteKey === undefined) {
       issues.push(
-        'NEXT_PUBLIC_TURNSTILE_SITE_KEY: privalomas produkcijoje (NODE_ENV=production). ' +
-          'Reikšmė: Cloudflare → Turnstile → valdiklis → Site key. Įrašoma builde, todėl ' +
-          'pakeitus reikia perdiegti.',
+        'NEXT_PUBLIC_TURNSTILE_SITE_KEY: required in production (NODE_ENV=production). ' +
+          'Value: Cloudflare → Turnstile → widget → Site key. It is inlined at build time, so ' +
+          'redeploy after changing it.',
       );
     }
   }
   if (issues.length > 0) {
     throw new Error(
-      `Netinkami aplinkos kintamieji (web):\n${issues.map((i) => `  - ${i}`).join('\n')}`,
+      `Invalid environment variables (web):\n${issues.map((i) => `  - ${i}`).join('\n')}`,
     );
   }
 

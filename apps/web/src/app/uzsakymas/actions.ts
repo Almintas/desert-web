@@ -109,7 +109,7 @@ export async function placeOrderAction(
   } catch (error) {
     // Bet kokia klaida rodoma formoje (niekada ne bendras klaidos puslapis).
     if (!(error instanceof ApiError)) {
-      console.error('[web] POST /orders nepavyko', error);
+      console.error('[web] POST /orders failed', error);
       return {
         status: 'error',
         message: 'Nepavyko susisiekti su parduotuve. Patikrinkite ryšį ir bandykite dar kartą.',
@@ -152,7 +152,7 @@ export async function placeOrderAction(
     if (code === 'FORBIDDEN_CLIENT') {
       // Web ir API INTERNAL_API_SECRET nesutampa: konfigūracijos klaida, ne pirkėjo.
       console.error(
-        '[web] API atmetė POST /orders: FORBIDDEN_CLIENT (patikrink INTERNAL_API_SECRET)',
+        '[web] API rejected POST /orders: FORBIDDEN_CLIENT (check INTERNAL_API_SECRET)',
       );
       return {
         status: 'error',

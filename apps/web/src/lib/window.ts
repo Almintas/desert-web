@@ -7,7 +7,7 @@ export async function loadCurrentWindows(): Promise<CurrentSaleWindowResponse | 
   try {
     return await apiFetch<CurrentSaleWindowResponse>('/sale-windows/current');
   } catch (error) {
-    console.error('[web] /sale-windows/current nepavyko', error);
+    console.error('[web] /sale-windows/current failed', error);
     return null;
   }
 }

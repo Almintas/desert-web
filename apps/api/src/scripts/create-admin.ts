@@ -25,7 +25,7 @@ class UsageError extends Error {}
 function promptHidden(question: string): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!process.stdin.isTTY) {
-      reject(new UsageError('Nėra terminalo slaptažodžiui įvesti. Nurodyk ADMIN_PASSWORD.'));
+      reject(new UsageError('No terminal to enter the password. Set ADMIN_PASSWORD.'));
       return;
     }
     const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
@@ -52,7 +52,7 @@ async function readPassword(): Promise<string> {
   if (!parsed.success) throw new UsageError(parsed.error.issues[0]!.message);
   if (fromEnv === undefined) {
     const repeat = await promptHidden('Pakartok slaptažodį: ');
-    if (repeat !== password) throw new UsageError('Slaptažodžiai nesutampa');
+    if (repeat !== password) throw new UsageError('Passwords do not match');
   }
   return parsed.data;
 }
@@ -67,11 +67,11 @@ async function main() {
   });
 
   const email = adminEmailSchema.safeParse(values.email ?? '');
-  if (!email.success) throw new UsageError('Nurodyk --email <el. paštas>');
+  if (!email.success) throw new UsageError('Provide --email <email>');
   const role = values.role === undefined ? undefined : adminRoleSchema.safeParse(values.role);
-  if (role && !role.success) throw new UsageError('--role turi būti owner arba staff');
+  if (role && !role.success) throw new UsageError('--role must be owner or staff');
   const reset = values['reset-password'];
-  if (!reset && !role) throw new UsageError('Naujam adminui nurodyk --role owner|staff');
+  if (!reset && !role) throw new UsageError('Provide --role owner|staff for a new admin');
 
   const password = await readPassword();
 
@@ -85,11 +85,11 @@ async function main() {
         role?.data,
       );
       console.log(
-        `Slaptažodis pakeistas: ${admin.email} (${admin.role}). Ištrinta sesijų: ${deletedSessions}.`,
+        `Password changed: ${admin.email} (${admin.role}). Sessions deleted: ${deletedSessions}.`,
       );
     } else {
       const admin = await accounts.create(email.data, role!.data!, password);
-      console.log(`Sukurtas adminas: ${admin.email} (${admin.role}).`);
+      console.log(`Admin created: ${admin.email} (${admin.role}).`);
     }
   } finally {
     await app.close();
@@ -102,6 +102,6 @@ main().catch((error: unknown) => {
     error instanceof UsageError ||
     error instanceof AdminExistsError ||
     error instanceof AdminNotFoundError;
-  console.error(expected ? `Klaida: ${(error as Error).message}` : error);
+  console.error(expected ? `Error: ${(error as Error).message}` : error);
   process.exit(1);
 });

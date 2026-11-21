@@ -20,7 +20,7 @@ async function bootstrap() {
 
   const port = config.get('PORT', { infer: true });
   await app.listen(port, '0.0.0.0');
-  Logger.log(`API veikia: http://localhost:${port}`, 'Bootstrap');
+  Logger.log(`API listening: http://localhost:${port}`, 'Bootstrap');
 }
 
 void bootstrap();

@@ -38,7 +38,7 @@ async function loadOrder(token: string): Promise<OrderAccessDto | 'not-found' | 
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return 'not-found';
     if (error instanceof ApiError && error.status === 429) return 'too-many';
-    console.error('[web] /orders/access nepavyko', error);
+    console.error('[web] /orders/access failed', error);
     return null;
   }
 }

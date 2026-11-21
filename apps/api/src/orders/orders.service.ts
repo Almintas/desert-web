@@ -210,7 +210,7 @@ export class OrdersService {
         ],
         { session },
       );
-      if (!created) throw new InternalServerErrorException('Nepavyko sukurti užsakymo');
+      if (!created) throw new InternalServerErrorException('Failed to create order');
       return {
         response: { order: toOrderDto(created.toObject<Order>()), accessToken },
         created: true,

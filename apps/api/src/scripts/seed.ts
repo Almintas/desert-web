@@ -10,9 +10,9 @@ import { SaleWindow, SaleWindowSchema } from '../sale-windows/sale-window.schema
 
 async function main() {
   const uri = process.env.MONGODB_URI;
-  if (!uri) throw new Error('Trūksta MONGODB_URI (.env faile)');
+  if (!uri) throw new Error('MONGODB_URI is missing (in .env)');
   if (process.env.NODE_ENV === 'production') {
-    throw new Error('Seed neleidžiamas produkcijoje');
+    throw new Error('Seed is not allowed in production');
   }
 
   await mongoose.connect(uri, { dbName: process.env.MONGODB_DB_NAME?.trim() || undefined });
@@ -45,7 +45,7 @@ async function main() {
     },
   ]);
 
-  if (!macarons || !tart) throw new Error('Nepavyko sukurti produktų');
+  if (!macarons || !tart) throw new Error('Failed to create products');
   const m6 = macarons.variants[0]!;
   const m12 = macarons.variants[1]!;
   const t1 = tart.variants[0]!;
@@ -119,7 +119,7 @@ async function main() {
     },
   ]);
 
-  console.log('Seed baigtas: 2 produktai, 2 pardavimo langai (vienas atidarytas, vienas būsimas).');
+  console.log('Seed done: 2 products, 2 sale windows (one open, one upcoming).');
   await mongoose.disconnect();
 }
 

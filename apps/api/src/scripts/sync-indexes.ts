@@ -24,11 +24,11 @@ async function main() {
     for (const r of report) {
       logger.log(
         r.created.length > 0
-          ? `${r.collection}: sukurta ${r.created.join(', ')}`
-          : `${r.collection}: visi indeksai jau yra`,
+          ? `${r.collection}: created ${r.created.join(', ')}`
+          : `${r.collection}: all indexes already exist`,
       );
     }
-    logger.log('Indeksai sutvarkyti');
+    logger.log('Indexes synced');
   } finally {
     await app.close();
   }

@@ -16,16 +16,16 @@ describe('validateEnv: INTERNAL_API_SECRET', () => {
     expect(env.INTERNAL_API_SECRET).toBeUndefined();
   });
 
-  it('produkcijoje be paslapties: aiški klaida lietuviškai', () => {
+  it('produkcijoje be paslapties: aiški klaida', () => {
     expect(() => validateEnv({ ...base, NODE_ENV: 'production' })).toThrow(
-      /INTERNAL_API_SECRET: INTERNAL_API_SECRET privalomas produkcijoje/,
+      /INTERNAL_API_SECRET: INTERNAL_API_SECRET is required in production/,
     );
   });
 
   it('produkcijoje tuščia ar vien tarpų reikšmė laikoma nenustatyta', () => {
     expect(() =>
       validateEnv({ ...base, NODE_ENV: 'production', INTERNAL_API_SECRET: '   ' }),
-    ).toThrow(/privalomas produkcijoje/);
+    ).toThrow(/is required in production/);
   });
 
   it('produkcijoje su paslaptimi: paleidžiama', () => {
@@ -43,7 +43,7 @@ describe('validateEnv: INTERNAL_API_SECRET', () => {
   it('per trumpa paslaptis atmetama visose aplinkose', () => {
     for (const NODE_ENV of ['development', 'production']) {
       expect(() => validateEnv({ ...base, NODE_ENV, INTERNAL_API_SECRET: 'trumpa' })).toThrow(
-        /bent 32 simbolių/,
+        /at least 32 characters/,
       );
     }
   });
@@ -68,7 +68,7 @@ describe('validateEnv: Cloudinary', () => {
 
   it.each(Object.keys(CLOUDINARY))('produkcijoje be %s: nepasileidžia', (key) => {
     const raw: Record<string, unknown> = { ...production, ...CLOUDINARY, [key]: '' };
-    expect(() => validateEnv(raw)).toThrow(new RegExp(`${key}: ${key} privalomas produkcijoje`));
+    expect(() => validateEnv(raw)).toThrow(new RegExp(`${key}: ${key} is required in production`));
   });
 
   it('produkcijoje be jokių Cloudinary kintamųjų: visi trys klaidoje', () => {
@@ -118,7 +118,7 @@ describe('validateEnv: Turnstile', () => {
     'produkcijoje TURNSTILE_SECRET_KEY=%j: nepasileidžia',
     (value) => {
       expect(() => validateEnv({ ...production, TURNSTILE_SECRET_KEY: value })).toThrow(
-        /TURNSTILE_SECRET_KEY: TURNSTILE_SECRET_KEY privalomas produkcijoje/,
+        /TURNSTILE_SECRET_KEY: TURNSTILE_SECRET_KEY is required in production/,
       );
     },
   );
@@ -167,7 +167,7 @@ describe('validateEnv: ribojimai ir kliento IP', () => {
 
 describe('validateEnv: visi trūkstami kintamieji vienoje klaidoje', () => {
   it('be MONGODB_URI: aiški klaida', () => {
-    expect(() => validateEnv({})).toThrow(/MONGODB_URI: MONGODB_URI privalomas/);
+    expect(() => validateEnv({})).toThrow(/MONGODB_URI: MONGODB_URI is required/);
   });
 
   it('produkcijoje be nieko: išvardijami visi privalomi kintamieji iš karto', () => {
@@ -185,7 +185,7 @@ describe('validateEnv: visi trūkstami kintamieji vienoje klaidoje', () => {
       'CLOUDINARY_API_KEY',
       'CLOUDINARY_API_SECRET',
     ]) {
-      expect(message).toContain(`${key}: ${key} privalomas`);
+      expect(message).toContain(`${key}: ${key} is required`);
     }
   });
 });

@@ -27,10 +27,10 @@ function loadTurnstile(): Promise<TurnstileApi> {
     script.async = true;
     script.defer = true;
     script.onload = () =>
-      window.turnstile ? resolve(window.turnstile) : reject(new Error('turnstile nerastas'));
+      window.turnstile ? resolve(window.turnstile) : reject(new Error('turnstile not found'));
     script.onerror = () => {
       scriptPromise = null;
-      reject(new Error('Nepavyko įkelti Turnstile'));
+      reject(new Error('Failed to load Turnstile'));
     };
     document.head.appendChild(script);
   });

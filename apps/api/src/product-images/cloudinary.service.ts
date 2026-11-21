@@ -102,11 +102,11 @@ export class CloudinaryService {
       const result = (await cloudinary.uploader.destroy(publicId, options)) as
         { result?: string } | undefined;
       if (result?.result !== 'ok' && result?.result !== 'not found') {
-        this.logger.warn(`Cloudinary destroy ${publicId}: netikėtas atsakymas ${result?.result}`);
+        this.logger.warn(`Cloudinary destroy ${publicId}: unexpected response ${result?.result}`);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : JSON.stringify(error);
-      this.logger.warn(`Cloudinary destroy ${publicId} nepavyko: ${message}`);
+      this.logger.warn(`Cloudinary destroy ${publicId} failed: ${message}`);
     }
   }
 }

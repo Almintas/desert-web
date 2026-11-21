@@ -32,7 +32,7 @@ export const envSchema = z
      */
     MONGODB_DB_NAME: optionalString.refine(
       (v) => v === undefined || /^[A-Za-z0-9_-]{1,63}$/.test(v),
-      'MONGODB_DB_NAME: tik raidės, skaičiai, _ ir - (iki 63 simbolių)',
+      'MONGODB_DB_NAME: only letters, digits, _ and - (up to 63 characters)',
     ),
     CORS_ORIGINS: z
       .string()
@@ -78,7 +78,7 @@ export const envSchema = z
      */
     INTERNAL_API_SECRET: optionalString.refine(
       (v) => v === undefined || v.length >= 32,
-      'INTERNAL_API_SECRET turi būti bent 32 simbolių',
+      'INTERNAL_API_SECRET must be at least 32 characters',
     ),
     RESEND_API_KEY: optionalString,
     EMAIL_FROM: optionalString,
@@ -88,7 +88,7 @@ export const envSchema = z
      */
     CLOUDINARY_CLOUD_NAME: optionalString.refine(
       (v) => v === undefined || /^[A-Za-z0-9_-]+$/.test(v),
-      'CLOUDINARY_CLOUD_NAME gali turėti tik raides, skaičius, _ ir -',
+      'CLOUDINARY_CLOUD_NAME may contain only letters, digits, _ and -',
     ),
     CLOUDINARY_API_KEY: optionalString,
     CLOUDINARY_API_SECRET: optionalString,
@@ -98,7 +98,7 @@ export const envSchema = z
      */
     CLOUDINARY_FOLDER: optionalString.refine(
       (v) => v === undefined || CLOUDINARY_FOLDER_PATTERN.test(v),
-      'CLOUDINARY_FOLDER: segmentai iš raidžių, skaičių, _ ir -, atskirti /',
+      'CLOUDINARY_FOLDER: segments of letters, digits, _ and -, separated by /',
     ),
   })
   .superRefine((env, ctx) => {
@@ -106,7 +106,7 @@ export const envSchema = z
       ctx.addIssue({
         code: 'custom',
         path: ['MONGODB_URI'],
-        message: 'MONGODB_URI privalomas (MongoDB Atlas connection string).',
+        message: 'MONGODB_URI is required (MongoDB Atlas connection string).',
       });
     }
     // Be paslapties visi prisijungimai per admin app skaičiuojami vienam IP (admin serverio),
@@ -116,8 +116,8 @@ export const envSchema = z
         code: 'custom',
         path: ['INTERNAL_API_SECRET'],
         message:
-          'INTERNAL_API_SECRET privalomas produkcijoje (NODE_ENV=production). ' +
-          'Nustatyk tą pačią reikšmę (bent 32 simboliai) ir API (Railway), ir admin app (Vercel).',
+          'INTERNAL_API_SECRET is required in production (NODE_ENV=production). ' +
+          'Set the same value (at least 32 characters) on both the API (Railway) and the admin app (Vercel).',
       });
     }
     if (env.NODE_ENV === 'production' && env.TURNSTILE_SECRET_KEY === undefined) {
@@ -125,8 +125,8 @@ export const envSchema = z
         code: 'custom',
         path: ['TURNSTILE_SECRET_KEY'],
         message:
-          'TURNSTILE_SECRET_KEY privalomas produkcijoje (NODE_ENV=production): be jo užsakymų ' +
-          'apsauga nuo robotų neveiks. Reikšmė: Cloudflare → Turnstile → valdiklis → Secret key.',
+          'TURNSTILE_SECRET_KEY is required in production (NODE_ENV=production): without it ' +
+          'order bot protection does not work. Value: Cloudflare → Turnstile → widget → Secret key.',
       });
     }
     if (env.NODE_ENV === 'production') {
@@ -135,7 +135,7 @@ export const envSchema = z
           ctx.addIssue({
             code: 'custom',
             path: [key],
-            message: `${key} privalomas produkcijoje (NODE_ENV=production): be jo neveiks produktų nuotraukos.`,
+            message: `${key} is required in production (NODE_ENV=production): product images do not work without it.`,
           });
         }
       }
@@ -157,7 +157,7 @@ export function validateEnv(raw: Record<string, unknown>): Env {
     const details = result.error.issues
       .map((i) => `  - ${i.path.map(String).join('.')}: ${i.message}`)
       .join('\n');
-    throw new Error(`Netinkami aplinkos kintamieji:\n${details}`);
+    throw new Error(`Invalid environment variables:\n${details}`);
   }
   return result.data;
 }

@@ -63,7 +63,7 @@ export class TurnstileService {
         idempotencyKey: options.idempotencyKey,
       });
     } catch (cause) {
-      this.logger.error(`Cloudflare siteverify nepasiekiamas: ${describe(cause)}`);
+      this.logger.error(`Cloudflare siteverify unreachable: ${describe(cause)}`);
       throw new ServiceUnavailableException(
         error('TURNSTILE_UNAVAILABLE', TURNSTILE_UNAVAILABLE_MESSAGE),
       );
@@ -76,7 +76,7 @@ export class TurnstileService {
     }
     // Neteisingas secret, bad-request, internal-error: ne pirkėjo kaltė ir nauju tokenu
     // nepasitaisys. Fail closed kaip ir nepasiekiamo Cloudflare atveju.
-    this.logger.error(`Cloudflare siteverify klaida: ${codes.join(', ') || 'be kodo'}`);
+    this.logger.error(`Cloudflare siteverify error: ${codes.join(', ') || 'no code'}`);
     throw new ServiceUnavailableException(
       error('TURNSTILE_UNAVAILABLE', TURNSTILE_UNAVAILABLE_MESSAGE),
     );

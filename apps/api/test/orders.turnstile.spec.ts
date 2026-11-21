@@ -99,7 +99,7 @@ describe('Užsakymai: Cloudflare Turnstile', () => {
     try {
       const res = await post(orderBody(s.window._id, [{ variantId: s.variantId, quantity: 2 }]));
       expect([res.status, res.body.code]).toEqual([503, 'TURNSTILE_UNAVAILABLE']);
-      expect(log).toHaveBeenCalledWith(expect.stringMatching(/siteverify nepasiekiamas.*Timeout/));
+      expect(log).toHaveBeenCalledWith(expect.stringMatching(/siteverify unreachable.*Timeout/));
     } finally {
       log.mockRestore();
     }
