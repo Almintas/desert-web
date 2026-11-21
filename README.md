@@ -113,7 +113,7 @@ Trukmė: apie 30–40 s su buildu (kai turbo talpykloje jo nėra) ir apie 25 s s
    - **Start Command:** `pnpm --filter @desert-web/api start`
    - **Healthcheck Path:** `/health`
    - **Watch Paths:** `apps/api/**`, `packages/shared/**` (kad nebūtų perdiegiama keičiant tik frontendą)
-3. Variables: `NODE_ENV=production`, `MONGODB_URI`, `CORS_ORIGIN` (web ir admin adresai per kablelį), neprivaloma `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `INTERNAL_API_SECRET` (žr. [Admin prisijungimas](#admin-prisijungimas)), `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (žr. [Produktų nuotraukos](#produktų-nuotraukos-cloudinary)). `PORT` Railway nustato pats. Neprivalomi: `TURNSTILE_SECRET_KEY` (kol kas; žr. [Apsauga nuo robotų](#užsakymų-apsauga-nuo-robotų)), `ADMIN_SESSION_TTL_DAYS`, `ADMIN_LOGIN_RATE_LIMIT`, `ADMIN_LOGIN_RATE_WINDOW_SECONDS`, `CLOUDINARY_FOLDER`, `ORDER_RATE_*`, `ORDER_ACCESS_RATE_*`, `TRUST_X_REAL_IP`.
+3. Variables: `NODE_ENV=production`, `MONGODB_URI`, `CORS_ORIGIN` (web ir admin adresai per kablelį), laiškams `RESEND_API_KEY`, `ORDER_NOTIFY_EMAIL`, `ADMIN_URL` ir kt. (žr. [Užsakymų laiškai](#užsakymų-laiškai-resend)), `INTERNAL_API_SECRET` (žr. [Admin prisijungimas](#admin-prisijungimas)), `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (žr. [Produktų nuotraukos](#produktų-nuotraukos-cloudinary)). `PORT` Railway nustato pats. Neprivalomi: `TURNSTILE_SECRET_KEY` (kol kas; žr. [Apsauga nuo robotų](#užsakymų-apsauga-nuo-robotų)), `ADMIN_SESSION_TTL_DAYS`, `ADMIN_LOGIN_RATE_LIMIT`, `ADMIN_LOGIN_RATE_WINDOW_SECONDS`, `CLOUDINARY_FOLDER`, `ORDER_RATE_*`, `ORDER_ACCESS_RATE_*`, `TRUST_X_REAL_IP`.
    - **Pre-deploy Command:** `pnpm --filter @desert-web/api db:indexes`
 4. Settings → Networking → Generate Domain (arba prijunk `api.tavodomenas.lt`).
 
@@ -151,6 +151,45 @@ Railway → api service → Variables (reikšmės iš Cloudinary Console → Set
 - Naujas unikalus indeksas `products.images.publicId`: po šio pakeitimo paleisk `db:indexes` (Railway Pre-deploy Command tai padaro pats).
 - Naujas dalinis unikalus indeksas `orders.clientRequestId` (užsakymų idempotencija): taip pat sukuria `db:indexes`.
 
+#### Užsakymų laiškai (Resend)
+
+API siunčia laiškus per [Resend](https://resend.com) (`apps/api/src/notifications/`):
+
+- **Pardavėjui** (`ORDER_NOTIFY_EMAIL`): naujas užsakymas su pirkėjo vardu, telefonu, el. paštu, pastabomis ir nuoroda į admin panelę. Atsakius į laišką, atsakymas nueina pirkėjui.
+- **Pirkėjui** (kol kas išjungta): užsakymas gautas; būsena pasikeitė į patvirtintas, paruoštas atsiimti, atšauktas (su priežastimi). Atsakymai nueina pardavėjui (`SELLER.email`).
+
+Laiškai siunčiami tik po sėkmingos DB transakcijos ir fone: nepavykęs laiškas užsakymo ar būsenos pakeitimo neatšaukia, tik užrašomas į API logą (`Email failed (order …, template …)`). Pakartotas tas pats užsakymas (`clientRequestId`) ir atmestas būsenos pakeitimas (pvz., antras atšaukimas) laiškų nesiunčia.
+
+Domeno dar nėra, todėl siunčiama iš `onboarding@resend.dev`: Resend tokius laiškus pristato **tik Resend paskyros savininko adresu** (kitiems grąžina 403). Todėl `ORDER_NOTIFY_EMAIL` turi būti Resend paskyros el. paštas, o laiškai pirkėjams išjungti.
+
+Railway → api service → Variables:
+
+| Kintamasis                | Reikšmė                                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `RESEND_API_KEY`          | Resend → API Keys (užtenka „Sending access“). Be jo laiškai nesiunčiami (paleidžiant įspėjimas loguose) |
+| `ORDER_NOTIFY_EMAIL`      | pardavėjo adresas; kol siuntėjas `resend.dev`, tik Resend paskyros savininko el. paštas                 |
+| `ADMIN_URL`               | admin adresas, pvz. `https://admin.desertai.lt` (privalomas, kai nustatyti du ankstesni)                |
+| `RESEND_FROM_EMAIL`       | neprivaloma; numatyta `Desert Web <onboarding@resend.dev>`                                              |
+| `CUSTOMER_EMAILS_ENABLED` | neprivaloma; numatyta `false`                                                                           |
+| `WEB_URL`                 | parduotuvės adresas, pvz. `https://desertai.lt` (privalomas, kai `CUSTOMER_EMAILS_ENABLED=true`)        |
+
+`FRONTEND_URL`, `JWT_SECRET` ir `JWT_EXPIRES_IN` API nebenaudoja: jei liko Railway, galima ištrinti.
+
+Laiškų peržiūra naršyklėje (pavyzdiniai duomenys, be DB ir Resend):
+
+```bash
+pnpm --filter @desert-web/api email:preview   # → apps/api/tmp/email-preview/index.html
+```
+
+Vystant be `RESEND_API_KEY` kiekvienas laiškas tik išvedamas į API logą (kam, tema, tekstas). Kad matytumėte ir pirkėjo laiškus, `.env` nustatykite `CUSTOMER_EMAILS_ENABLED=true`.
+
+##### Kaip įjungti laiškus pirkėjams
+
+1. Resend → Domains → Add domain (pvz., `desertai.lt`), įrašykite DNS įrašus ir palaukite, kol domenas bus „Verified“.
+2. Railway: `RESEND_FROM_EMAIL` nustatykite adresu tame domene, pvz. `Desert Web <uzsakymai@desertai.lt>`, ir `WEB_URL` (pvz., `https://desertai.lt`).
+3. Railway: `CUSTOMER_EMAILS_ENABLED=true`. Su `resend.dev` siuntėju API produkcijoje nepasileis (aiški klaida deploy loguose).
+4. Tada galima pakeisti patvirtinimo puslapio ir užsakymo formos tekstą „išsisaugokite nuorodą“ (dabar pirkėjas laiško negauna).
+
 #### Užsakymų apsauga nuo robotų
 
 API Railway pasiekiamas viešai, todėl visos apsaugos taikomos API (ne tik web):
@@ -179,16 +218,16 @@ MongoDB Atlas → Network Access: leisk prisijungti iš Railway (paprasčiausia 
 
 Du atskiri Vercel projektai iš to paties repo:
 
-| Nustatymas     | web                                                                                                                                                           | admin                                                                                    |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Root Directory | `apps/web`                                                                                                                                                    | `apps/admin`                                                                             |
-| Framework      | Next.js                                                                                                                                                       | Next.js                                                                                  |
-| Build Command  | `cd ../.. && pnpm turbo run build --filter=@desert-web/web`                                                                                                   | `cd ../.. && pnpm turbo run build --filter=@desert-web/admin`                            |
+| Nustatymas     | web                                                                                                                                                                                                 | admin                                                                                    |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Root Directory | `apps/web`                                                                                                                                                                                          | `apps/admin`                                                                             |
+| Framework      | Next.js                                                                                                                                                                                             | Next.js                                                                                  |
+| Build Command  | `cd ../.. && pnpm turbo run build --filter=@desert-web/web`                                                                                                                                         | `cd ../.. && pnpm turbo run build --filter=@desert-web/admin`                            |
 | Env            | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (ta pati kaip Railway), `INTERNAL_API_SECRET` ir `API_URL` privalomi, `NEXT_TURNSTILE_SITE_KEY` kol kas neprivalomas, neprivaloma `SITE_URL` | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (privaloma, ta pati kaip Railway) |
 
 Web naršyklė į API nesikreipia: puslapius ir užsakymo pateikimą (Server Action) atlieka web Next.js serveris. `NEXT_PUBLIC_API_URL` nebenaudojamas (jei liko Vercel, ištrink). Produkcijoje web be `API_URL` ar `INTERNAL_API_SECRET` **nepasileidžia** (aiški klaida Vercel runtime loguose, `src/instrumentation.ts`). Su `INTERNAL_API_SECRET` web serveris API perduoda tikrą pirkėjo IP (`X-Client-IP`), o API produkcijoje užsakymus priima tik su ja. `SITE_URL` (pvz., `https://desertai.lt`) naudojamas absoliutiems OG adresams.
 
-Pardavėjo vardas ir kontaktai (poraštė, `/privatumas`) yra `apps/web/src/lib/shop.ts` (`SELLER`, pažymėta TODO).
+Pardavėjo vardas ir kontaktai (poraštė, `/privatumas`, laiškai pirkėjams ir jų Reply-To) yra `packages/shared/src/shop.ts` (`SELLER`, pažymėta TODO).
 
 ## Pagrindinės taisyklės
 
@@ -207,12 +246,12 @@ Duomenų modelis ir sprendimai aprašyti Claude projekte „Desert Web“ (`duom
 - [x] Produktų nuotraukos (Cloudinary: tiesioginis pasirašytas įkėlimas, iki 8, rikiavimas, šalinimas)
 - [x] Admin pardavimo langų valdymas (`/admin/sale-windows`: kūrimas, kiekiai, skelbimas, atidaryti / uždaryti dabar, atšaukimas)
 - [x] Užsakymų valdymas (`/admin/orders`: sąrašas su filtrais, būsenos pirmyn, atšaukimas su kiekių grąžinimu)
-- [ ] Laiškai pirkėjui keičiantis užsakymo būsenai
+- [x] Laiškai per Resend: pardavėjui apie naują užsakymą; pirkėjui (gautas, būsenos) paruošta, bet išjungta iki domeno patvirtinimo
 - [x] Užsakymo kūrimas su atomine kiekio rezervacija ir limitu vienam pirkėjui (idempotentiškas pagal `clientRequestId`)
 - [x] Pirkėjų parduotuvė: krepšelis, užsakymas (tik atsiėmimas, apmokama atsiimant), užsakymo puslapis, `/privatumas`
 - [x] Užsakymų apsauga: tik per web serverį, ribojimas pagal pirkėjo IP, Cloudflare Turnstile
 - [x] E2E testai (`pnpm e2e`)
-- [ ] Laiškai per Resend (užsakymo patvirtinimas)
+- [ ] Patvirtinti domeną Resend ir įjungti laiškus pirkėjams
 - [ ] Specialūs užsakymai
 - [ ] Mokėjimai (tiekėjas dar nepasirinktas)
 - [ ] ESLint, CI
