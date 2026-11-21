@@ -34,7 +34,7 @@ export function CheckoutForm({
   turnstileSiteKey,
 }: {
   saleWindow: PublicSaleWindowDto;
-  /** Cloudflare Turnstile site key (NEXT_PUBLIC_TURNSTILE_SITE_KEY, žr. lib/env.ts). */
+  /** Cloudflare Turnstile site key (NEXT_TURNSTILE_SITE_KEY, žr. lib/env.ts). */
   turnstileSiteKey: string;
 }) {
   const router = useRouter();

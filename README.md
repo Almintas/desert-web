@@ -88,7 +88,7 @@ pnpm e2e -- --grep "dvigubas"   # tik dalis testų (argumentai perduodami Playwr
 
 Ką daro `e2e/scripts/run.mjs`:
 
-1. Sukompiliuoja api, web ir admin (`turbo build`; web su Turnstile testiniu site key).
+1. Sukompiliuoja api, web ir admin (`turbo build`).
 2. Paleidžia laikiną MongoDB replica set (`mongodb-memory-server`, kaip API Jest testai; pirmą kartą atsisiunčia mongod).
 3. Sukuria indeksus (`db:indexes`) ir adminą (`admin:create`).
 4. Paleidžia API, web ir admin (`NODE_ENV=production`) laisvuose portuose.
@@ -100,7 +100,7 @@ Trukmė: apie 30–40 s su buildu (kai turbo talpykloje jo nėra) ir apie 25 s s
 
 - Cloudinary įkėlimai ir nuotraukos perimami naršyklėje (atsakymas pasirašomas e2e Cloudinary paslaptimi, API jį tikrina kaip produkcijoje).
 - Turnstile: naudojami [Cloudflare testiniai raktai](https://developers.cloudflare.com/turnstile/troubleshooting/testing/) (`1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`, nesėkmei `2x0000000000000000000000000000000AA`). Jei `challenges.cloudflare.com` nepasiekiamas (uždara CI aplinka), naudojamas vietinis pakaitalas, kuris elgiasi kaip šie raktai. Priverstinai: `E2E_TURNSTILE=real` arba `E2E_TURNSTILE=fake`.
-- `E2E_SKIP_BUILD=1`: nekompiliuoti (naudoti esamus `dist/` ir `.next/`; web turi būti sukompiliuotas su `NEXT_PUBLIC_TURNSTILE_SITE_KEY`). `E2E_HEADED=1`: matoma naršyklė.
+- `E2E_SKIP_BUILD=1`: nekompiliuoti (naudoti esamus `dist/` ir `.next/`). `E2E_HEADED=1`: matoma naršyklė.
 
 ## Diegimas
 
@@ -160,7 +160,7 @@ API Railway pasiekiamas viešai, todėl visos apsaugos taikomos API (ne tik web)
 - **Pirkėjo IP.** Web ir admin serveriai perduoda naršyklės IP (`X-Client-IP`, priimamas tik su paslaptimi). Tiesioginėms užklausoms Railway produkcijoje naudojamas `X-Real-IP`, kurį Railway edge nustato pats ([Railway: Public Networking specs](https://docs.railway.com/networking/public-networking/specs-and-limits)); `X-Forwarded-For` paskutinis šuolis gali būti vidinis Railway proxy. Kitur (vystant) `req.ip`.
 - **Cloudflare Turnstile.** Užsakymo formoje valdiklis (`interaction-only`, lietuviškai); API tikrina tokeną per `siteverify` (5 s limitas) prieš rezervuodamas kiekius. Netinkamas: 403 `TURNSTILE_FAILED`; Cloudflare nepasiekiamas: 503 `TURNSTILE_UNAVAILABLE` (užsakymas nepriimamas, klaida loguose). Jau sukurto užsakymo pakartojimui (tas pats `clientRequestId`) tokeno nereikia.
 
-Turnstile nustatymas: Cloudflare → Turnstile → Add widget, **Widget Mode: Managed**, hostnames: parduotuvės domenas. Site key → Vercel web `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (įrašomas builde: pakeitus perdiegti), Secret key → Railway `TURNSTILE_SECRET_KEY`. Kol kas abu neprivalomi ir produkcijoje: be jų naudojami Cloudflare testiniai „visada praeina“ raktai (apsaugos nuo robotų nėra, API loguose įspėjimas). Nustatyk abu kartu.
+Turnstile nustatymas: Cloudflare → Turnstile → Add widget, **Widget Mode: Managed**, hostnames: parduotuvės domenas. Site key → Vercel web `NEXT_TURNSTILE_SITE_KEY` (skaitomas serveryje, perdiegti nebūtina), Secret key → Railway `TURNSTILE_SECRET_KEY`. Kol kas abu neprivalomi ir produkcijoje: be jų naudojami Cloudflare testiniai „visada praeina“ raktai (apsaugos nuo robotų nėra, API loguose įspėjimas). Nustatyk abu kartu.
 
 #### DB indeksai
 
@@ -184,7 +184,7 @@ Du atskiri Vercel projektai iš to paties repo:
 | Root Directory | `apps/web`                                                                                                                                                    | `apps/admin`                                                                             |
 | Framework      | Next.js                                                                                                                                                       | Next.js                                                                                  |
 | Build Command  | `cd ../.. && pnpm turbo run build --filter=@desert-web/web`                                                                                                   | `cd ../.. && pnpm turbo run build --filter=@desert-web/admin`                            |
-| Env            | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (ta pati kaip Railway), `INTERNAL_API_SECRET` ir `API_URL` privalomi, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` kol kas neprivalomas, neprivaloma `SITE_URL` | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (privaloma, ta pati kaip Railway) |
+| Env            | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (ta pati kaip Railway), `INTERNAL_API_SECRET` ir `API_URL` privalomi, `NEXT_TURNSTILE_SITE_KEY` kol kas neprivalomas, neprivaloma `SITE_URL` | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (privaloma, ta pati kaip Railway) |
 
 Web naršyklė į API nesikreipia: puslapius ir užsakymo pateikimą (Server Action) atlieka web Next.js serveris. `NEXT_PUBLIC_API_URL` nebenaudojamas (jei liko Vercel, ištrink). Produkcijoje web be `API_URL` ar `INTERNAL_API_SECRET` **nepasileidžia** (aiški klaida Vercel runtime loguose, `src/instrumentation.ts`). Su `INTERNAL_API_SECRET` web serveris API perduoda tikrą pirkėjo IP (`X-Client-IP`), o API produkcijoje užsakymus priima tik su ja. `SITE_URL` (pvz., `https://desertai.lt`) naudojamas absoliutiems OG adresams.
 

@@ -5,7 +5,7 @@ import { TURNSTILE_TEST_KEYS } from '@desert-web/shared';
  *
  * Produkcijoje (NODE_ENV=production) privalomi API_URL ir INTERNAL_API_SECRET: be jų
  * užsakymai neveiktų, todėl serveris nepasileidžia (žr. instrumentation.ts).
- * NEXT_PUBLIC_TURNSTILE_SITE_KEY kol kas neprivalomas: be jo naudojamas Cloudflare testinis
+ * NEXT_TURNSTILE_SITE_KEY kol kas neprivalomas: be jo naudojamas Cloudflare testinis
  * „visada praeina“ site key (turi sutapti su API: be TURNSTILE_SECRET_KEY ten irgi testinis).
  */
 export interface WebEnv {
@@ -16,17 +16,11 @@ export interface WebEnv {
 
 const trimmed = (v: string | undefined) => (v && v.trim().length > 0 ? v.trim() : undefined);
 
-/**
- * NEXT_PUBLIC_ reikšmę Next įrašo į kodą builde, todėl ją būtina skaityti tiesiogiai
- * `process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY` (ne per kintamąjį raktą).
- */
-const SITE_KEY = trimmed(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
-
 export function validateWebEnv(raw: NodeJS.ProcessEnv = process.env): WebEnv {
   const production = raw.NODE_ENV === 'production';
   const apiUrl = trimmed(raw.API_URL);
   const secret = trimmed(raw.INTERNAL_API_SECRET);
-  const siteKey = raw === process.env ? SITE_KEY : trimmed(raw.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
+  const siteKey = trimmed(raw.NEXT_TURNSTILE_SITE_KEY);
 
   const issues: string[] = [];
   if (apiUrl !== undefined && !/^https?:\/\/[^\s]+$/.test(apiUrl)) {
