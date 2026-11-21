@@ -1,6 +1,6 @@
 /**
  * Paleidžiant web serverį (next start, Vercel funkcijos šaltas startas) patikrinami aplinkos
- * kintamieji: produkcijoje be API_URL, INTERNAL_API_SECRET ar NEXT_PUBLIC_TURNSTILE_SITE_KEY
+ * kintamieji: produkcijoje be API_URL ar INTERNAL_API_SECRET
  * serveris nepasileidžia, o klaida su paaiškinimu matoma loguose (kaip API env.ts).
  */
 export async function register(): Promise<void> {

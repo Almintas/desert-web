@@ -3,11 +3,10 @@ import { TURNSTILE_TEST_KEYS } from '@desert-web/shared';
 /**
  * Web serverio aplinkos kintamieji. Be `server-only`, nes naudojama ir instrumentation.ts.
  *
- * Produkcijoje (NODE_ENV=production) privalomi API_URL, INTERNAL_API_SECRET ir
- * NEXT_PUBLIC_TURNSTILE_SITE_KEY: be jų užsakymai neveiktų (API produkcijoje POST /orders
- * priima tik su paslaptimi ir Turnstile tokenu), todėl serveris nepasileidžia (žr.
- * instrumentation.ts). Vystant naudojamos vietinės numatytosios reikšmės ir Cloudflare
- * testinis „visada praeina“ site key.
+ * Produkcijoje (NODE_ENV=production) privalomi API_URL ir INTERNAL_API_SECRET: be jų
+ * užsakymai neveiktų, todėl serveris nepasileidžia (žr. instrumentation.ts).
+ * NEXT_PUBLIC_TURNSTILE_SITE_KEY kol kas neprivalomas: be jo naudojamas Cloudflare testinis
+ * „visada praeina“ site key (turi sutapti su API: be TURNSTILE_SECRET_KEY ten irgi testinis).
  */
 export interface WebEnv {
   apiUrl: string;
@@ -48,13 +47,6 @@ export function validateWebEnv(raw: NodeJS.ProcessEnv = process.env): WebEnv {
         'INTERNAL_API_SECRET: required in production (NODE_ENV=production): without it the API ' +
           'rejects orders. Set the same value (at least 32 characters) on both the API (Railway) ' +
           'and web (Vercel).',
-      );
-    }
-    if (siteKey === undefined) {
-      issues.push(
-        'NEXT_PUBLIC_TURNSTILE_SITE_KEY: required in production (NODE_ENV=production). ' +
-          'Value: Cloudflare → Turnstile → widget → Site key. It is inlined at build time, so ' +
-          'redeploy after changing it.',
       );
     }
   }

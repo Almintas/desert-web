@@ -65,8 +65,8 @@ export const envSchema = z
      */
     TRUST_X_REAL_IP: booleanString,
     /**
-     * Cloudflare Turnstile secret. Produkcijoje privalomas; vystant ir testuose numatytas
-     * Cloudflare testinis „visada praeina“ raktas.
+     * Cloudflare Turnstile secret. Kol kas neprivalomas ir produkcijoje: be jo naudojamas
+     * Cloudflare testinis „visada praeina“ raktas (apsaugos nuo robotų nėra), loguose įspėjimas.
      */
     TURNSTILE_SECRET_KEY: optionalString,
     /** Tik testams / e2e (vietinis Cloudflare pakaitalas). Numatyta: Cloudflare siteverify. */
@@ -118,15 +118,6 @@ export const envSchema = z
         message:
           'INTERNAL_API_SECRET is required in production (NODE_ENV=production). ' +
           'Set the same value (at least 32 characters) on both the API (Railway) and the admin app (Vercel).',
-      });
-    }
-    if (env.NODE_ENV === 'production' && env.TURNSTILE_SECRET_KEY === undefined) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['TURNSTILE_SECRET_KEY'],
-        message:
-          'TURNSTILE_SECRET_KEY is required in production (NODE_ENV=production): without it ' +
-          'order bot protection does not work. Value: Cloudflare → Turnstile → widget → Secret key.',
       });
     }
     if (env.NODE_ENV === 'production') {
