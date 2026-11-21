@@ -27,10 +27,21 @@ export default function PrivacyPage() {
         atsiėmimo (pvz., jei pasikeistų atsiėmimo laikas).
       </p>
 
+      <h2>El. laiškai</h2>
+      <p>
+        Užsakymo ir jo būsenos laiškus (pvz., kad užsakymas gautas ar paruoštas atsiimti) siunčiame
+        per „Resend“, el. laiškų siuntimo paslaugų teikėją. Per jį pardavėjui siunčiamas ir
+        pranešimas apie naują užsakymą su jūsų vardu, el. paštu, telefonu ir pastabomis.
+      </p>
+      <p>
+        Jūsų el. pašto adresą naudojame tik šiems laiškams ir susisiekti dėl užsakymo.
+        Naujienlaiškių ir reklamos nesiunčiame.
+      </p>
+
       <h2>Kam juos perduodame</h2>
       <p>
-        Niekam. Jūsų duomenų neparduodame ir neperduodame kitiems. Jie saugomi mūsų užsakymų
-        sistemoje, kurią naudoja tik pardavėjas.
+        Jūsų duomenų neparduodame ir reklamai neperduodame. Jie saugomi mūsų užsakymų sistemoje,
+        kurią naudoja tik pardavėjas. Laiškams išsiųsti juos tvarko „Resend“ (žr. aukščiau).
       </p>
 
       <h2>Slapukai ir naršyklė</h2>
