@@ -26,7 +26,7 @@ test.describe('Admin', () => {
     await page.getByLabel('Pavadinimas').first().fill(name);
     await page.getByLabel('Kategorija').fill('makaronai');
     const variant = page.locator('.variant-row').first();
-    await variant.getByLabel('Pavadinimas').fill('6 vnt.');
+    await variant.getByLabel('Kiekis / svoris').fill('6 vnt.');
     await variant.getByLabel('Kaina, €').fill('9,90');
     await page.getByRole('button', { name: 'Sukurti produktą' }).click();
     await expect(page).toHaveURL(/\/products\/[a-f0-9]{24}\?created=1/);
@@ -43,6 +43,32 @@ test.describe('Admin', () => {
     // Po perkrovimo nuotraukos lieka (išsaugotos API).
     await page.reload();
     await expect(page.locator('.product-images .image-tile img')).toHaveCount(2);
+  });
+
+  test('nuotraukas galima pasirinkti kuriant produktą: įkeliamos sukūrus', async ({ page }) => {
+    await loginAdmin(page);
+    await page.goto(`${env.adminUrl}/products/new`);
+    await expect(page.getByLabel(/Adresas|slug/)).toHaveCount(0);
+    await page.getByLabel('Pavadinimas').fill(`Citrinų tartaletė ${Date.now()}`);
+    await page.getByLabel('Kategorija').fill('tartaletės');
+    const variant = page.locator('.variant-row').first();
+    await variant.getByLabel('Kiekis / svoris').fill('1 vnt.');
+    await variant.getByLabel('Kaina, €').fill('4,50');
+
+    await page.locator('.product-form input[type=file]').setInputFiles([
+      { name: 'pirma.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('pirma') },
+      { name: 'antra.png', mimeType: 'image/png', buffer: Buffer.from('antra') },
+      { name: 'netinkamas.gif', mimeType: 'image/gif', buffer: Buffer.from('gif') },
+    ]);
+    await expect(page.locator('.product-form .image-tile')).toHaveCount(2);
+    await expect(page.getByText(/netinkamas\.gif: Netinkamas formatas/)).toBeVisible();
+
+    await page.getByRole('button', { name: 'Sukurti produktą' }).click();
+    await expect(page).toHaveURL(/\/products\/[a-f0-9]{24}\?created=1$/);
+    await expect(page.getByRole('status')).toHaveText('Produktas sukurtas.');
+    const images = page.locator('.product-images');
+    await expect(images.getByText('2 iš 8')).toBeVisible();
+    await expect(images.locator('.image-tile img')).toHaveCount(2);
   });
 
   test('lango skelbimas: be atsiėmimo informacijos atmetamas, su ja paskelbiamas', async ({

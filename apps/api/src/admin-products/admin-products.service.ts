@@ -3,6 +3,7 @@ import {
   objectIdSchema,
   type AdminProductDto,
   type ProductErrorCode,
+  slugify,
   type VariantInUseErrorBody,
 } from '@desert-web/shared';
 import {
@@ -27,7 +28,18 @@ function productError(
 }
 
 const slugTaken = () =>
-  productError(ConflictException, 'SLUG_TAKEN', 'Toks adresas (slug) jau naudojamas kito produkto');
+  productError(ConflictException, 'SLUG_TAKEN', 'Toks adresas jau naudojamas kito produkto');
+
+/** Sugeneruoto slug pagrindo ilgis: lieka vietos priesagai (-2, -3...) iki 120 simbolių. */
+const GENERATED_SLUG_BASE_MAX = 110;
+/** Kiek kartų bandoma iš naujo, jei lygiagretus kūrimas užėmė ką tik parinktą slug. */
+const GENERATED_SLUG_ATTEMPTS = 5;
+
+/** Slug pagrindas iš pavadinimo; jei pavadinime nėra raidžių ar skaičių, "produktas". */
+function slugBase(name: string): string {
+  const base = slugify(name).slice(0, GENERATED_SLUG_BASE_MAX).replace(/-+$/, '');
+  return base || 'produktas';
+}
 
 const productNotFound = () =>
   productError(NotFoundException, 'PRODUCT_NOT_FOUND', 'Produktas nerastas');
@@ -39,11 +51,14 @@ function isDuplicateSlugError(error: unknown): boolean {
   return e.code === 11000 && !!e.keyPattern && 'slug' in e.keyPattern;
 }
 
-/** Laukai, kuriuos keičia admino forma. `images` čia sąmoningai nėra. */
+/**
+ * Laukai, kuriuos keičia admino forma. `images` čia sąmoningai nėra. Be `slug` įvestyje
+ * esamas slug nekeičiamas (pasikeistų viešas adresas).
+ */
 function editableFields(input: AdminProductInput) {
   return {
     name: input.name,
-    slug: input.slug,
+    ...(input.slug ? { slug: input.slug } : {}),
     description: input.description,
     category: input.category,
     allergens: input.allergens,
@@ -78,22 +93,59 @@ export class AdminProductsService {
     return toAdminProductDto(product);
   }
 
+  /**
+   * Su `slug` įvestyje: užimtas slug grąžina 409 SLUG_TAKEN. Be jo slug sudaromas iš
+   * pavadinimo, o užimtas gauna priesagą („tortas“, „tortas-2“, „tortas-3“...).
+   */
   async create(input: AdminProductInput): Promise<AdminProductDto> {
     // Naujas produktas dar neturi variantų, todėl bet koks `id` yra svetimas.
     const withId = input.variants.filter((v) => v.id).map((v) => v.id!);
     if (withId.length > 0) throw this.unknownVariants(withId);
-    if (await this.productModel.exists({ slug: input.slug })) throw slugTaken();
 
-    try {
-      const created = await this.productModel.create({
-        ...editableFields(input),
-        variants: input.variants.map((v) => ({ name: v.name, priceCents: v.priceCents })),
-      });
-      return toAdminProductDto(created.toObject<Product>());
-    } catch (error) {
-      if (isDuplicateSlugError(error)) throw slugTaken();
-      throw error;
+    if (input.slug) {
+      if (await this.productModel.exists({ slug: input.slug })) throw slugTaken();
+      try {
+        return await this.insert(input, input.slug);
+      } catch (error) {
+        if (isDuplicateSlugError(error)) throw slugTaken();
+        throw error;
+      }
     }
+
+    const base = slugBase(input.name);
+    for (let attempt = 0; attempt < GENERATED_SLUG_ATTEMPTS; attempt += 1) {
+      try {
+        return await this.insert(input, await this.freeSlug(base));
+      } catch (error) {
+        // Lygiagretus kūrimas spėjo užimti tą patį slug: parenkam kitą.
+        if (!isDuplicateSlugError(error)) throw error;
+      }
+    }
+    throw slugTaken();
+  }
+
+  private async insert(input: AdminProductInput, slug: string): Promise<AdminProductDto> {
+    const created = await this.productModel.create({
+      ...editableFields(input),
+      slug,
+      variants: input.variants.map((v) => ({ name: v.name, priceCents: v.priceCents })),
+    });
+    return toAdminProductDto(created.toObject<Product>());
+  }
+
+  /** `base`, o jei užimtas, pirmas laisvas `base-N` (N nuo 2). */
+  private async freeSlug(base: string): Promise<string> {
+    // base sudarytas tik iš [a-z0-9-], todėl regex'e jo escapinti nereikia.
+    const pattern = new RegExp(`^${base}(?:-\\d+)?$`);
+    const docs = await this.productModel
+      .find({ slug: pattern }, { slug: 1 })
+      .lean<Pick<Product, 'slug'>[]>()
+      .exec();
+    const taken = new Set(docs.map((d) => d.slug));
+    if (!taken.has(base)) return base;
+    let n = 2;
+    while (taken.has(`${base}-${n}`)) n += 1;
+    return `${base}-${n}`;
   }
 
   /**
@@ -144,10 +196,12 @@ export class AdminProductsService {
     const existing = await this.productModel.findById(id).session(session).lean<Product>().exec();
     if (!existing) throw productNotFound();
 
-    const slugOwner = await this.productModel
-      .exists({ slug: input.slug, _id: { $ne: existing._id } })
-      .session(session);
-    if (slugOwner) throw slugTaken();
+    if (input.slug) {
+      const slugOwner = await this.productModel
+        .exists({ slug: input.slug, _id: { $ne: existing._id } })
+        .session(session);
+      if (slugOwner) throw slugTaken();
+    }
 
     const existingById = new Map(existing.variants.map((v) => [v._id.toString(), v]));
     const unknown = input.variants.filter((v) => v.id && !existingById.has(v.id)).map((v) => v.id!);

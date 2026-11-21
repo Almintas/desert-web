@@ -1,10 +1,27 @@
 'use client';
 
-import { centsToInput, parseEurToCents, slugify } from '@desert-web/shared';
+import {
+  centsToInput,
+  PRODUCT_IMAGE_ACCEPT,
+  PRODUCT_IMAGE_MAX_COUNT,
+  parseEurToCents,
+} from '@desert-web/shared';
 import Link from 'next/link';
-import { type FormEvent, startTransition, useActionState, useId, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  type ChangeEvent,
+  type FormEvent,
+  startTransition,
+  useActionState,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react';
 import { saveProductAction } from './actions';
 import { FIELD, type ProductFormInitial, type ProductFormState } from './form-state';
+import { attachImageAction, getUploadSignatureAction } from './image-actions';
+import { imageFileError, MAX_MB, UploadError, uploadToCloudinary } from './image-upload';
 
 interface VariantRow {
   /** React key (stabilus net pašalinus eilutę). */
@@ -13,6 +30,22 @@ interface VariantRow {
   id: string;
   name: string;
   price: string;
+}
+
+/** Naujam produktui pasirinkta, bet dar neįkelta nuotrauka. */
+interface PendingImage {
+  key: string;
+  file: File;
+  /** blob: URL peržiūrai (HEIC naršyklės dažnai neparodo, tada rodomas tik pavadinimas). */
+  previewUrl: string;
+}
+
+/** Nuotraukų įkėlimas sukūrus produktą. */
+interface UploadPhase {
+  /** Kelinta nuotrauka keliama (nuo 1). */
+  current: number;
+  total: number;
+  percent: number;
 }
 
 interface Props {
@@ -38,12 +71,10 @@ export function ProductForm({ productId, initial, categories }: Props) {
   const keySeq = useRef(0);
   const nextKey = () => `row-${keySeq.current++}`;
   const uid = useId();
+  const router = useRouter();
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(initial?.name ?? '');
-  const [slug, setSlug] = useState(initial?.slug ?? '');
-  // Kuriant slug sekamas pagal pavadinimą, kol jo neredaguoji ranka. Esamo produkto
-  // slug savaime nekeičiamas (pasikeistų viešas adresas).
-  const [slugEdited, setSlugEdited] = useState(Boolean(initial));
   const [category, setCategory] = useState(initial?.category ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [allergens, setAllergens] = useState(initial?.allergens.join(', ') ?? '');
@@ -60,22 +91,102 @@ export function ProductForm({ productId, initial, categories }: Props) {
   const [specialEnabled, setSpecialEnabled] = useState(initial?.specialOrder.enabled ?? false);
   const [minQuantity, setMinQuantity] = useState(String(initial?.specialOrder.minQuantity ?? 1));
   const [isActive, setIsActive] = useState(initial?.isActive ?? true);
+  const [images, setImages] = useState<PendingImage[]>([]);
+  const [imageErrors, setImageErrors] = useState<string[]>([]);
+  const [uploadPhase, setUploadPhase] = useState<UploadPhase | null>(null);
+  const uploadStarted = useRef<string | null>(null);
 
   const errors = state.fieldErrors ?? {};
   const removedExisting = (initial?.variants ?? []).filter(
     (v) => !variants.some((row) => row.id === v.id),
   );
+  const busy = pending || uploadPhase !== null || Boolean(state.createdId);
 
-  function onNameChange(value: string) {
-    setName(value);
-    if (!slugEdited) setSlug(slugify(value));
+  // blob: URL'ai atlaisvinami, kai komponentas dingsta (pašalinus nuotrauką, iškart).
+  const imagesRef = useRef(images);
+  imagesRef.current = images;
+  useEffect(
+    () => () => {
+      for (const img of imagesRef.current) URL.revokeObjectURL(img.previewUrl);
+    },
+    [],
+  );
+
+  function onImagesSelected(event: ChangeEvent<HTMLInputElement>) {
+    const files = [...(event.target.files ?? [])];
+    event.target.value = ''; // tą patį failą vėl galima pasirinkti
+    const errorsNow: string[] = [];
+    const added: PendingImage[] = [];
+    let slots = PRODUCT_IMAGE_MAX_COUNT - images.length;
+    for (const file of files) {
+      const fileError = imageFileError(file);
+      if (fileError) {
+        errorsNow.push(`${file.name}: ${fileError}`);
+      } else if (slots <= 0) {
+        errorsNow.push(`${file.name}: daugiausia ${PRODUCT_IMAGE_MAX_COUNT} nuotraukos produktui.`);
+      } else {
+        slots -= 1;
+        added.push({
+          key: nextKey(),
+          file,
+          previewUrl: URL.createObjectURL(file),
+        });
+      }
+    }
+    setImageErrors(errorsNow);
+    if (added.length > 0) setImages((list) => [...list, ...added]);
   }
 
-  function onSlugChange(value: string) {
-    setSlug(value);
-    // Ištrynus slug, vėl sekama pagal pavadinimą.
-    setSlugEdited(value.trim() !== '');
+  function removeImage(key: string) {
+    const img = images.find((i) => i.key === key);
+    if (img) URL.revokeObjectURL(img.previewUrl);
+    setImages((list) => list.filter((i) => i.key !== key));
   }
+
+  function moveImage(index: number, delta: -1 | 1) {
+    const target = index + delta;
+    if (target < 0 || target >= images.length) return;
+    setImages((list) => {
+      const next = [...list];
+      [next[index], next[target]] = [next[target]!, next[index]!];
+      return next;
+    });
+  }
+
+  // Produktas sukurtas: įkeliam pasirinktas nuotraukas po vieną ir einam į jo puslapį.
+  // Vieno failo klaida kitų nesustabdo; nepavykusias galima pridėti produkto puslapyje.
+  useEffect(() => {
+    const createdId = state.createdId;
+    if (!createdId || uploadStarted.current === createdId) return;
+    uploadStarted.current = createdId;
+    const queue = imagesRef.current.map((i) => i.file);
+
+    void (async () => {
+      let uploaded = 0;
+      try {
+        const signed = await getUploadSignatureAction();
+        if (signed.ok) {
+          for (const [i, file] of queue.entries()) {
+            setUploadPhase({ current: i + 1, total: queue.length, percent: 0 });
+            try {
+              const upload = await uploadToCloudinary(file, signed.signature, (percent) =>
+                setUploadPhase({ current: i + 1, total: queue.length, percent }),
+              );
+              const result = await attachImageAction(createdId, upload);
+              if (result.ok) uploaded += 1;
+            } catch (e) {
+              if (!(e instanceof UploadError)) throw e;
+            }
+          }
+        }
+      } catch {
+        // Ryšio su serveriu klaida: likusios nuotraukos lieka neįkeltos.
+      }
+      const failed = queue.length - uploaded;
+      const query = failed > 0 ? `created=1&imageErrors=${failed}` : 'created=1';
+      router.push(`/products/${encodeURIComponent(createdId)}?${query}`);
+    })();
+  }, [state.createdId, router]);
 
   function updateVariant(key: string, patch: Partial<VariantRow>) {
     setVariants((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
@@ -113,32 +224,13 @@ export function ProductForm({ productId, initial, categories }: Props) {
           <input
             name={FIELD.name}
             value={name}
-            onChange={(e) => onNameChange(e.target.value)}
+            onChange={(e) => setName(e.target.value)}
             maxLength={120}
             required
             aria-invalid={Boolean(errors.name)}
             aria-describedby={describedBy('name')}
           />
           <FieldError message={errors.name} id={describedBy('name')} />
-        </label>
-        <label>
-          Adresas (slug)
-          <input
-            name={FIELD.slug}
-            value={slug}
-            onChange={(e) => onSlugChange(e.target.value)}
-            maxLength={120}
-            required
-            spellCheck={false}
-            aria-invalid={Boolean(errors.slug)}
-            aria-describedby={describedBy('slug')}
-          />
-          <span className="hint">
-            {slugEdited
-              ? 'Tik mažosios raidės, skaičiai ir brūkšneliai.'
-              : 'Sudaromas automatiškai iš pavadinimo.'}
-          </span>
-          <FieldError message={errors.slug} id={describedBy('slug')} />
         </label>
         <div className="grid-2">
           <label>
@@ -189,6 +281,97 @@ export function ProductForm({ productId, initial, categories }: Props) {
         </label>
       </fieldset>
 
+      {productId === null ? (
+        <fieldset>
+          <legend>Nuotraukos</legend>
+          <input type="hidden" name={FIELD.withImages} value={images.length > 0 ? '1' : ''} />
+          {images.length === 0 ? (
+            <p className="hint">Nuotraukų dar nėra. Pirmoji nuotrauka bus pagrindinė.</p>
+          ) : (
+            <ol className="image-grid">
+              {images.map((img, index) => (
+                <li key={img.key} className="image-tile">
+                  <div className="image-frame">
+                    <img
+                      src={img.previewUrl}
+                      alt={`Nuotrauka ${index + 1}: ${img.file.name}`}
+                      width={160}
+                      height={160}
+                    />
+                    {index === 0 ? <span className="badge main-image">Pagrindinė</span> : null}
+                  </div>
+                  <span className="muted small image-name">{img.file.name}</span>
+                  <div className="image-actions">
+                    <button
+                      type="button"
+                      className="button secondary small"
+                      onClick={() => moveImage(index, -1)}
+                      disabled={busy || index === 0}
+                      aria-label={`Perkelti nuotrauką ${index + 1} anksčiau`}
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      className="button secondary small"
+                      onClick={() => moveImage(index, 1)}
+                      disabled={busy || index === images.length - 1}
+                      aria-label={`Perkelti nuotrauką ${index + 1} vėliau`}
+                    >
+                      →
+                    </button>
+                    <button
+                      type="button"
+                      className="button secondary danger small"
+                      onClick={() => removeImage(img.key)}
+                      disabled={busy}
+                      aria-label={`Pašalinti nuotrauką ${index + 1}`}
+                    >
+                      Pašalinti
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          )}
+          {imageErrors.length > 0 ? (
+            <ul className="field-error-list" role="alert">
+              {imageErrors.map((message) => (
+                <li key={message} className="field-error">
+                  {message}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <div className="upload-row">
+            <input
+              ref={imageInputRef}
+              type="file"
+              multiple
+              accept={PRODUCT_IMAGE_ACCEPT}
+              onChange={onImagesSelected}
+              disabled={busy || images.length >= PRODUCT_IMAGE_MAX_COUNT}
+              className="visually-hidden"
+              tabIndex={-1}
+              aria-hidden="true"
+            />
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={busy || images.length >= PRODUCT_IMAGE_MAX_COUNT}
+            >
+              Pridėti nuotraukų
+            </button>
+            <span className="hint">
+              {images.length < PRODUCT_IMAGE_MAX_COUNT
+                ? `JPG, PNG, WEBP arba HEIC, iki ${MAX_MB} MB. Įkeliamos sukūrus produktą.`
+                : `Pasiektas ${PRODUCT_IMAGE_MAX_COUNT} nuotraukų limitas.`}
+            </span>
+          </div>
+        </fieldset>
+      ) : null}
+
       <fieldset>
         <legend>Variantai ir kainos</legend>
         {variants.map((row, i) => {
@@ -202,12 +385,12 @@ export function ProductForm({ productId, initial, categories }: Props) {
             <div className="variant-row" key={row.key}>
               <input type="hidden" name={`variants.${i}.id`} value={row.id} />
               <label>
-                Pavadinimas
+                Kiekis / svoris
                 <input
                   name={`variants.${i}.name`}
                   value={row.name}
                   onChange={(e) => updateVariant(row.key, { name: e.target.value })}
-                  placeholder="pvz., 1 kg"
+                  placeholder="pvz., 6 vnt. arba 1 kg"
                   maxLength={100}
                   required
                   aria-invalid={Boolean(errors[`variants.${i}.name`])}
@@ -301,8 +484,14 @@ export function ProductForm({ productId, initial, categories }: Props) {
       </fieldset>
 
       <div className="form-actions">
-        <button type="submit" className="button" disabled={pending}>
-          {pending ? 'Saugoma…' : productId ? 'Išsaugoti' : 'Sukurti produktą'}
+        <button type="submit" className="button" disabled={busy}>
+          {uploadPhase
+            ? `Įkeliama nuotrauka ${uploadPhase.current} iš ${uploadPhase.total}… ${uploadPhase.percent}%`
+            : busy
+              ? 'Saugoma…'
+              : productId
+                ? 'Išsaugoti'
+                : 'Sukurti produktą'}
         </button>
         <Link href="/products" className="button secondary">
           Atšaukti

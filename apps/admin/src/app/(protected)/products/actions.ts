@@ -69,8 +69,8 @@ function readProductForm(formData: FormData): {
 
   return {
     input: {
+      // Slug formoje nerodomas: kuriant API jį sudaro iš pavadinimo, redaguojant palieka esamą.
       name: text(formData, FIELD.name),
-      slug: text(formData, FIELD.slug),
       category: text(formData, FIELD.category),
       description: text(formData, FIELD.description),
       allergens: text(formData, FIELD.allergens)
@@ -88,7 +88,7 @@ function readProductForm(formData: FormData): {
 function apiErrorState(error: ApiError): ProductFormState {
   switch (error.code) {
     case 'SLUG_TAKEN':
-      return { error: 'Patikrink pažymėtus laukus.', fieldErrors: { slug: error.message } };
+      return { error: error.message };
     case 'VARIANT_IN_USE': {
       const body = error.body as VariantInUseErrorBody;
       return { error: error.message, saleWindows: body.saleWindows ?? [] };
@@ -110,7 +110,8 @@ function apiErrorState(error: ApiError): ProductFormState {
 
 /**
  * Sukuria (productId = null) arba atnaujina produktą. Po atnaujinimo nukreipia į /products,
- * o sukūrus naują produktą į jo redagavimo puslapį (nuotraukoms pridėti).
+ * o sukūrus naują produktą į jo redagavimo puslapį. Jei kuriant pasirinkta nuotraukų
+ * (FIELD.withImages), grąžinamas `createdId`: nuotraukas įkelia naršyklė ir tada nukreipia.
  */
 export async function saveProductAction(
   productId: string | null,
@@ -148,6 +149,8 @@ export async function saveProductAction(
     }
     return { error: 'Nepavyko susisiekti su serveriu. Bandyk vėliau.' };
   }
+
+  if (!productId && formData.get(FIELD.withImages) === '1') return { createdId: saved.id };
 
   // Naujas produktas: į redagavimo puslapį, kad iškart būtų galima pridėti nuotraukų.
   redirect(productId ? '/products?saved=updated' : `/products/${saved.id}?created=1`);

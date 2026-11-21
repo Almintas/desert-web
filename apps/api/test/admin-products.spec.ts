@@ -183,6 +183,48 @@ describe('Admin produktai (/admin/products)', () => {
       }
     });
 
+    describe('be slug: sudaromas iš pavadinimo', () => {
+      const withoutSlug = (overrides: Partial<AdminProductInput> = {}) => {
+        const { slug: _slug, ...body } = productBody(overrides);
+        return body;
+      };
+
+      it('lietuviškas pavadinimas -> slug, užimtas gauna priesagą -2, -3', async () => {
+        const slugs: string[] = [];
+        for (let i = 0; i < 3; i += 1) {
+          const res = await create(withoutSlug({ name: 'Šokoladinis tortas (1 kg)' }));
+          expect(res.status).toBe(201);
+          slugs.push(res.body.slug as string);
+        }
+        expect(slugs).toEqual([
+          'sokoladinis-tortas-1-kg',
+          'sokoladinis-tortas-1-kg-2',
+          'sokoladinis-tortas-1-kg-3',
+        ]);
+      });
+
+      it('užimtas tik kito produkto slug su panašia pradžia: priesagos nereikia', async () => {
+        await createOk({ name: 'Tortas su vyšniomis', slug: 'tortas-su-visniomis' });
+        const res = await create(withoutSlug({ name: 'Tortas' }));
+        expect(res.status).toBe(201);
+        expect(res.body.slug).toBe('tortas');
+      });
+
+      it('pavadinimas be raidžių ir skaičių: "produktas"', async () => {
+        const res = await create(withoutSlug({ name: '★ ★ ★' }));
+        expect(res.status).toBe(201);
+        expect(res.body.slug).toBe('produktas');
+      });
+
+      it('lygiagretūs kūrimai su tuo pačiu pavadinimu: visi 201, slug skirtingi', async () => {
+        const results = await Promise.all(
+          Array.from({ length: 4 }, () => create(withoutSlug({ name: 'Medaus tortas' }))),
+        );
+        expect(results.map((r) => r.status)).toEqual([201, 201, 201, 201]);
+        expect(new Set(results.map((r) => r.body.slug)).size).toBe(4);
+      });
+    });
+
     it('variantas su id kuriant: 400 VARIANT_NOT_FOUND', async () => {
       const id = new Types.ObjectId().toString();
       const res = await create(productBody({ variants: [{ id, name: '1 kg', priceCents: 100 }] }));
@@ -304,6 +346,15 @@ describe('Admin produktai (/admin/products)', () => {
 
       const same = await update(first.id, bodyFrom(first, { name: 'Tas pats slug' }));
       expect(same.status).toBe(200);
+    });
+
+    it('be slug: esamas slug nekeičiamas, net pakeitus pavadinimą', async () => {
+      const product = await createOk();
+      const { slug: _slug, ...body } = bodyFrom(product, { name: 'Visai kitas pavadinimas' });
+      const res = await update(product.id, body);
+      expect(res.status).toBe(200);
+      expect(res.body.name).toBe('Visai kitas pavadinimas');
+      expect(res.body.slug).toBe(product.slug);
     });
 
     it('nežinomas produktas: 404', async () => {

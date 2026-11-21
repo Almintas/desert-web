@@ -16,11 +16,12 @@ export default async function EditProductPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ created?: string }>;
+  searchParams: Promise<{ created?: string; imageErrors?: string }>;
 }) {
   await requireAdmin();
   const token = await getSessionToken();
-  const [{ id }, { created }] = await Promise.all([params, searchParams]);
+  const [{ id }, { created, imageErrors }] = await Promise.all([params, searchParams]);
+  const failedImages = Number(imageErrors) || 0;
 
   const [product, products] = await Promise.all([
     apiFetch<AdminProductDto>(`/admin/products/${encodeURIComponent(id)}`, { token }).catch(
@@ -41,9 +42,16 @@ export default async function EditProductPage({
         <h1>{product.name}</h1>
         {product.isActive ? null : <span className="badge archived">Archyvuotas</span>}
       </div>
-      {created ? (
+      {created && failedImages > 0 ? (
+        <p className="alert error" role="alert">
+          Produktas sukurtas, bet {failedImages} {failedImages === 1 ? 'nuotraukos' : 'nuotraukų'}{' '}
+          įkelti nepavyko. Pabandyk pridėti dar kartą.
+        </p>
+      ) : created ? (
         <p className="alert success" role="status">
-          Produktas sukurtas. Dabar pridėk nuotraukų: pirmoji bus pagrindinė.
+          {product.images.length > 0
+            ? 'Produktas sukurtas.'
+            : 'Produktas sukurtas. Dabar pridėk nuotraukų: pirmoji bus pagrindinė.'}
         </p>
       ) : null}
       <ProductImages

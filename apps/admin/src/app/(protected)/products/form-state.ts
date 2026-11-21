@@ -5,10 +5,12 @@ export interface ProductFormState {
   /** Bendra klaida formos viršuje. */
   error?: string;
   /**
-   * Laukų klaidos pagal kelią, kaip API `issues` (pvz., "slug", "variants.0.priceCents").
+   * Laukų klaidos pagal kelią, kaip API `issues` (pvz., "name", "variants.0.priceCents").
    * Kiekvienam keliui pirmas pranešimas.
    */
   fieldErrors?: Record<string, string>;
+  /** Sukurto produkto ID, kai naršyklė dar turi įkelti pasirinktas nuotraukas. */
+  createdId?: string;
   /** VARIANT_IN_USE: langai, kuriuose naudojami šalinami variantai. */
   saleWindows?: { id: string; title: string }[];
 }
@@ -16,23 +18,17 @@ export interface ProductFormState {
 /** Formos laukų pavadinimai (FormData raktai). Variantai: variants.<i>.id|name|price. */
 export const FIELD = {
   name: 'name',
-  slug: 'slug',
   category: 'category',
   description: 'description',
   allergens: 'allergens',
   specialOrderEnabled: 'specialOrder.enabled',
   specialOrderMinQuantity: 'specialOrder.minQuantity',
   isActive: 'isActive',
+  /** "1", jei kuriant pasirinkta nuotraukų (žr. saveProductAction). */
+  withImages: 'withImages',
 } as const;
 
 export type ProductFormInitial = Pick<
   AdminProductDto,
-  | 'name'
-  | 'slug'
-  | 'category'
-  | 'description'
-  | 'allergens'
-  | 'variants'
-  | 'specialOrder'
-  | 'isActive'
+  'name' | 'category' | 'description' | 'allergens' | 'variants' | 'specialOrder' | 'isActive'
 >;

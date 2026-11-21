@@ -9,18 +9,23 @@ const priceCentsSchema = z
   .nonnegative('Kaina negali būti neigiama');
 
 export const productVariantInputSchema = z.object({
-  name: z.string().trim().min(1, 'Įvesk varianto pavadinimą').max(100, 'Per ilgas pavadinimas'),
+  name: z.string().trim().min(1, 'Įvesk kiekį arba svorį').max(100, 'Per ilgas tekstas'),
   priceCents: priceCentsSchema,
 });
 
 export const productInputSchema = z.object({
   name: z.string().trim().min(1, 'Įvesk pavadinimą').max(120, 'Per ilgas pavadinimas'),
+  /**
+   * Viešas produkto adresas (/products/<slug>). Neprivalomas: kuriant be jo API sudaro
+   * unikalų iš pavadinimo, o atnaujinant be jo paliekamas esamas.
+   */
   slug: z
     .string()
     .trim()
-    .min(1, 'Įvesk adresą (slug)')
+    .min(1, 'Įvesk adresą')
     .max(120, 'Per ilgas adresas')
-    .regex(SLUG_PATTERN, 'Tik mažosios raidės, skaičiai ir brūkšneliai'),
+    .regex(SLUG_PATTERN, 'Tik mažosios raidės, skaičiai ir brūkšneliai')
+    .optional(),
   description: z.string().trim().max(5000, 'Per ilgas aprašymas').default(''),
   category: z.string().trim().min(1, 'Įvesk kategoriją').max(60, 'Per ilga kategorija'),
   allergens: z

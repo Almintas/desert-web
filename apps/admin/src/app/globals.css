@@ -904,6 +904,21 @@ details.group > summary {
   grid-column: 1 / -1;
 }
 
+.image-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.field-error-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .image-tile .confirm {
   padding: 0.5rem 0.6rem;
   font-size: 0.85rem;
