@@ -1,5 +1,15 @@
 import { utcToVilniusLocal } from '@desert-web/shared';
-import { createProduct, env, expect, loginAdmin, resetWindows, test } from './support';
+import {
+  createProduct,
+  env,
+  expect,
+  getWindow,
+  loginAdmin,
+  openWindow,
+  placeOrder,
+  resetWindows,
+  test,
+} from './support';
 
 test.describe('Admin', () => {
   test('prisijungimas: neteisingas slaptažodis rodo klaidą, teisingas įleidžia', async ({
@@ -113,6 +123,47 @@ test.describe('Admin', () => {
     await page.getByRole('button', { name: 'Taip, paskelbti' }).click();
     await expect(page).toHaveURL(/done=publish/);
     await expect(page.locator('.badge.phase-upcoming').first()).toHaveText('Paskelbtas');
+    await resetWindows();
+  });
+
+  test('vykstančio lango redagavimas: pridedama prekė, jau esama nepasirenkama', async ({
+    page,
+  }) => {
+    const macarons = await createProduct(`Macarons ${Date.now()}`, [
+      { name: '12 vnt.', priceCents: 3000 },
+    ]);
+    const pie = await createProduct(`Moliūgų pyragas ${Date.now()}`, [
+      { name: '3 vnt.', priceCents: 4000 },
+      { name: '6 vnt.', priceCents: 7000 },
+    ]);
+    const w = await openWindow([{ product: macarons, quantity: 4 }]);
+    await placeOrder(w, [{ variantId: macarons.variants[0]!.id, quantity: 1 }]);
+
+    await loginAdmin(page);
+    await page.goto(`${env.adminUrl}/sale-windows/${w.id}/edit`);
+    await page.getByRole('button', { name: /Pridėti prekę/ }).click();
+    const product = page.getByRole('combobox', { name: 'Produktas', exact: true });
+    const variant = page.getByRole('combobox', { name: 'Variantas', exact: true });
+
+    // Produktas, kurio visi variantai jau lange, nepasirenkamas.
+    await expect(
+      product.getByRole('option', { name: `${macarons.name} (jau lange)` }),
+    ).toBeDisabled();
+
+    // Nepasirinkus varianto rodoma klaida; pasirinkus ji dingsta dar prieš išsaugant.
+    await product.selectOption({ label: pie.name });
+    await page.getByLabel('Kaina').nth(1).fill('40,00');
+    await page.getByLabel('Kiekis', { exact: true }).nth(1).fill('5');
+    await page.getByRole('button', { name: 'Išsaugoti' }).click();
+    const rowError = page.locator('.item-cell .field-error');
+    await expect(rowError).toHaveText('Pasirink produktą ir variantą');
+    await variant.selectOption({ label: '3 vnt.' });
+    await expect(rowError).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Išsaugoti' }).click();
+    await expect(page).toHaveURL(/done=saved/);
+    const saved = await getWindow(w.id);
+    expect(saved.items.map((i) => i.variantName)).toEqual(['12 vnt.', '3 vnt.']);
     await resetWindows();
   });
 });

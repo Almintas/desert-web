@@ -92,25 +92,42 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
       : [emptyRow()],
   );
 
-  const errors = state.fieldErrors ?? {};
+  // Serverio klaidos galioja iki kito išsaugojimo, bet pakeistos eilutės klaida paslepiama
+  // (kitaip, pvz., „Ši prekė lange jau yra“ liktų ir pasirinkus kitą produktą).
+  const [errorsState, setErrorsState] = useState(state);
+  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
+  if (errorsState !== state) {
+    setErrorsState(state);
+    setDismissed(new Set());
+  }
+  const errors = Object.fromEntries(
+    Object.entries(state.fieldErrors ?? {}).filter(([k]) => !dismissed.has(k)),
+  );
+  const dismiss = (...keys: string[]) => setDismissed((prev) => new Set([...prev, ...keys]));
+
   const usedVariants = new Set(items.map((i) => i.variantId).filter(Boolean));
+  /** Varianto jau yra kitoje eilutėje. */
+  const usedElsewhere = (row: ItemRow, variantId: string) =>
+    variantId !== row.variantId && usedVariants.has(variantId);
 
   function updateItem(key: string, patch: Partial<ItemRow>) {
     setItems((rows) => rows.map((r) => (r.key === key ? { ...r, ...patch } : r)));
   }
 
-  function selectProduct(row: ItemRow, productId: string) {
+  function selectProduct(row: ItemRow, index: number, productId: string) {
     const product = activeProducts.find((p) => p.id === productId);
-    // Vienas variantas: pasirenkamas iškart.
-    const only = product?.variants.length === 1 ? product.variants[0] : undefined;
+    // Vienintelis dar nepanaudotas variantas pasirenkamas iškart.
+    const free = product?.variants.filter((v) => !usedElsewhere(row, v.id)) ?? [];
+    const only = free.length === 1 ? free[0] : undefined;
     updateItem(row.key, {
       productId,
       variantId: only?.id ?? '',
       price: only ? centsToInput(only.priceCents) : row.price,
     });
+    dismiss(`items.${index}.variantId`, `items.${index}.priceCents`);
   }
 
-  function selectVariant(row: ItemRow, variantId: string) {
+  function selectVariant(row: ItemRow, index: number, variantId: string) {
     const variant = activeProducts
       .find((p) => p.id === row.productId)
       ?.variants.find((v) => v.id === variantId);
@@ -119,6 +136,13 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
       variantId,
       price: variant ? centsToInput(variant.priceCents) : row.price,
     });
+    dismiss(`items.${index}.variantId`, `items.${index}.priceCents`);
+  }
+
+  function removeItem(key: string) {
+    setItems((rows) => rows.filter((r) => r.key !== key));
+    // Eilučių klaidos surištos su indeksu, kuris po išėmimo pasislenka.
+    dismiss(...Object.keys(state.fieldErrors ?? {}).filter((k) => k.startsWith('items.')));
   }
 
   // Valdomi laukai + rankinis dispatch: React neišvalo formos, todėl po klaidos įvestis lieka.
@@ -288,32 +312,33 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
                           <select
                             name={`${prefix}.productId`}
                             value={row.productId}
-                            onChange={(e) => selectProduct(row, e.target.value)}
+                            onChange={(e) => selectProduct(row, i, e.target.value)}
                             aria-label="Produktas"
                           >
                             <option value="">Pasirink produktą…</option>
-                            {activeProducts.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name}
-                              </option>
-                            ))}
+                            {activeProducts.map((p) => {
+                              const full =
+                                p.id !== row.productId &&
+                                p.variants.every((v) => usedElsewhere(row, v.id));
+                              return (
+                                <option key={p.id} value={p.id} disabled={full}>
+                                  {full ? `${p.name} (jau lange)` : p.name}
+                                </option>
+                              );
+                            })}
                           </select>
                           <select
                             name={`${prefix}.variantId`}
                             value={row.variantId}
-                            onChange={(e) => selectVariant(row, e.target.value)}
+                            onChange={(e) => selectVariant(row, i, e.target.value)}
                             disabled={!product}
                             aria-label="Variantas"
                             aria-invalid={Boolean(errors[`${prefix}.variantId`])}
                           >
                             <option value="">Variantas…</option>
                             {product?.variants.map((v) => (
-                              <option
-                                key={v.id}
-                                value={v.id}
-                                disabled={v.id !== row.variantId && usedVariants.has(v.id)}
-                              >
-                                {v.name}
+                              <option key={v.id} value={v.id} disabled={usedElsewhere(row, v.id)}>
+                                {usedElsewhere(row, v.id) ? `${v.name} (jau lange)` : v.name}
                               </option>
                             ))}
                           </select>
@@ -382,7 +407,7 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
                       <button
                         type="button"
                         className="button secondary small"
-                        onClick={() => setItems((rows) => rows.filter((r) => r.key !== row.key))}
+                        onClick={() => removeItem(row.key)}
                         disabled={row.ordersCount > 0 || items.length === 1}
                         title={
                           row.ordersCount > 0
