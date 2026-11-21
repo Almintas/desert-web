@@ -10,7 +10,8 @@
     "seed": "node --env-file=.env dist/scripts/seed.js",
     "test": "jest --runInBand",
     "db:indexes": "node --env-file-if-exists=.env dist/scripts/sync-indexes.js",
-    "admin:create": "node --env-file-if-exists=.env dist/scripts/create-admin.js"
+    "admin:create": "node --env-file-if-exists=.env dist/scripts/create-admin.js",
+    "products:add": "node --env-file-if-exists=.env dist/scripts/add-products.js"
   },
   "dependencies": {
     "@desert-web/shared": "workspace:*",

@@ -55,6 +55,15 @@ ADMIN_PASSWORD='...' pnpm --filter @desert-web/api admin:create --email tu@examp
 pnpm --filter @desert-web/api admin:create --email tu@example.com --reset-password
 ```
 
+### Papildomi desertai į esamą DB
+
+`products:add` prideda 5 desertus iš `apps/api/src/scripts/extra-products.ts`. Nieko netrina; jau esami (pagal slug) praleidžiami, todėl galima ir produkcijoje:
+
+```bash
+pnpm turbo run build --filter=@desert-web/api
+pnpm --filter @desert-web/api products:add
+```
+
 | Aplikacija | Adresas                                                                 |
 | ---------- | ----------------------------------------------------------------------- |
 | web        | http://localhost:3000                                                   |

@@ -7,6 +7,7 @@
 import mongoose from 'mongoose';
 import { Product, ProductSchema } from '../products/product.schema';
 import { SaleWindow, SaleWindowSchema } from '../sale-windows/sale-window.schema';
+import { EXTRA_PRODUCTS } from './extra-products';
 
 async function main() {
   const uri = process.env.MONGODB_URI;
@@ -43,63 +44,7 @@ async function main() {
       variants: [{ name: '1 vnt.', priceCents: 450 }],
       specialOrder: { enabled: true, minQuantity: 20 },
     },
-    {
-      name: 'Medaus tortas',
-      slug: 'medaus-tortas',
-      description: 'Ploni medaus biskvito sluoksniai su grietinės kremu.',
-      category: 'cakes',
-      allergens: ['gluten', 'eggs', 'milk'],
-      variants: [
-        { name: '1 kg', priceCents: 2800 },
-        { name: '2 kg', priceCents: 5200 },
-      ],
-      specialOrder: { enabled: true, minQuantity: 3 },
-    },
-    {
-      name: 'Šokoladinis brownie',
-      slug: 'sokoladinis-brownie',
-      description: 'Drėgnas juodojo šokolado pyragas su graikiniais riešutais.',
-      category: 'brownies',
-      allergens: ['gluten', 'eggs', 'milk', 'nuts'],
-      variants: [
-        { name: '1 vnt.', priceCents: 350 },
-        { name: '4 vnt.', priceCents: 1300 },
-      ],
-      specialOrder: { enabled: true, minQuantity: 24 },
-    },
-    {
-      name: 'Braškių sūrio pyragas',
-      slug: 'braskiu-surio-pyragas',
-      description: 'Kreminis sūrio pyragas ant sausainių pagrindo su braškių padažu.',
-      category: 'cheesecakes',
-      allergens: ['gluten', 'eggs', 'milk'],
-      variants: [
-        { name: '1 gabalėlis', priceCents: 550 },
-        { name: 'Visas (8 gab.)', priceCents: 3600 },
-      ],
-      specialOrder: { enabled: false, minQuantity: 1 },
-    },
-    {
-      name: 'Tiramisu indelis',
-      slug: 'tiramisu-indelis',
-      description: 'Savoiardi sausainiai, espresso ir maskarponės kremas.',
-      category: 'jar-desserts',
-      allergens: ['gluten', 'eggs', 'milk'],
-      variants: [{ name: '200 ml', priceCents: 600 }],
-      specialOrder: { enabled: true, minQuantity: 15 },
-    },
-    {
-      name: 'Cinamono bandelės',
-      slug: 'cinamono-bandeles',
-      description: 'Minkštos mielinės bandelės su cinamonu ir sūrio kremo glajumi.',
-      category: 'pastries',
-      allergens: ['gluten', 'eggs', 'milk'],
-      variants: [
-        { name: '4 vnt.', priceCents: 1000 },
-        { name: '9 vnt.', priceCents: 2000 },
-      ],
-      specialOrder: { enabled: true, minQuantity: 5 },
-    },
+    ...EXTRA_PRODUCTS,
   ]);
 
   if (!macarons || !tart) throw new Error('Failed to create products');
@@ -176,7 +121,9 @@ async function main() {
     },
   ]);
 
-  console.log('Seed done: 7 products, 2 sale windows (one open, one upcoming).');
+  console.log(
+    `Seed done: ${2 + EXTRA_PRODUCTS.length} products, 2 sale windows (one open, one upcoming).`,
+  );
   await mongoose.disconnect();
 }
 
