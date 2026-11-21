@@ -13,6 +13,34 @@ const booleanString = z
   .optional()
   .transform((v) => (v === undefined || v === '' ? undefined : v === 'true' || v === '1'));
 
+export const DEFAULT_FROM_EMAIL = 'Desert Web <onboarding@resend.dev>';
+
+const SIMPLE_EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
+
+/** „Desert Web <info@desertai.lt>“ arba „info@desertai.lt“ -> „info@desertai.lt“; kitaip null. */
+export function emailAddressOf(from: string): string | null {
+  const match = /^[^<>]*<([^<>]+)>$/.exec(from.trim());
+  const address = (match ? match[1]! : from).trim();
+  return SIMPLE_EMAIL.test(address) ? address : null;
+}
+
+/** Resend testinis siuntėjas: laiškus pristato tik Resend paskyros savininko adresu. */
+export const isResendTestSender = (from: string): boolean =>
+  (emailAddressOf(from) ?? '').toLowerCase().endsWith('@resend.dev');
+
+const absoluteUrl = (name: string) =>
+  optionalString
+    .refine((v) => {
+      if (v === undefined) return true;
+      try {
+        const url = new URL(v);
+        return url.protocol === 'https:' || url.protocol === 'http:';
+      } catch {
+        return false;
+      }
+    }, `${name} must be an absolute http(s) URL, e.g. https://desertai.lt`)
+    .transform((v) => v?.replace(/\/+$/, ''));
+
 const CLOUDINARY_FOLDER_PATTERN = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/;
 const CLOUDINARY_REQUIRED = [
   'CLOUDINARY_CLOUD_NAME',
@@ -80,8 +108,31 @@ export const envSchema = z
       (v) => v === undefined || v.length >= 32,
       'INTERNAL_API_SECRET must be at least 32 characters',
     ),
+    /**
+     * Užsakymų laiškai (Resend). Be rakto laiškai nesiunčiami: vystant jie išvedami į logą,
+     * produkcijoje paleidžiant vienas įspėjimas.
+     */
     RESEND_API_KEY: optionalString,
-    RESEND_FROM_EMAIL: optionalString,
+    /** „Vardas <adresas>“ arba „adresas“. resend.dev pristato tik Resend paskyros savininkui. */
+    RESEND_FROM_EMAIL: optionalString
+      .refine(
+        (v) => v === undefined || emailAddressOf(v) !== null,
+        'RESEND_FROM_EMAIL must be an email address or "Name <address>"',
+      )
+      .transform((v) => v ?? DEFAULT_FROM_EMAIL),
+    /** Pardavėjo adresas pranešimams apie naujus užsakymus. Be jo šie laiškai nesiunčiami. */
+    ORDER_NOTIFY_EMAIL: optionalString.refine(
+      (v) => v === undefined || z.email().safeParse(v).success,
+      'ORDER_NOTIFY_EMAIL must be an email address',
+    ),
+    /**
+     * Laiškai pirkėjams. Numatyta false: kol nėra patvirtinto domeno, resend.dev siuntėjas
+     * kitiems gavėjams grąžina 403. Produkcijoje true su resend.dev siuntėju neleidžiama.
+     */
+    CUSTOMER_EMAILS_ENABLED: booleanString.transform((v) => v ?? false),
+    /** Absoliutūs adresai nuorodoms laiškuose (be pabaigos „/“). Produkcijoje tik https. */
+    WEB_URL: absoluteUrl('WEB_URL'),
+    ADMIN_URL: absoluteUrl('ADMIN_URL'),
     /**
      * Produktų nuotraukos (Cloudinary). Produkcijoje privalomi visi trys (žr. superRefine);
      * vystant ir testuose be jų nuotraukų maršrutai grąžina 503 IMAGES_NOT_CONFIGURED.
@@ -131,6 +182,46 @@ export const envSchema = z
         }
       }
     }
+    if (env.NODE_ENV === 'production') {
+      if (env.CUSTOMER_EMAILS_ENABLED && isResendTestSender(env.RESEND_FROM_EMAIL)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['CUSTOMER_EMAILS_ENABLED'],
+          message:
+            `CUSTOMER_EMAILS_ENABLED=true needs a verified sender domain, but RESEND_FROM_EMAIL is ` +
+            `"${env.RESEND_FROM_EMAIL}". Resend delivers @resend.dev mail only to the Resend account ` +
+            `owner (other recipients get 403). Verify a domain in Resend, set RESEND_FROM_EMAIL to an ` +
+            `address on it, or set CUSTOMER_EMAILS_ENABLED=false.`,
+        });
+      }
+      // Nuorodos laiškuose: privalomos tik tada, kai laiškai, kuriuose jos yra, įjungti.
+      const emailsOn = env.RESEND_API_KEY !== undefined;
+      const urls = [
+        ['WEB_URL', env.WEB_URL, emailsOn && env.CUSTOMER_EMAILS_ENABLED, 'customer emails'],
+        [
+          'ADMIN_URL',
+          env.ADMIN_URL,
+          emailsOn && env.ORDER_NOTIFY_EMAIL !== undefined,
+          'seller emails',
+        ],
+      ] as const;
+      for (const [key, value, required, usedBy] of urls) {
+        if (value === undefined && required) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [key],
+            message: `${key} is required in production when ${usedBy} are enabled (link in the email).`,
+          });
+        }
+        if (value !== undefined && !value.startsWith('https://')) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [key],
+            message: `${key} must be an https:// URL in production.`,
+          });
+        }
+      }
+    }
   })
   .transform((env) => ({
     ...env,
@@ -138,6 +229,10 @@ export const envSchema = z
     CLOUDINARY_FOLDER: env.CLOUDINARY_FOLDER ?? `desert-web/${env.NODE_ENV}/products`,
     TRUST_X_REAL_IP: env.TRUST_X_REAL_IP ?? env.NODE_ENV === 'production',
     TURNSTILE_SECRET_KEY: env.TURNSTILE_SECRET_KEY ?? TURNSTILE_TEST_KEYS.secretPass,
+    // Vystant ir testuose nuorodos veda į vietines aplikacijas (žr. README).
+    WEB_URL: env.WEB_URL ?? (env.NODE_ENV === 'production' ? undefined : 'http://localhost:3000'),
+    ADMIN_URL:
+      env.ADMIN_URL ?? (env.NODE_ENV === 'production' ? undefined : 'http://localhost:3001'),
   }));
 
 export type Env = z.infer<typeof envSchema>;

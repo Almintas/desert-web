@@ -197,3 +197,112 @@ describe('validateEnv: MONGODB_DB_NAME', () => {
     expect(() => validateEnv({ ...base, MONGODB_DB_NAME: 'su tarpu' })).toThrow(/MONGODB_DB_NAME/);
   });
 });
+
+describe('validateEnv: laiškai (Resend)', () => {
+  const production = {
+    ...base,
+    ...CLOUDINARY,
+    ...TURNSTILE,
+    NODE_ENV: 'production',
+    INTERNAL_API_SECRET: SECRET,
+  };
+  const emails = {
+    RESEND_API_KEY: 're_123',
+    ORDER_NOTIFY_EMAIL: 'pardavejas@example.com',
+    WEB_URL: 'https://desertai.lt',
+    ADMIN_URL: 'https://admin.desertai.lt',
+  };
+
+  it('numatyta: be rakto, resend.dev siuntėjas, laiškai pirkėjams išjungti, vietiniai URL', () => {
+    const env = validateEnv(base);
+    expect(env.RESEND_API_KEY).toBeUndefined();
+    expect(env.RESEND_FROM_EMAIL).toBe('Desert Web <onboarding@resend.dev>');
+    expect(env.ORDER_NOTIFY_EMAIL).toBeUndefined();
+    expect(env.CUSTOMER_EMAILS_ENABLED).toBe(false);
+    expect(env.WEB_URL).toBe('http://localhost:3000');
+    expect(env.ADMIN_URL).toBe('http://localhost:3001');
+  });
+
+  it('produkcijoje be jokių laiškų kintamųjų: paleidžiama (laiškai tiesiog nesiunčiami)', () => {
+    const env = validateEnv(production);
+    expect(env.RESEND_API_KEY).toBeUndefined();
+    expect(env.WEB_URL).toBeUndefined();
+    expect(env.ADMIN_URL).toBeUndefined();
+  });
+
+  it('produkcijoje CUSTOMER_EMAILS_ENABLED=true su resend.dev siuntėju: nepasileidžia', () => {
+    for (const from of [undefined, 'onboarding@resend.dev', 'Shop <Onboarding@Resend.dev>']) {
+      expect(() =>
+        validateEnv({
+          ...production,
+          ...emails,
+          CUSTOMER_EMAILS_ENABLED: 'true',
+          RESEND_FROM_EMAIL: from,
+        }),
+      ).toThrow(
+        /CUSTOMER_EMAILS_ENABLED: CUSTOMER_EMAILS_ENABLED=true needs a verified sender domain/,
+      );
+    }
+  });
+
+  it('produkcijoje CUSTOMER_EMAILS_ENABLED=true su patvirtintu domenu: paleidžiama', () => {
+    const env = validateEnv({
+      ...production,
+      ...emails,
+      CUSTOMER_EMAILS_ENABLED: 'true',
+      RESEND_FROM_EMAIL: 'Desert Web <uzsakymai@desertai.lt>',
+    });
+    expect(env.CUSTOMER_EMAILS_ENABLED).toBe(true);
+  });
+
+  it('vystant resend.dev su CUSTOMER_EMAILS_ENABLED=true leidžiama', () => {
+    expect(validateEnv({ ...base, CUSTOMER_EMAILS_ENABLED: 'true' }).CUSTOMER_EMAILS_ENABLED).toBe(
+      true,
+    );
+  });
+
+  it('produkcijoje ADMIN_URL privalomas, kai įjungti laiškai pardavėjui', () => {
+    expect(() => validateEnv({ ...production, ...emails, ADMIN_URL: '' })).toThrow(
+      /ADMIN_URL: ADMIN_URL is required in production when seller emails are enabled/,
+    );
+    // Be ORDER_NOTIFY_EMAIL laiškų pardavėjui nėra, todėl ir ADMIN_URL nereikia.
+    expect(() =>
+      validateEnv({ ...production, ...emails, ADMIN_URL: '', ORDER_NOTIFY_EMAIL: '' }),
+    ).not.toThrow();
+  });
+
+  it('produkcijoje WEB_URL privalomas, kai įjungti laiškai pirkėjams', () => {
+    const raw = {
+      ...production,
+      ...emails,
+      RESEND_FROM_EMAIL: 'uzsakymai@desertai.lt',
+      WEB_URL: '',
+    };
+    expect(() => validateEnv({ ...raw, CUSTOMER_EMAILS_ENABLED: 'true' })).toThrow(
+      /WEB_URL: WEB_URL is required in production when customer emails are enabled/,
+    );
+    expect(() => validateEnv(raw)).not.toThrow();
+  });
+
+  it('URL: absoliutūs, produkcijoje tik https, pabaigos „/“ nukerpamas', () => {
+    expect(validateEnv({ ...base, WEB_URL: 'https://desertai.lt/' }).WEB_URL).toBe(
+      'https://desertai.lt',
+    );
+    expect(() => validateEnv({ ...base, WEB_URL: 'desertai.lt' })).toThrow(/WEB_URL/);
+    expect(() =>
+      validateEnv({ ...production, ...emails, ADMIN_URL: 'http://admin.desertai.lt' }),
+    ).toThrow(/ADMIN_URL: ADMIN_URL must be an https:\/\/ URL in production/);
+  });
+
+  it('netinkami adresai atmetami', () => {
+    expect(() => validateEnv({ ...base, ORDER_NOTIFY_EMAIL: 'ne-adresas' })).toThrow(
+      /ORDER_NOTIFY_EMAIL/,
+    );
+    expect(() => validateEnv({ ...base, RESEND_FROM_EMAIL: 'Shop <ne-adresas>' })).toThrow(
+      /RESEND_FROM_EMAIL/,
+    );
+    expect(() => validateEnv({ ...base, CUSTOMER_EMAILS_ENABLED: 'taip' })).toThrow(
+      /CUSTOMER_EMAILS_ENABLED/,
+    );
+  });
+});

@@ -18,6 +18,7 @@ import { type ClientSession, type Connection, type Model, type FilterQuery, Type
 import { Order } from '../orders/order.schema';
 import { SaleWindow } from '../sale-windows/sale-window.schema';
 import { AdminAccountsService } from '../admin-auth/admin-accounts.service';
+import { OrderNotificationsService } from '../notifications/order-notifications.service';
 import {
   adminIdsOf,
   toAdminOrderDto,
@@ -64,6 +65,7 @@ export class AdminOrdersService {
     @InjectModel(Order.name) private readonly orderModel: Model<Order>,
     @InjectModel(SaleWindow.name) private readonly saleWindowModel: Model<SaleWindow>,
     private readonly adminAccounts: AdminAccountsService,
+    private readonly notifications: OrderNotificationsService,
   ) {}
 
   /** Naujausi pirmi. counts skaičiuojami be būsenos filtro (skirtukams). */
@@ -123,8 +125,10 @@ export class AdminOrdersService {
   }
 
   /**
-   * Vienintelė vieta, kur keičiama užsakymo būsena (ir eigoje, ir atšaukiant), kad vėliau
-   * čia būtų galima prijungti laiškus pirkėjui.
+   * Vienintelė vieta, kur keičiama užsakymo būsena (ir eigoje, ir atšaukiant). Po sėkmingos
+   * transakcijos čia siunčiamas laiškas pirkėjui (confirmed, ready, cancelled; žr.
+   * OrderNotificationsService). Nepavykęs perėjimas (409) laiško nesiunčia, todėl dvigubas
+   * atšaukimas reiškia vieną laišką.
    *
    * Eiga tik pirmyn: pending -> confirmed -> ready -> completed (galima peršokti).
    * completed ir cancelled yra galutinės. Atšaukti galima iš bet kurios negalutinės.
@@ -194,7 +198,8 @@ export class AdminOrdersService {
       return order;
     });
 
-    // Čia vėliau: pranešimas pirkėjui apie būsenos pakeitimą (Resend).
+    // Tik po commit'o ir fone: laiško klaida perėjimo neatšaukia ir atsakymo nelaiko.
+    this.notifications.orderStatusChanged(updated, to);
     return this.toDto(updated);
   }
 

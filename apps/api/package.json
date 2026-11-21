@@ -11,7 +11,8 @@
     "test": "jest --runInBand",
     "db:indexes": "node --env-file-if-exists=.env dist/scripts/sync-indexes.js",
     "admin:create": "node --env-file-if-exists=.env dist/scripts/create-admin.js",
-    "products:add": "node --env-file-if-exists=.env dist/scripts/add-products.js"
+    "products:add": "node --env-file-if-exists=.env dist/scripts/add-products.js",
+    "email:preview": "turbo run build --filter=@desert-web/api --output-logs=errors-only && node dist/scripts/email-preview.js"
   },
   "dependencies": {
     "@desert-web/shared": "workspace:*",
@@ -24,6 +25,7 @@
     "cloudinary": "^2.11.0",
     "mongoose": "^8.18.0",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.39.0",
     "rxjs": "^7.8.1",
     "zod": "^4.1.0"
   },
