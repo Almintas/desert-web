@@ -2,10 +2,11 @@
 /**
  * pnpm e2e: paleidžia visą sistemą produkcijos režimu ir Playwright testus.
  *
- * 1. Sukompiliuoja api, web ir admin (turbo; web su Turnstile testiniu site key).
+ * 1. Sukompiliuoja api, web ir admin (turbo).
  * 2. Paleidžia laikiną MongoDB replica set (mongodb-memory-server, kaip API Jest testai).
  * 3. Sukuria indeksus (db:indexes) ir adminą (admin:create).
- * 4. Paleidžia API, web ir admin (NODE_ENV=production) laisvuose portuose.
+ * 4. Paleidžia API, web (su Turnstile testiniu site key) ir admin (NODE_ENV=production)
+ *    laisvuose portuose.
  * 5. Playwright: projektas „main“, tada API perleidžiamas su Turnstile „visada atmeta“
  *    secret ir paleidžiamas projektas „turnstile-fail“.
  * 6. Viską sustabdo (ir po klaidos ar Ctrl+C).
@@ -193,7 +194,7 @@ async function main() {
   rmSync(LOG_DIR, { recursive: true, force: true });
   mkdirSync(LOG_DIR, { recursive: true });
 
-  // 1. Build (web gauna testinį site key: NEXT_PUBLIC_ reikšmės įrašomos builde).
+  // 1. Build.
   if (process.env.E2E_SKIP_BUILD === '1') {
     log('E2E_SKIP_BUILD=1: naudojami esami buildai');
   } else {
@@ -206,11 +207,7 @@ async function main() {
       '--filter=@desert-web/web',
       '--filter=@desert-web/admin',
     ]);
-    const code = await runToEnd(command, args, {
-      cwd: ROOT,
-      shell,
-      env: { ...process.env, NEXT_PUBLIC_TURNSTILE_SITE_KEY: TURNSTILE.siteKeyPass },
-    });
+    const code = await runToEnd(command, args, { cwd: ROOT, shell, env: process.env });
     if (code !== 0) throw new Error(`build nepavyko (kodas ${code})`);
   }
 
@@ -314,7 +311,7 @@ async function main() {
   });
   const web = startService('web', [nextBin('web'), 'start', '-p', String(webPort)], {
     cwd: join(ROOT, 'apps/web'),
-    env: appEnv(webPort),
+    env: { ...appEnv(webPort), NEXT_TURNSTILE_SITE_KEY: TURNSTILE.siteKeyPass },
   });
   const admin = startService('admin', [nextBin('admin'), 'start', '-p', String(adminPort)], {
     cwd: join(ROOT, 'apps/admin'),
