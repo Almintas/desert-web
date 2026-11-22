@@ -288,12 +288,19 @@ export function CheckoutForm({
             </>
           )}
           <CheckoutFacts saleWindow={saleWindow} />
-          {(empty && !selected) || !(SELLER.email || SELLER.phone) ? null : (
+          {empty && !selected ? null : (
             <p className="allergy-note">
-              Jei turite alergijų ar klausimų dėl sudėties, prieš užsakydami susisiekite:{' '}
-              {SELLER.email ? <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a> : null}
-              {SELLER.email && SELLER.phone ? ' · ' : null}
-              {SELLER.phone ? <a href={telHref(SELLER.phone)}>{SELLER.phone}</a> : null}
+              {/* Pastaba rodoma visada; kontaktai tik užpildyti (TODO laukai praleidžiami). */}
+              {SELLER.email || SELLER.phone ? (
+                <>
+                  Jei turite alergijų ar klausimų dėl sudėties, prieš užsakydami susisiekite:{' '}
+                  {SELLER.email ? <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a> : null}
+                  {SELLER.email && SELLER.phone ? ' · ' : null}
+                  {SELLER.phone ? <a href={telHref(SELLER.phone)}>{SELLER.phone}</a> : null}
+                </>
+              ) : (
+                'Jei turite alergijų ar klausimų dėl sudėties, prieš užsakydami susisiekite su mumis.'
+              )}
             </p>
           )}
         </section>
