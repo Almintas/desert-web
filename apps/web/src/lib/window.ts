@@ -1,6 +1,9 @@
 import 'server-only';
 import type { CurrentSaleWindowResponse, PublicSaleWindowDto } from '@desert-web/shared';
 import { apiFetch } from './api';
+import { WINDOW_PARAM } from './links';
+
+export { WINDOW_PARAM, windowHref } from './links';
 
 /** Atidaryti ir artimiausias langas; null, jei API nepasiekiamas. */
 export async function loadCurrentWindows(): Promise<CurrentSaleWindowResponse | null> {
@@ -14,9 +17,6 @@ export async function loadCurrentWindows(): Promise<CurrentSaleWindowResponse | 
   }
 }
 
-/** Query parametras, kuriuo pasirenkamas vienas iš kelių atidarytų langų. */
-export const WINDOW_PARAM = 'langas';
-
 /** Pasirinktas atidarytas langas: pagal `?langas=<id>`, kitaip pirmas. */
 export function pickOpenWindow(
   current: CurrentSaleWindowResponse,
@@ -24,9 +24,4 @@ export function pickOpenWindow(
 ): PublicSaleWindowDto | null {
   const id = Array.isArray(windowId) ? windowId[0] : windowId;
   return current.openWindows.find((w) => w.id === id) ?? current.openWindows[0] ?? null;
-}
-
-/** Puslapio adresas konkrečiam langui (be parametro, jei atidarytas tik vienas). */
-export function windowHref(path: string, windowId: string, openCount: number): string {
-  return openCount > 1 ? `${path}?${WINDOW_PARAM}=${encodeURIComponent(windowId)}` : path;
 }

@@ -22,6 +22,7 @@ import { forgetRequestId, getRequestId, resetRequestId } from '@/lib/request-id'
 import { PAYMENT_TEXT } from '@/lib/shop';
 import { placeOrderAction } from './actions';
 import type { CheckoutField, CheckoutState } from './checkout-state';
+import { SelectedProduct } from './selected-product';
 
 const INITIAL: CheckoutState = { status: 'idle' };
 
@@ -30,11 +31,14 @@ type Values = Record<CheckoutField, string>;
 export function CheckoutForm({
   saleWindow: initialWindow,
   backHref,
+  selectedVariantId,
   turnstileSiteKey,
 }: {
   saleWindow: PublicSaleWindowDto;
   /** Šio lango prekių puslapis. */
   backHref: string;
+  /** Prekė, kurią pirkėjas atsidarė iš kortelės (`?preke=`, jau patikrinta, kad yra lange). */
+  selectedVariantId: string | null;
   /** Cloudflare Turnstile site key (NEXT_TURNSTILE_SITE_KEY, žr. lib/env.ts). */
   turnstileSiteKey: string;
 }) {
@@ -101,6 +105,7 @@ export function CheckoutForm({
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (pending || submitting.current || done || closed || !requestId || !turnstileToken) return;
+    if (cart.lines.length === 0) return;
     submitting.current = true;
     setCartChanges([]);
     const formData = new FormData(event.currentTarget);
@@ -136,26 +141,29 @@ export function CheckoutForm({
     return <p className="muted">Įkeliamas krepšelis…</p>;
   }
 
-  if (cart.lines.length === 0 && !done) {
-    return (
-      <section className="empty-cart">
-        {cartChanges.length > 0 ? <CartChanges changes={cartChanges} /> : null}
-        <p>Krepšelis tuščias.</p>
-        <p>
-          <Link href={backHref} className="button primary">
-            Rinktis prekes
-          </Link>
-        </p>
-      </section>
-    );
-  }
-
   const items = new Map(saleWindow.items.map((i) => [i.variantId, i]));
+  // Kol krepšelis tuščias, kontaktų laukai matomi, bet užrakinti (įvestos reikšmės lieka).
+  const empty = cart.lines.length === 0 && !done;
+  // Pasirinkta prekė imama iš dabartinio lango: po likučių klaidos langas atnaujinamas.
+  const selected = selectedVariantId ? items.get(selectedVariantId) : undefined;
+  const variants = selected
+    ? saleWindow.items.filter((i) => i.productId === selected.productId)
+    : [];
 
   return (
     <form ref={formRef} className="checkout" onSubmit={onSubmit} noValidate>
       <input type="hidden" name="saleWindowId" value={saleWindow.id} />
       <input type="hidden" name="clientRequestId" value={requestId ?? ''} />
+
+      {selected ? (
+        <SelectedProduct
+          variants={variants}
+          selectedVariantId={selected.variantId}
+          quantityOf={cart.quantityOf}
+          setQuantity={cart.setQuantity}
+          backHref={backHref}
+        />
+      ) : null}
 
       <section className="checkout-section" aria-labelledby="cart-heading">
         <h2 id="cart-heading">Jūsų krepšelis</h2>
@@ -167,7 +175,19 @@ export function CheckoutForm({
             <CartChanges changes={cartChanges} />
           </div>
         ) : null}
-        <ul className="cart-lines">
+        {empty ? (
+          <div className="empty-cart">
+            <p>Krepšelis tuščias.</p>
+            {selected ? null : (
+              <p>
+                <Link href={backHref} className="button primary">
+                  Rinktis desertus
+                </Link>
+              </p>
+            )}
+          </div>
+        ) : null}
+        <ul className="cart-lines" hidden={cart.lines.length === 0}>
           {cart.lines.map((line) => {
             const item = items.get(line.variantId);
             if (!item) return null;
@@ -203,20 +223,24 @@ export function CheckoutForm({
             );
           })}
         </ul>
-        <p className="cart-total">
-          <span>Iš viso</span>
-          <strong>{formatEur(cart.totalCents)}</strong>
-        </p>
-        <p className="allergy-note">
-          Jei turite alergijų ar klausimų dėl sudėties, prieš užsakydami susisiekite:{' '}
-          <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a>
-          {SELLER.phone ? (
-            <>
-              {' · '}
-              <a href={`tel:${SELLER.phone.replace(/[^\d+]/g, '')}`}>{SELLER.phone}</a>
-            </>
-          ) : null}
-        </p>
+        {empty ? null : (
+          <p className="cart-total">
+            <span>Iš viso</span>
+            <strong>{formatEur(cart.totalCents)}</strong>
+          </p>
+        )}
+        {empty && !selected ? null : (
+          <p className="allergy-note">
+            Jei turite alergijų ar klausimų dėl sudėties, prieš užsakydami susisiekite:{' '}
+            <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a>
+            {SELLER.phone ? (
+              <>
+                {' · '}
+                <a href={`tel:${SELLER.phone.replace(/[^\d+]/g, '')}`}>{SELLER.phone}</a>
+              </>
+            ) : null}
+          </p>
+        )}
       </section>
 
       <section className="checkout-section" aria-labelledby="pickup-heading">
@@ -229,7 +253,16 @@ export function CheckoutForm({
         <p className="payment-note">{PAYMENT_TEXT}</p>
       </section>
 
-      <fieldset className="checkout-section" disabled={done}>
+      {empty ? (
+        <p className="alert info locked-note" id="contacts-locked">
+          Pirmiausia pasirinkite kiekį – tada galėsite įvesti savo duomenis.
+        </p>
+      ) : null}
+      <fieldset
+        className={`checkout-section${empty ? ' locked' : ''}`}
+        disabled={done || empty}
+        aria-describedby={empty ? 'contacts-locked' : undefined}
+      >
         <legend>
           <h2>Jūsų kontaktai</h2>
         </legend>
@@ -303,13 +336,15 @@ export function CheckoutForm({
         <button
           type="submit"
           className="button primary wide"
-          disabled={pending || done || closed || !requestId || !turnstileToken}
+          disabled={pending || done || closed || empty || !requestId || !turnstileToken}
         >
           {done
             ? 'Užsakymas pateiktas…'
             : pending
               ? 'Pateikiama…'
-              : `Užsakyti už ${formatEur(cart.totalCents)}`}
+              : empty
+                ? 'Užsakyti'
+                : `Užsakyti už ${formatEur(cart.totalCents)}`}
         </button>
       </div>
     </form>

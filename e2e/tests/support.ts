@@ -195,12 +195,34 @@ const iso = (ms: number) => new Date(Date.now() + ms).toISOString();
  * keliems vienu metu atidarytiems langams).
  */
 export async function openWindow(
-  items: { product: Product; variant?: number; quantity?: number; priceCents?: number }[],
+  items: WindowInputItem[],
   title = `E2E langas ${unique()}`,
   { reset = true }: { reset?: boolean } = {},
 ): Promise<SaleWindow> {
   if (reset) await resetWindows();
-  const draft = await adminApi<SaleWindow>('POST', '/admin/sale-windows', {
+  const draft = await createDraftWindow(items, title);
+  return adminApi<SaleWindow>('POST', `/admin/sale-windows/${draft.id}/open-now`);
+}
+
+/** Paskelbtas būsimas langas (prasidės po valandos). Kitus langus uždaro / atšaukia. */
+export async function publishUpcomingWindow(
+  items: WindowInputItem[],
+  title = `E2E būsimas langas ${unique()}`,
+): Promise<SaleWindow> {
+  await resetWindows();
+  const draft = await createDraftWindow(items, title);
+  return adminApi<SaleWindow>('POST', `/admin/sale-windows/${draft.id}/publish`);
+}
+
+type WindowInputItem = {
+  product: Product;
+  variant?: number;
+  quantity?: number;
+  priceCents?: number;
+};
+
+function createDraftWindow(items: WindowInputItem[], title: string): Promise<SaleWindow> {
+  return adminApi<SaleWindow>('POST', '/admin/sale-windows', {
     title,
     opensAt: iso(HOUR),
     closesAt: iso(48 * HOUR),
@@ -218,7 +240,6 @@ export async function openWindow(
       quantityTotal: i.quantity ?? 10,
     })),
   });
-  return adminApi<SaleWindow>('POST', `/admin/sale-windows/${draft.id}/open-now`);
 }
 
 /** Atidarytus langus uždaro, būsimus ir juodraščius atšaukia. */
@@ -300,8 +321,8 @@ export async function fillCheckout(page: Page, who = customer()): Promise<typeof
   return who;
 }
 
-/** Užsakymo mygtukas (įjungiamas tik gavus Turnstile tokeną). */
-export const submitButton = (page: Page) => page.getByRole('button', { name: /^Užsakyti už/ });
+/** Užsakymo mygtukas (įjungiamas tik gavus Turnstile tokeną ir kai krepšelis netuščias). */
+export const submitButton = (page: Page) => page.getByRole('button', { name: /^Užsakyti/ });
 
 export async function expectNoHorizontalScroll(page: Page): Promise<void> {
   const { scrollWidth, clientWidth } = await page.evaluate(() => ({

@@ -70,7 +70,7 @@ test.describe('Parduotuvė ir užsakymas', () => {
     const plainCard = page.getByRole('listitem').filter({ hasText: plainItem!.productName });
     await expect(plainCard.locator('.allergens')).toHaveCount(0);
 
-    await page.getByRole('link', { name: 'Užsakyti' }).click();
+    await page.getByRole('link', { name: 'Užsakyti', exact: true }).click();
     const lines = page.locator('.cart-line');
     await expect(lines.filter({ hasText: tartItem!.productName })).toContainText(
       'Alergenai: kiaušiniai, migdolai, pienas',
@@ -90,7 +90,7 @@ test.describe('Parduotuvė ir užsakymas', () => {
 
     await page.goto(env.webUrl);
     await addToCart(page, item, 2);
-    await page.getByRole('link', { name: 'Užsakyti' }).click();
+    await page.getByRole('link', { name: 'Užsakyti', exact: true }).click();
     await expect(page).toHaveURL(/\/uzsakymas$/);
     const who = await fillCheckout(page);
     await expect(submitButton(page)).toBeEnabled();

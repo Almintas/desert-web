@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { preconnect } from 'react-dom';
 import { webEnv } from '@/lib/env';
+import { PRODUCT_PARAM } from '@/lib/links';
 import { loadCurrentWindows, pickOpenWindow, WINDOW_PARAM, windowHref } from '@/lib/window';
 import { CheckoutForm } from './checkout-form';
 
@@ -48,11 +49,16 @@ export default async function CheckoutPage({
 
   const multiple = current.openWindows.length > 1;
   const backHref = windowHref('/', saleWindow.id, current.openWindows.length);
+  // `?preke=`: tik šio lango prekė, kitaip ignoruojam ir rodom įprastą užsakymą.
+  const productParam = params[PRODUCT_PARAM];
+  const variantParam = Array.isArray(productParam) ? productParam[0] : productParam;
+  const selectedVariantId =
+    saleWindow.items.find((i) => i.variantId === variantParam)?.variantId ?? null;
 
   return (
     <>
       <p className="breadcrumbs">
-        <Link href={backHref}>← Atgal į prekes</Link>
+        <Link href={backHref}>← Atgal į desertus</Link>
       </p>
       <h1>Užsakymas</h1>
       {multiple ? <p className="muted">{saleWindow.title}</p> : null}
@@ -60,6 +66,7 @@ export default async function CheckoutPage({
         key={saleWindow.id}
         saleWindow={saleWindow}
         backHref={backHref}
+        selectedVariantId={selectedVariantId}
         turnstileSiteKey={webEnv().turnstileSiteKey}
       />
     </>

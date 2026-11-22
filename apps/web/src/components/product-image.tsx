@@ -11,10 +11,12 @@ interface Props {
   /** Pirmoje eilėje: įkeliama iškart, pirmoji su aukštu prioritetu. */
   eager: boolean;
   priority: boolean;
+  /** `sizes` atributas, jei nuotrauka ne kortelės dydžio (pvz., užsakymo puslapyje). */
+  sizes?: string;
 }
 
 /** Pagrindinė nuotrauka 4:3, Cloudinary parenka formatą ir dydį (srcset). */
-export function ProductImage({ image, alt, eager, priority }: Props) {
+export function ProductImage({ image, alt, eager, priority, sizes = SIZES }: Props) {
   if (!image) {
     return (
       <div className="product-image placeholder" aria-hidden="true">
@@ -29,7 +31,7 @@ export function ProductImage({ image, alt, eager, priority }: Props) {
       className="product-image"
       src={src(640)}
       srcSet={WIDTHS.map((w) => `${src(w)} ${w}w`).join(', ')}
-      sizes={SIZES}
+      sizes={sizes}
       width={640}
       height={480}
       alt={alt}

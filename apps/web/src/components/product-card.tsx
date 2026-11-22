@@ -1,8 +1,9 @@
 'use client';
 
 import { formatEur, type PublicSaleWindowItemDto } from '@desert-web/shared';
+import Link from 'next/link';
 import { itemLabel, maxQuantity } from '@/lib/cart-logic';
-import { LOW_STOCK_THRESHOLD } from '@/lib/shop';
+import { limitHint, stockClass, stockText } from '@/lib/item-status';
 import { AllergenLine } from './allergens';
 import { ProductImage } from './product-image';
 import { Stepper } from './stepper';
@@ -15,6 +16,11 @@ interface Props {
   index: number;
   /** null: tik peržiūra (būsimas langas). */
   cart: { quantity: number; onChange: (q: number) => void } | null;
+  /**
+   * Užsakymo puslapis su šia preke. Visa kortelė tampa nuoroda („stretched link“), o kiekio
+   * pasirinkimas lieka virš jos. Nėra: kortelė nespaudžiama (būsimas langas).
+   */
+  href?: string;
 }
 
 /**
@@ -47,20 +53,14 @@ function AllergenReveal({ allergens, shown }: { allergens: string[]; shown: bool
   );
 }
 
-function stockText(available: number): string {
-  if (available === 0) return 'Išparduota';
-  if (available <= LOW_STOCK_THRESHOLD) return `Liko ${available}`;
-  return 'Yra';
-}
-
-export function ProductCard({ item, index, cart }: Props) {
+export function ProductCard({ item, index, cart, href }: Props) {
   const label = itemLabel(item);
   const soldOut = item.quantityAvailable === 0;
   const max = maxQuantity(item);
-  const low = !soldOut && item.quantityAvailable <= LOW_STOCK_THRESHOLD;
+  const hint = cart ? limitHint(item, cart.quantity) : null;
 
   return (
-    <li className={`product-card${soldOut ? ' sold-out' : ''}`}>
+    <li className={`product-card${soldOut ? ' sold-out' : ''}${href ? ' linked' : ''}`}>
       <ProductImage
         image={item.images[0]}
         alt={item.images[0]?.alt ?? item.productName}
@@ -68,16 +68,24 @@ export function ProductCard({ item, index, cart }: Props) {
         priority={index === 0}
       />
       <div className="product-body">
-        <h3 className="product-name">{item.productName}</h3>
+        <h3 className="product-name">
+          {href ? (
+            <Link
+              href={href}
+              className="product-link"
+              aria-label={`${item.productName}, ${item.variantName} – peržiūrėti ir užsakyti`}
+            >
+              {item.productName}
+            </Link>
+          ) : (
+            item.productName
+          )}
+        </h3>
         <p className="product-variant">{item.variantName}</p>
         <ProductDescription text={item.description} />
         <div className="product-meta">
           <span className="price">{formatEur(item.priceCents)}</span>
-          {cart ? (
-            <span className={`stock${low ? ' low' : ''}${soldOut ? ' none' : ''}`}>
-              {stockText(item.quantityAvailable)}
-            </span>
-          ) : null}
+          {cart ? <span className={stockClass(item)}>{stockText(item)}</span> : null}
         </div>
         {cart ? (
           soldOut ? (
@@ -87,13 +95,7 @@ export function ProductCard({ item, index, cart }: Props) {
           ) : (
             <div className="product-actions">
               <Stepper label={label} value={cart.quantity} max={max} onChange={cart.onChange} />
-              {cart.quantity > 0 && cart.quantity >= max ? (
-                <p className="limit-hint">
-                  {item.maxPerOrder && item.maxPerOrder < item.quantityAvailable
-                    ? `Vienu užsakymu daugiausia ${item.maxPerOrder} vnt.`
-                    : 'Daugiau neturime'}
-                </p>
-              ) : null}
+              {hint ? <p className="limit-hint">{hint}</p> : null}
               <AllergenReveal allergens={item.allergens} shown={cart.quantity > 0} />
             </div>
           )

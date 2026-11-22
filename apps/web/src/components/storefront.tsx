@@ -2,6 +2,7 @@
 
 import type { PublicSaleWindowDto } from '@desert-web/shared';
 import { useCart } from '@/lib/cart-store';
+import { checkoutHref } from '@/lib/links';
 import { CartBar } from './cart-bar';
 import { ProductCard } from './product-card';
 
@@ -40,6 +41,7 @@ export function Storefront({
             key={item.variantId}
             item={item}
             index={index}
+            href={checkoutHref(saleWindow.id, openCount, item.variantId)}
             cart={{
               quantity: cart.quantityOf(item.variantId),
               onChange: (q) => cart.setQuantity(item.variantId, q),
@@ -51,9 +53,7 @@ export function Storefront({
       <CartBar
         count={cart.count}
         totalCents={cart.totalCents}
-        href={
-          openCount > 1 ? `/uzsakymas?langas=${encodeURIComponent(saleWindow.id)}` : '/uzsakymas'
-        }
+        href={checkoutHref(saleWindow.id, openCount)}
       />
     </>
   );
