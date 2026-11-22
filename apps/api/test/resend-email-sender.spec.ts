@@ -1,7 +1,7 @@
 import { ResendEmailSender, ResendSendError } from '../src/notifications/resend-email-sender';
 
 const message = {
-  from: 'Desert Web <onboarding@resend.dev>',
+  from: 'Ieva Macarons <onboarding@resend.dev>',
   to: 'pardavejas@example.com',
   replyTo: 'ona@example.com',
   subject: 'Naujas užsakymas',

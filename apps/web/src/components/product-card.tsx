@@ -37,7 +37,7 @@ export function ProductCard({ item, index, cart }: Props) {
         priority={index === 0}
       />
       <div className="product-body">
-        <h2 className="product-name">{item.productName}</h2>
+        <h3 className="product-name">{item.productName}</h3>
         <p className="product-variant">{item.variantName}</p>
         <div className="product-meta">
           <span className="price">{formatEur(item.priceCents)}</span>

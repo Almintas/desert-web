@@ -17,9 +17,13 @@
   --radius: 16px;
   --radius-sm: 10px;
   --shadow: 0 1px 2px rgb(58 42 36 / 6%), 0 4px 16px rgb(58 42 36 / 6%);
-  --font-body: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-heading:
-    'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
+  /* --font-manrope / --font-cormorant: next/font (žr. src/app/fonts.ts). */
+  --font-body:
+    var(--font-manrope), system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --font-heading: var(--font-cormorant), 'Iowan Old Style', Palatino, Georgia, serif;
+  --container: 1160px;
+  --gutter: 16px;
   color-scheme: light;
 }
 
@@ -41,28 +45,35 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 1.0625rem;
-  line-height: 1.55;
+  font-size: 1rem;
+  line-height: 1.6;
   overflow-wrap: anywhere;
 }
 
+/* Cormorant Garamond tik nuo ~1.25rem: mažesniame dydyje per plonas. */
 h1,
 h2,
 h3 {
   font-family: var(--font-heading);
   font-weight: 600;
-  line-height: 1.2;
-  letter-spacing: -0.01em;
+  line-height: 1.15;
+  /* Cormorant pagal nutylėjimą rašo senovinius skaitmenis („2026“ šokinėja). */
+  font-variant-numeric: lining-nums;
 }
 
 h1 {
-  font-size: clamp(1.75rem, 5vw, 2.4rem);
+  font-size: clamp(2rem, 6vw, 2.75rem);
   margin: 0 0 0.5rem;
 }
 
 h2 {
-  font-size: 1.3rem;
+  font-size: 1.6rem;
   margin: 0 0 0.75rem;
+}
+
+h3 {
+  font-size: 1.4rem;
+  margin: 0 0 0.5rem;
 }
 
 p {
@@ -134,29 +145,62 @@ img {
 .site-footer-inner,
 .container {
   width: 100%;
-  max-width: 1040px;
+  max-width: calc(var(--container) + 2 * var(--gutter));
   margin: 0 auto;
-  padding-left: 16px;
-  padding-right: 16px;
+  padding-left: var(--gutter);
+  padding-right: var(--gutter);
 }
 
 .site-header-inner {
-  padding-top: 0.9rem;
-  padding-bottom: 0.9rem;
+  display: flex;
+  justify-content: center;
+  padding-top: 0.3rem;
+  padding-bottom: 0.3rem;
 }
 
-.logo {
+/* Tekstinis logotipas. */
+.wordmark,
+.wordmark-text {
   font-family: var(--font-heading);
-  font-weight: 700;
-  font-size: 1.35rem;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1;
   color: var(--accent);
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 0.25rem;
+  font-size: 1.85rem;
   text-decoration: none;
+}
+
+.wordmark:hover {
+  color: var(--accent-hover);
 }
 
 .container {
   flex: 1;
-  padding-top: 1.5rem;
+  padding-top: 1.25rem;
   padding-bottom: 3rem;
+}
+
+@media (min-width: 640px) {
+  .site-header-inner {
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .wordmark {
+    font-size: 2.25rem;
+  }
+
+  .container {
+    padding-top: 2.25rem;
+  }
 }
 
 .site-footer {
@@ -172,9 +216,8 @@ img {
 }
 
 .footer-shop {
-  font-family: var(--font-heading);
-  font-weight: 600;
-  color: var(--text);
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .site-footer a {
@@ -247,6 +290,10 @@ img {
   margin: 0 auto;
 }
 
+.notice h2 {
+  font-size: clamp(1.6rem, 4.5vw, 2rem);
+}
+
 .notice-icon {
   font-size: 2.5rem;
   margin: 0;
@@ -295,24 +342,162 @@ img {
   outline-offset: 2px;
 }
 
-/* --- Lango antraštė --- */
+/* --- Pagrindinis puslapis: šūkis, lango antraštė, žingsniai --- */
+
+.hero {
+  text-align: center;
+  max-width: 44rem;
+  margin: 0 auto 1.25rem;
+}
+
+.hero-title {
+  font-size: clamp(2rem, 7.4vw, 3.25rem);
+  font-weight: 600;
+  line-height: 1.05;
+  margin: 0 0 0.4rem;
+  text-wrap: balance;
+}
+
+.hero-sub {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 0 auto;
+  max-width: 30rem;
+  text-wrap: balance;
+}
+
+/* Plona skiriamoji linija po šūkiu. */
+.hero::after {
+  content: '';
+  display: block;
+  width: 3rem;
+  height: 1px;
+  margin: 1rem auto 0;
+  background: var(--accent);
+  opacity: 0.45;
+}
+
+@media (min-width: 640px) {
+  .hero {
+    margin-bottom: 2rem;
+  }
+
+  .hero-sub {
+    font-size: 1.05rem;
+  }
+
+  .hero::after {
+    margin-top: 1.5rem;
+  }
+}
 
 .window-header {
-  margin-bottom: 1.5rem;
+  text-align: center;
+  margin-bottom: 0.75rem;
 }
 
 .eyebrow {
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--accent);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.1rem;
 }
 
-.window-closes {
-  font-size: 1.05rem;
+.window-title {
+  font-size: clamp(1.6rem, 4.5vw, 2.1rem);
+  margin: 0;
 }
+
+.window-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.35rem auto 0;
+  max-width: 34rem;
+}
+
+/* „Kaip tai veikia“: telefone trumpas sąrašas, plačiau viena eilutė. */
+.order-steps {
+  list-style: none;
+  counter-reset: step;
+  display: grid;
+  gap: 0.35rem;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 1.25rem;
+  padding: 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.order-steps li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 1.4rem 1fr;
+  gap: 0.55rem;
+  align-items: start;
+}
+
+.order-steps li::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.order-steps strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+@media (min-width: 640px) {
+  .window-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .order-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.5rem;
+    width: auto;
+    max-width: 62rem;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+
+  .order-steps li {
+    position: relative;
+    grid-template-columns: 1fr;
+    align-content: start;
+    justify-items: center;
+    gap: 0.45rem;
+  }
+
+  .order-steps li > span {
+    text-wrap: balance;
+  }
+
+  /* Plona linija tarp žingsnių numerių. */
+  .order-steps li:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 0.7rem;
+    left: calc(50% + 1.2rem);
+    width: calc(100% + 1.5rem - 2.4rem);
+    height: 1px;
+    background: var(--border);
+  }
+}
+
+/* --- Atsiėmimo informacija (užsakymo forma ir užsakymo puslapis) --- */
 
 .pickup-info {
   margin: 0.75rem 0 0;
@@ -350,20 +535,36 @@ img {
   padding: 0;
   margin: 0;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
 }
 
-@media (min-width: 560px) {
+@media (min-width: 600px) {
   .product-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+  }
+
+  /* 1–2 prekės: kortelės tokio pat pločio kaip pilnoje eilėje, centruotos. */
+  .product-grid-1 {
+    grid-template-columns: minmax(0, 370px);
+    justify-content: center;
   }
 }
 
-@media (min-width: 900px) {
+@media (min-width: 960px) {
   .product-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1.25rem;
+    gap: 1.5rem;
+  }
+
+  .product-grid-1 {
+    grid-template-columns: minmax(0, 370px);
+  }
+
+  .product-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 370px));
+    justify-content: center;
   }
 }
 
@@ -400,21 +601,29 @@ img {
 }
 
 .product-name {
-  font-size: 1.2rem;
+  font-size: 1.5rem;
+  line-height: 1.1;
   margin: 0;
 }
 
 .product-variant {
   color: var(--muted);
+  font-size: 0.95rem;
   margin: 0;
 }
 
+/* Kaina, likutis ir kiekis prilygiami kortelės apačiai (eilutėje kortelės vienodo aukščio). */
 .product-meta {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 0.5rem;
-  margin: 0.4rem 0 0.6rem;
+  margin: auto 0 0;
+  padding-top: 0.6rem;
+}
+
+.product-meta + * {
+  margin-top: 0.6rem;
 }
 
 .price {
@@ -436,12 +645,7 @@ img {
   color: var(--muted);
 }
 
-.product-actions {
-  margin-top: auto;
-}
-
 .sold-out-button {
-  margin-top: auto;
   width: 100%;
 }
 
@@ -510,7 +714,7 @@ img {
 }
 
 .cart-bar-inner {
-  max-width: 1040px;
+  max-width: var(--container);
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -837,10 +1041,56 @@ fieldset.checkout-section legend + * {
   padding-left: 1.25rem;
 }
 
-/* --- Keli vienu metu vykstantys pardavimai --- */
+/* --- Keli vienu metu vykstantys pardavimai: viena slenkama eilutė --- */
 
 .window-tabs {
-  margin-bottom: 1.25rem;
+  margin: 0 calc(-1 * var(--gutter)) 1rem;
+}
+
+.scroll-row {
+  position: relative;
+}
+
+.scroll-row-track {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scroll-padding-inline: var(--gutter);
+  scrollbar-width: none;
+  /* Vieta fokuso rėmeliui (overflow jį kitaip nukirptų). */
+  padding: 4px var(--gutter);
+}
+
+.scroll-row-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* Kraštų šešėlis: ženklas, kad eilutėje yra daugiau. */
+.scroll-row::before,
+.scroll-row::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2.5rem;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1;
+}
+
+.scroll-row::before {
+  left: 0;
+  background: linear-gradient(to right, var(--bg), rgb(251 246 240 / 0%));
+}
+
+.scroll-row::after {
+  right: 0;
+  background: linear-gradient(to left, var(--bg), rgb(251 246 240 / 0%));
+}
+
+.scroll-row[data-more-start]::before,
+.scroll-row[data-more-end]::after {
+  opacity: 1;
 }
 
 .window-tabs ul {
@@ -848,20 +1098,31 @@ fieldset.checkout-section legend + * {
   margin: 0;
   padding: 0;
   display: flex;
-  flex-wrap: wrap;
   gap: 0.5rem;
+  /* Telpa: centruojama; netelpa: slenkama nuo kairės. */
+  width: max-content;
+  min-width: 100%;
+  justify-content: center;
+}
+
+.window-tabs li {
+  flex: none;
+  scroll-snap-align: start;
 }
 
 .window-tab {
   display: flex;
   flex-direction: column;
-  gap: 0.1rem;
-  padding: 0.6rem 0.9rem;
+  justify-content: center;
+  min-height: 48px;
+  max-width: 16rem;
+  padding: 0.45rem 1rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: inherit;
   text-decoration: none;
+  line-height: 1.3;
 }
 
 .window-tab:hover {
@@ -874,11 +1135,39 @@ fieldset.checkout-section legend + * {
   border-color: var(--accent);
 }
 
+.window-tab-title,
+.window-tab-meta {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .window-tab-title {
   font-weight: 600;
+  font-size: 0.95rem;
 }
 
 .window-tab-meta {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .scroll-row-track {
+    scroll-behavior: smooth;
+  }
+
+  .scroll-row::before,
+  .scroll-row::after {
+    transition: opacity 0.2s ease;
+  }
+
+  .window-tab,
+  .button,
+  .stepper-button {
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease;
+  }
 }

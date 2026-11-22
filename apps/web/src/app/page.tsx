@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { PickupInfo } from '@/components/pickup-info';
+import { Hero } from '@/components/hero';
+import { OrderSteps } from '@/components/order-steps';
 import { Storefront, UpcomingProducts } from '@/components/storefront';
 import { WindowTabs } from '@/components/window-tabs';
-import { formatDateTime, formatDateTimeWithWeekday } from '@/lib/format';
 import { SHOP_DESCRIPTION, SHOP_NAME } from '@/lib/shop';
 import { loadCurrentWindows, pickOpenWindow, WINDOW_PARAM } from '@/lib/window';
 
@@ -23,6 +23,7 @@ export const metadata: Metadata = {
   },
 };
 
+// Antraščių tvarka visose būsenose: šūkis (h1) -> lango pavadinimas / pranešimas (h2) -> prekės (h3).
 export default async function HomePage({
   searchParams,
 }: {
@@ -32,10 +33,13 @@ export default async function HomePage({
 
   if (!current) {
     return (
-      <section className="notice">
-        <h1>Šiuo metu nepavyksta pasiekti parduotuvės</h1>
-        <p>Pabandykite dar kartą po kelių minučių.</p>
-      </section>
+      <>
+        <Hero />
+        <section className="notice">
+          <h2>Šiuo metu nepavyksta pasiekti parduotuvės</h2>
+          <p>Pabandykite dar kartą po kelių minučių.</p>
+        </section>
+      </>
     );
   }
 
@@ -45,19 +49,13 @@ export default async function HomePage({
   if (open) {
     return (
       <>
+        <Hero />
         <WindowTabs windows={openWindows} activeId={open.id} />
         <header className="window-header">
           <p className="eyebrow">Prekyba vyksta</p>
-          <h1>{open.title}</h1>
-          <p className="window-closes">
-            Užsakymai priimami iki <strong>{formatDateTime(open.closesAt)}</strong>
-          </p>
-          <PickupInfo
-            location={open.fulfillment.pickupLocation}
-            from={open.fulfillment.pickupFrom}
-            to={open.fulfillment.pickupTo}
-          />
+          <h2 className="window-title">{open.title}</h2>
         </header>
+        <OrderSteps saleWindow={open} />
         {open.items.length > 0 ? (
           <Storefront key={open.id} saleWindow={open} openCount={openWindows.length} />
         ) : (
@@ -70,33 +68,27 @@ export default async function HomePage({
   if (upcoming) {
     return (
       <>
-        <header className="window-header upcoming">
+        <Hero />
+        <header className="window-header">
           <p className="eyebrow">Netrukus</p>
-          <h1>{upcoming.title}</h1>
-          <p className="window-closes">
-            Prekyba prasidės <strong>{formatDateTimeWithWeekday(upcoming.opensAt)}</strong>
-          </p>
-          <p className="muted">
+          <h2 className="window-title">{upcoming.title}</h2>
+          <p className="window-note">
             Kol kas galite apžiūrėti, ką ruošiame. Užsakyti bus galima prasidėjus prekybai.
           </p>
-          <PickupInfo
-            location={upcoming.fulfillment.pickupLocation}
-            from={upcoming.fulfillment.pickupFrom}
-            to={upcoming.fulfillment.pickupTo}
-          />
         </header>
+        <OrderSteps saleWindow={upcoming} upcoming />
         <UpcomingProducts saleWindow={upcoming} />
       </>
     );
   }
 
   return (
-    <section className="notice">
-      <p className="notice-icon" aria-hidden="true">
-        🍰
-      </p>
-      <h1>Šiuo metu užsakymų nepriimame</h1>
-      <p>Kepame ir planuojame kitą pardavimą. Užsukite netrukus!</p>
-    </section>
+    <>
+      <Hero />
+      <section className="notice">
+        <h2>Šiuo metu užsakymų nepriimame</h2>
+        <p>Kepame ir planuojame kitą pardavimą. Užsukite netrukus!</p>
+      </section>
+    </>
   );
 }

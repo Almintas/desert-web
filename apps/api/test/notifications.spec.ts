@@ -17,7 +17,7 @@ import {
 
 const WEB_URL = 'https://desertai.example'; // env: su pabaigos „/“, kuris nukerpamas
 const ADMIN_URL = 'https://admin.desertai.example';
-const FROM = 'Desert Web <uzsakymai@desertai.example>';
+const FROM = 'Ieva Macarons <uzsakymai@desertai.example>';
 const SELLER_EMAIL = 'pardavejas@desertai.example';
 
 describe('Užsakymų laiškai (visi įjungti)', () => {

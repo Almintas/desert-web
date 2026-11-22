@@ -1,4 +1,4 @@
-import { TURNSTILE_SITEVERIFY_URL, TURNSTILE_TEST_KEYS } from '@desert-web/shared';
+import { SHOP_NAME, TURNSTILE_SITEVERIFY_URL, TURNSTILE_TEST_KEYS } from '@desert-web/shared';
 import { z } from 'zod';
 
 const optionalString = z
@@ -13,11 +13,12 @@ const booleanString = z
   .optional()
   .transform((v) => (v === undefined || v === '' ? undefined : v === 'true' || v === '1'));
 
-export const DEFAULT_FROM_EMAIL = 'Desert Web <onboarding@resend.dev>';
+/** Numatytas siuntėjas: parduotuvės pavadinimas ir Resend testinis adresas. */
+export const DEFAULT_FROM_EMAIL = `${SHOP_NAME} <onboarding@resend.dev>`;
 
 const SIMPLE_EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 
-/** „Desert Web <info@desertai.lt>“ arba „info@desertai.lt“ -> „info@desertai.lt“; kitaip null. */
+/** „Ieva Macarons <info@desertai.lt>“ arba „info@desertai.lt“ -> „info@desertai.lt“; kitaip null. */
 export function emailAddressOf(from: string): string | null {
   const match = /^[^<>]*<([^<>]+)>$/.exec(from.trim());
   const address = (match ? match[1]! : from).trim();

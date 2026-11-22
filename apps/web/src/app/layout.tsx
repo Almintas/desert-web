@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { SELLER, SHOP_NAME } from '@desert-web/shared';
 import { SHOP_DESCRIPTION } from '@/lib/shop';
+import { bodyFont, displayFont } from './fonts';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -21,14 +22,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="lt">
+    <html lang="lt" className={`${displayFont.variable} ${bodyFont.variable}`}>
       <body>
         <a href="#turinys" className="skip-link">
           Pereiti prie turinio
         </a>
         <header className="site-header">
           <div className="site-header-inner">
-            <Link href="/" className="logo">
+            <Link href="/" className="wordmark">
               {SHOP_NAME}
             </Link>
           </div>
@@ -38,7 +39,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </main>
         <footer className="site-footer">
           <div className="site-footer-inner">
-            <p className="footer-shop">{SHOP_NAME}</p>
+            <p className="footer-shop wordmark-text">{SHOP_NAME}</p>
             <p>
               Pardavėja: {SELLER.name}
               <br />

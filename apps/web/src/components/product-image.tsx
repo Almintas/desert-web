@@ -1,8 +1,9 @@
 import { cloudinaryImageUrl, type PublicProductImageDto } from '@desert-web/shared';
 
 const WIDTHS = [320, 480, 640, 960];
-/** Kortelė: 1 stulpelis iki 560 px, 2 iki 900 px, 3 plačiau (žr. globals.css). */
-const SIZES = '(max-width: 559px) calc(100vw - 32px), (max-width: 899px) calc(50vw - 40px), 300px';
+/** Kortelė: 1 stulpelis iki 600 px, 2 iki 960 px, 3 plačiau, ne platesnė nei ~370 px (žr. globals.css). */
+const SIZES =
+  '(max-width: 599px) min(calc(100vw - 32px), 480px), (max-width: 959px) calc(50vw - 40px), 370px';
 
 interface Props {
   image: PublicProductImageDto | undefined;

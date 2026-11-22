@@ -5,6 +5,10 @@ import { useCart } from '@/lib/cart-store';
 import { CartBar } from './cart-bar';
 import { ProductCard } from './product-card';
 
+/** 1–2 prekės: stulpeliai siauresni ir centruoti, kad kortelė nestovėtų viena kairėje. */
+const gridClass = (count: number) =>
+  count < 3 ? `product-grid product-grid-${count}` : 'product-grid';
+
 /** Atidaryto lango prekės su krepšeliu. */
 export function Storefront({
   saleWindow,
@@ -30,7 +34,7 @@ export function Storefront({
           </button>
         </div>
       ) : null}
-      <ul className="product-grid">
+      <ul className={gridClass(saleWindow.items.length)}>
         {saleWindow.items.map((item, index) => (
           <ProductCard
             key={item.variantId}
@@ -58,7 +62,7 @@ export function Storefront({
 /** Būsimo lango prekės tik peržiūrai. */
 export function UpcomingProducts({ saleWindow }: { saleWindow: PublicSaleWindowDto }) {
   return (
-    <ul className="product-grid">
+    <ul className={gridClass(saleWindow.items.length)}>
       {saleWindow.items.map((item, index) => (
         <ProductCard key={item.variantId} item={item} index={index} cart={null} />
       ))}

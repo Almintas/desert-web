@@ -16,6 +16,8 @@ import {
   test,
 } from './support';
 
+const SHOP_TAGLINE = 'Tokių macarons niekur kitur nerasite.';
+
 test.describe('Parduotuvė ir užsakymas', () => {
   test('krepšelis išlieka perkrovus puslapį', async ({ page }) => {
     const cake = await createProduct(`Medaus tortas ${Date.now()}`);
@@ -23,7 +25,12 @@ test.describe('Parduotuvė ir užsakymas', () => {
     const item = w.items[0]!;
 
     await page.goto(env.webUrl);
-    await expect(page.getByRole('heading', { name: w.title, level: 1 })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(SHOP_TAGLINE);
+    await expect(page.getByRole('heading', { name: w.title, level: 2 })).toBeVisible();
+    // Žingsniai su lango duomenimis vietoj atskiro atsiėmimo bloko.
+    const steps = page.getByRole('list', { name: 'Kaip užsakyti' });
+    await expect(steps).toContainText('Gedimino pr. 1, Vilnius');
+    await expect(steps).toContainText('Užsakykite iki');
     await addToCart(page, item, 3);
     const cartBar = page.getByRole('region', { name: 'Krepšelis' });
     await expect(cartBar).toContainText('3 prekės');

@@ -1,5 +1,5 @@
 /** Parduotuvės pavadinimas (antraštė, metaduomenys, OG, laiškai). */
-export const SHOP_NAME = 'Desert Web';
+export const SHOP_NAME = 'Ieva Macarons';
 
 /**
  * Pardavėjo duomenys: rodomi poraštėje, privatumo puslapyje ir laiškuose (Reply-To pirkėjui).

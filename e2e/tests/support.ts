@@ -168,13 +168,15 @@ const iso = (ms: number) => new Date(Date.now() + ms).toISOString();
 
 /**
  * Sukuria ir iškart atidaro langą (open-now). Prieš tai uždaro / atšaukia kitus langus, kad
- * pagrindiniame puslapyje būtų rodomas būtent šis langas.
+ * pagrindiniame puslapyje būtų rodomas būtent šis langas (`reset: false`: palieka juos, pvz.,
+ * keliems vienu metu atidarytiems langams).
  */
 export async function openWindow(
   items: { product: Product; variant?: number; quantity?: number; priceCents?: number }[],
   title = `E2E langas ${unique()}`,
+  { reset = true }: { reset?: boolean } = {},
 ): Promise<SaleWindow> {
-  await resetWindows();
+  if (reset) await resetWindows();
   const draft = await adminApi<SaleWindow>('POST', '/admin/sale-windows', {
     title,
     opensAt: iso(HOUR),
