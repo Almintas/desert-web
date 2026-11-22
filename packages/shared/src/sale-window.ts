@@ -18,7 +18,10 @@ export function isSaleWindowOpen(saleWindow: SaleWindowTiming, now: Date = new D
 
 export type SaleWindowPhase = 'draft' | 'cancelled' | 'upcoming' | 'open' | 'closed';
 
-export function getSaleWindowPhase(saleWindow: SaleWindowTiming, now: Date = new Date()): SaleWindowPhase {
+export function getSaleWindowPhase(
+  saleWindow: SaleWindowTiming,
+  now: Date = new Date(),
+): SaleWindowPhase {
   if (saleWindow.status === 'draft' || saleWindow.status === 'cancelled') return saleWindow.status;
   const t = now.getTime();
   if (t < new Date(saleWindow.opensAt).getTime()) return 'upcoming';
