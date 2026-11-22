@@ -56,7 +56,7 @@ export default async function CheckoutPage({
     saleWindow.items.find((i) => i.variantId === variantParam)?.variantId ?? null;
 
   return (
-    <>
+    <div className="checkout-page">
       <p className="breadcrumbs">
         <Link href={backHref}>← Atgal į desertus</Link>
       </p>
@@ -69,6 +69,6 @@ export default async function CheckoutPage({
         selectedVariantId={selectedVariantId}
         turnstileSiteKey={webEnv().turnstileSiteKey}
       />
-    </>
+    </div>
   );
 }

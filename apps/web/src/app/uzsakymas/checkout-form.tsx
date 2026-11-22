@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   type FormEvent,
+  type RefObject,
   startTransition,
   useActionState,
   useEffect,
@@ -12,14 +13,13 @@ import {
   useState,
 } from 'react';
 import { AllergenLine } from '@/components/allergens';
-import { PickupInfo } from '@/components/pickup-info';
 import { ProductImage } from '@/components/product-image';
 import { Stepper } from '@/components/stepper';
 import { preloadTurnstile, Turnstile, type TurnstileHandle } from '@/components/turnstile';
 import { adjustCart, giftWrapQuantityOf, maxQuantity, removeGiftWrap } from '@/lib/cart-logic';
 import { clearCart, useCart } from '@/lib/cart-store';
+import { formatDateTime, formatPickupWhen } from '@/lib/format';
 import { forgetRequestId, getRequestId, resetRequestId } from '@/lib/request-id';
-import { PAYMENT_TEXT } from '@/lib/shop';
 import { placeOrderAction } from './actions';
 import type { CheckoutField, CheckoutState } from './checkout-state';
 import { GiftWrapControl } from './gift-wrap-control';
@@ -56,6 +56,7 @@ export function CheckoutForm({
   const handled = useRef<CheckoutState>(INITIAL);
   const messageRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const summaryRef = useRef<HTMLElement>(null);
 
   // Turnstile api.js pradedam krauti iškart, dar prieš įkeliant krepšelį ir rodant formą.
   useEffect(preloadTurnstile, []);
@@ -157,6 +158,8 @@ export function CheckoutForm({
       </p>
     ) : null;
 
+  useStickyTop(summaryRef, cart.ready);
+
   if (!cart.ready) {
     return <p className="muted">Įkeliamas krepšelis…</p>;
   }
@@ -186,214 +189,255 @@ export function CheckoutForm({
         />
       ) : null}
 
-      <section className="checkout-section" aria-labelledby="cart-heading">
-        <h2 id="cart-heading">Jūsų krepšelis</h2>
-        {cart.loadChanges.length > 0 ? (
-          <CartChanges changes={cart.loadChanges} retry={false} />
-        ) : null}
-        {cartChanges.length > 0 ? (
-          <div ref={messageRef} tabIndex={-1}>
-            <CartChanges changes={cartChanges} />
-          </div>
-        ) : null}
-        {empty ? (
-          <div className="empty-cart">
-            <p>Krepšelis tuščias.</p>
-            {selected ? null : (
-              <p>
-                <Link href={backHref} className="button primary">
-                  Rinktis desertus
-                </Link>
-              </p>
-            )}
-          </div>
-        ) : null}
-        <ul className="cart-lines" hidden={cart.lines.length === 0}>
-          {cart.lines.map((line) => {
-            const item = items.get(line.variantId);
-            if (!item) return null;
-            const giftWrap = canGiftWrap(saleWindow, item) ? saleWindow.giftWrap : null;
-            return (
-              <li key={line.variantId} className="cart-line">
-                <ProductImage image={item.images[0]} alt="" eager={false} priority={false} />
-                <div className="cart-line-body">
-                  <p className="cart-line-name">
-                    {item.productName}
-                    <span className="muted"> {item.variantName}</span>
-                  </p>
-                  <p className="muted small">{formatEur(item.priceCents)} / vnt.</p>
-                  <div className="cart-line-controls">
-                    <Stepper
-                      label={line.label}
-                      value={line.quantity}
-                      max={maxQuantity(item)}
-                      onChange={(q) => cart.setQuantity(line.variantId, q)}
-                    />
-                    <button
-                      type="button"
-                      className="link-button"
-                      onClick={() => cart.setQuantity(line.variantId, 0)}
-                      aria-label={`Pašalinti: ${line.label}`}
-                    >
-                      Pašalinti
-                    </button>
+      {/* Plačiame ekrane dešinysis stulpelis (sticky), siaurame iškart po prekės. */}
+      <aside ref={summaryRef} className="checkout-summary" aria-labelledby="cart-heading">
+        <section className="checkout-section cart-summary">
+          <h2 id="cart-heading">Jūsų krepšelis</h2>
+          {cart.loadChanges.length > 0 ? (
+            <CartChanges changes={cart.loadChanges} retry={false} />
+          ) : null}
+          {cartChanges.length > 0 ? (
+            <div ref={messageRef} tabIndex={-1}>
+              <CartChanges changes={cartChanges} />
+            </div>
+          ) : null}
+          {empty ? (
+            <div className="empty-cart">
+              <p>Krepšelis tuščias.</p>
+              {selected ? null : (
+                <p>
+                  <Link href={backHref} className="button primary">
+                    Rinktis desertus
+                  </Link>
+                </p>
+              )}
+            </div>
+          ) : null}
+          <ul className="cart-lines" hidden={cart.lines.length === 0}>
+            {cart.lines.map((line) => {
+              const item = items.get(line.variantId);
+              if (!item) return null;
+              const giftWrap = canGiftWrap(saleWindow, item) ? saleWindow.giftWrap : null;
+              return (
+                <li key={line.variantId} className="cart-line">
+                  <ProductImage image={item.images[0]} alt="" eager={false} priority={false} />
+                  <div className="cart-line-body">
+                    <p className="cart-line-name">
+                      {item.productName}
+                      <span className="muted"> {item.variantName}</span>
+                    </p>
+                    <p className="muted small">{formatEur(item.priceCents)} / vnt.</p>
+                    <div className="cart-line-controls">
+                      <Stepper
+                        label={line.label}
+                        value={line.quantity}
+                        max={maxQuantity(item)}
+                        onChange={(q) => cart.setQuantity(line.variantId, q)}
+                      />
+                      <button
+                        type="button"
+                        className="link-button"
+                        onClick={() => cart.setQuantity(line.variantId, 0)}
+                        aria-label={`Pašalinti: ${line.label}`}
+                      >
+                        Pašalinti
+                      </button>
+                    </div>
+                    <AllergenLine allergens={item.allergens} />
                   </div>
-                  <AllergenLine allergens={item.allergens} />
-                </div>
-                <p className="cart-line-total">{formatEur(item.priceCents * line.quantity)}</p>
-                {/* Atskira eilutė po prekės (per tekstą ir sumą), kad telefone neliktų siaura. */}
-                {giftWrap ? (
-                  <GiftWrapControl
-                    label={line.label}
-                    quantity={line.quantity}
-                    giftWrapQuantity={giftWrapQuantityOf(line)}
-                    priceCents={giftWrap.priceCents}
-                    onChange={(g) => cart.setGiftWrap(line.variantId, g)}
-                  />
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-        {empty ? null : (
-          <>
-            {cart.totals.giftWrapCount > 0 ? (
-              <dl className="cart-subtotals">
-                <div>
-                  <dt>Prekės</dt>
-                  <dd>{formatEur(cart.totals.itemsCents)}</dd>
-                </div>
-                <div>
-                  <dt>Dovanų pakavimas ({cart.totals.giftWrapCount} vnt.)</dt>
-                  <dd>{formatEur(cart.totals.giftWrapCents)}</dd>
-                </div>
-              </dl>
-            ) : null}
-            <p className="cart-total">
-              <span>Iš viso</span>
-              <strong>{formatEur(cart.totalCents)}</strong>
-            </p>
-          </>
-        )}
-        {empty && !selected ? null : (
-          <p className="allergy-note">
-            Jei turite alergijų ar klausimų dėl sudėties, prieš užsakydami susisiekite:{' '}
-            <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a>
-            {SELLER.phone ? (
-              <>
-                {' · '}
-                <a href={`tel:${SELLER.phone.replace(/[^\d+]/g, '')}`}>{SELLER.phone}</a>
-              </>
-            ) : null}
-          </p>
-        )}
-      </section>
-
-      <section className="checkout-section" aria-labelledby="pickup-heading">
-        <h2 id="pickup-heading">Atsiėmimas ir apmokėjimas</h2>
-        <PickupInfo
-          location={saleWindow.fulfillment.pickupLocation}
-          from={saleWindow.fulfillment.pickupFrom}
-          to={saleWindow.fulfillment.pickupTo}
-        />
-        <p className="payment-note">{PAYMENT_TEXT}</p>
-      </section>
-
-      {empty ? (
-        <p className="alert info locked-note" id="contacts-locked">
-          Pirmiausia pasirinkite kiekį – tada galėsite įvesti savo duomenis.
-        </p>
-      ) : null}
-      <fieldset
-        className={`checkout-section${empty ? ' locked' : ''}`}
-        disabled={done || empty}
-        aria-describedby={empty ? 'contacts-locked' : undefined}
-      >
-        <legend>
-          <h2>Jūsų kontaktai</h2>
-        </legend>
-        <div className="field">
-          <label htmlFor="field-name">Vardas</label>
-          <input {...field('name')} autoComplete="name" maxLength={100} required />
-          {fieldError('name')}
-        </div>
-        <div className="field">
-          <label htmlFor="field-email">El. paštas</label>
-          <input
-            {...field('email')}
-            type="email"
-            autoComplete="email"
-            inputMode="email"
-            maxLength={200}
-            required
-          />
-          {fieldError('email')}
-        </div>
-        <div className="field">
-          <label htmlFor="field-phone">Telefonas</label>
-          <input
-            {...field('phone')}
-            type="tel"
-            autoComplete="tel"
-            inputMode="tel"
-            maxLength={20}
-            required
-          />
-          <p className="hint" id="hint-phone">
-            +370 6xx xxxxx
-          </p>
-          {fieldError('phone')}
-        </div>
-        <div className="field">
-          <label htmlFor="field-notes">
-            Pastabos <span className="optional">(nebūtina)</span>
-          </label>
-          <textarea {...field('notes')} rows={3} maxLength={1000} />
-          {fieldError('notes')}
-        </div>
-      </fieldset>
-
-      <div className="checkout-submit">
-        {state.status === 'error' || state.status === 'closed' ? (
-          <div
-            ref={cartChanges.length > 0 ? undefined : messageRef}
-            tabIndex={-1}
-            className="alert error"
-            role="alert"
-          >
-            <p>{state.message}</p>
-            {closed ? (
-              <p>
-                <Link href={backHref}>Grįžti į parduotuvę</Link>
+                  <p className="cart-line-total">{formatEur(item.priceCents * line.quantity)}</p>
+                  {/* Atskira eilutė po prekės (per tekstą ir sumą), kad telefone neliktų siaura. */}
+                  {giftWrap ? (
+                    <GiftWrapControl
+                      label={line.label}
+                      quantity={line.quantity}
+                      giftWrapQuantity={giftWrapQuantityOf(line)}
+                      priceCents={giftWrap.priceCents}
+                      onChange={(g) => cart.setGiftWrap(line.variantId, g)}
+                    />
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+          {empty ? null : (
+            <>
+              {cart.totals.giftWrapCount > 0 ? (
+                <dl className="cart-subtotals">
+                  <div>
+                    <dt>Prekės</dt>
+                    <dd>{formatEur(cart.totals.itemsCents)}</dd>
+                  </div>
+                  <div>
+                    <dt>Dovanų pakavimas ({cart.totals.giftWrapCount} vnt.)</dt>
+                    <dd>{formatEur(cart.totals.giftWrapCents)}</dd>
+                  </div>
+                </dl>
+              ) : null}
+              <p className="cart-total">
+                <span>Iš viso</span>
+                <strong>{formatEur(cart.totalCents)}</strong>
               </p>
-            ) : null}
-          </div>
+            </>
+          )}
+          <CheckoutFacts saleWindow={saleWindow} />
+          {empty && !selected ? null : (
+            <p className="allergy-note">
+              Jei turite alergijų ar klausimų dėl sudėties, prieš užsakydami susisiekite:{' '}
+              <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a>
+              {SELLER.phone ? (
+                <>
+                  {' · '}
+                  <a href={`tel:${SELLER.phone.replace(/[^\d+]/g, '')}`}>{SELLER.phone}</a>
+                </>
+              ) : null}
+            </p>
+          )}
+        </section>
+      </aside>
+
+      <div className="checkout-main">
+        {empty ? (
+          <p className="alert info locked-note" id="contacts-locked">
+            Pirmiausia pasirinkite kiekį – tada galėsite įvesti savo duomenis.
+          </p>
         ) : null}
-        <Turnstile
-          ref={turnstile}
-          siteKey={turnstileSiteKey}
-          onToken={setTurnstileToken}
-          showStatus={!done && !closed}
-        />
-        <p className="privacy-line">
-          Jūsų duomenis naudosime tik šiam užsakymui įvykdyti ir susisiekti dėl atsiėmimo.{' '}
-          <Link href="/privatumas">Privatumas</Link>
-        </p>
-        <button
-          type="submit"
-          className="button primary wide"
-          disabled={pending || done || closed || empty || !requestId || !turnstileToken}
+        <fieldset
+          className={`checkout-section${empty ? ' locked' : ''}`}
+          disabled={done || empty}
+          aria-describedby={empty ? 'contacts-locked' : undefined}
         >
-          {done
-            ? 'Užsakymas pateiktas…'
-            : pending
-              ? 'Pateikiama…'
-              : empty
-                ? 'Užsakyti'
-                : `Užsakyti už ${formatEur(cart.totalCents)}`}
-        </button>
+          <legend>
+            <h2>Jūsų kontaktai</h2>
+          </legend>
+          <div className="field">
+            <label htmlFor="field-name">Vardas</label>
+            <input {...field('name')} autoComplete="name" maxLength={100} required />
+            {fieldError('name')}
+          </div>
+          <div className="field">
+            <label htmlFor="field-email">El. paštas</label>
+            <input
+              {...field('email')}
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              maxLength={200}
+              required
+            />
+            {fieldError('email')}
+          </div>
+          <div className="field">
+            <label htmlFor="field-phone">Telefonas</label>
+            <input
+              {...field('phone')}
+              type="tel"
+              autoComplete="tel"
+              inputMode="tel"
+              maxLength={20}
+              required
+            />
+            <p className="hint" id="hint-phone">
+              +370 6xx xxxxx
+            </p>
+            {fieldError('phone')}
+          </div>
+          <div className="field">
+            <label htmlFor="field-notes">
+              Pastabos <span className="optional">(nebūtina)</span>
+            </label>
+            <textarea {...field('notes')} rows={3} maxLength={1000} />
+            {fieldError('notes')}
+          </div>
+        </fieldset>
+
+        <div className="checkout-submit">
+          {state.status === 'error' || state.status === 'closed' ? (
+            <div
+              ref={cartChanges.length > 0 ? undefined : messageRef}
+              tabIndex={-1}
+              className="alert error"
+              role="alert"
+            >
+              <p>{state.message}</p>
+              {closed ? (
+                <p>
+                  <Link href={backHref}>Grįžti į parduotuvę</Link>
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          <Turnstile
+            ref={turnstile}
+            siteKey={turnstileSiteKey}
+            onToken={setTurnstileToken}
+            showStatus={!done && !closed}
+          />
+          <p className="privacy-line">
+            Jūsų duomenis naudosime tik šiam užsakymui įvykdyti ir susisiekti dėl atsiėmimo.{' '}
+            <Link href="/privatumas">Privatumas</Link>
+          </p>
+          <button
+            type="submit"
+            className="button primary wide"
+            disabled={pending || done || closed || empty || !requestId || !turnstileToken}
+          >
+            {done
+              ? 'Užsakymas pateiktas…'
+              : pending
+                ? 'Pateikiama…'
+                : empty
+                  ? 'Užsakyti'
+                  : `Užsakyti už ${formatEur(cart.totalCents)}`}
+          </button>
+        </div>
       </div>
     </form>
+  );
+}
+
+/** Atstumas nuo ekrano viršaus prilipusiam krepšeliui (kaip 1.5rem CSS). */
+const STICKY_GAP_REM = 1.5;
+
+/**
+ * Plačiame ekrane krepšelis `position: sticky`. Jei jis aukštesnis už ekraną, `top` tampa
+ * neigiamas (--summary-top), kad prilimptų apačia: suma ir atsiėmimas lieka matomi, o
+ * viršus atsiskleidžia slenkant atgal. Siaurame ekrane kintamasis nenaudojamas (žr. globals.css).
+ */
+function useStickyTop(ref: RefObject<HTMLElement | null>, ready: boolean) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const gap = STICKY_GAP_REM * rem;
+      const top = Math.min(gap, window.innerHeight - el.offsetHeight - gap);
+      el.style.setProperty('--summary-top', `${Math.round(top)}px`);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    window.addEventListener('resize', update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [ref, ready]);
+}
+
+/** Atsiėmimas, apmokėjimas ir lango pabaiga (parduotuvės laiku) po krepšelio suma. */
+function CheckoutFacts({ saleWindow }: { saleWindow: PublicSaleWindowDto }) {
+  const { pickupLocation, pickupFrom, pickupTo } = saleWindow.fulfillment;
+  const when =
+    pickupFrom && pickupTo ? formatPickupWhen(pickupFrom, pickupTo) : 'laikas bus patikslintas';
+  return (
+    <ul className="checkout-facts">
+      <li>
+        <strong>Atsiėmimas:</strong> {pickupLocation ?? 'vieta bus patikslinta'}, {when}
+      </li>
+      <li>Apmokėjimas atsiimant.</li>
+      <li>Užsakymai priimami iki {formatDateTime(saleWindow.closesAt)}</li>
+    </ul>
   );
 }
 

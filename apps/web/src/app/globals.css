@@ -933,6 +933,92 @@ img {
   max-width: 680px;
 }
 
+/* Kairysis stulpelis po prekės: kontaktai ir pateikimas (siaurame ekrane eina po krepšelio). */
+.checkout-main {
+  display: grid;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+/*
+ * Plačiame ekrane: kairėje prekė ir forma, dešinėje krepšelis (sticky). Antraštė nėra fiksuota,
+ * todėl `top` tik atitraukia nuo ekrano viršaus. Jei krepšelis aukštesnis už ekraną, jis
+ * slenkamas viduje, kad apačia (suma, atsiėmimas) visada būtų pasiekiama.
+ */
+@media (min-width: 1024px) {
+  .checkout-page {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .checkout {
+    max-width: none;
+    grid-template-columns: minmax(0, 1fr) clamp(340px, 30vw, 380px);
+    /* 1fr eilutė ištempia krepšelio sritį per visą formos aukštį (sticky ribos). */
+    grid-template-rows: auto 1fr;
+    column-gap: 2rem;
+    align-items: start;
+  }
+
+  .checkout > * {
+    grid-column: 1;
+  }
+
+  .checkout > .checkout-summary {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    position: sticky;
+    /* Aukštesnis už ekraną krepšelis prilimpa apačia (žr. useStickyTop checkout-form.tsx). */
+    top: var(--summary-top, 1.5rem);
+  }
+
+  /*
+   * Siauresnėje kolonoje eilutė kompaktiškesnė: kaina prie pavadinimo, kiekis ir „Pašalinti“
+   * po juo per visą plotį (be nuotraukos stulpelio).
+   */
+  .cart-summary .cart-line {
+    grid-template-columns: 52px minmax(0, 1fr) auto;
+    gap: 0 0.75rem;
+  }
+
+  .cart-summary .cart-line-body {
+    display: contents;
+  }
+
+  .cart-summary .cart-line .product-image {
+    grid-row: 1 / span 2;
+  }
+
+  .cart-summary .cart-line-name,
+  .cart-summary .cart-line-body .small {
+    grid-column: 2;
+  }
+
+  .cart-summary .cart-line-total {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .cart-summary .cart-line-controls,
+  .cart-summary .cart-line-body .allergens {
+    grid-column: 2 / -1;
+  }
+
+  .cart-summary .cart-line-body .small {
+    margin-bottom: 0.5rem;
+  }
+
+  .cart-summary .cart-line .gift-wrap {
+    margin-top: 0.25rem;
+  }
+
+  .cart-summary .cart-line-controls .stepper-button {
+    width: 40px;
+    height: 40px;
+    font-size: 1.3rem;
+  }
+}
+
 .checkout-section {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1184,18 +1270,20 @@ fieldset.checkout-section.locked {
   margin-top: 0.35rem;
 }
 
+.checkout-facts {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0.9rem 0 0;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+}
+
 .allergy-note {
   margin: 0.75rem 0 0;
   font-size: 0.9rem;
   color: var(--muted);
-}
-
-.payment-note {
-  margin: 0.75rem 0 0;
-  padding: 0.75rem 1rem;
-  background: var(--accent-soft);
-  border-radius: var(--radius-sm);
-  font-weight: 600;
 }
 
 .field {
