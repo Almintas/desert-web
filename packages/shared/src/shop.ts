@@ -1,6 +1,12 @@
 /** Parduotuvės pavadinimas (antraštė, metaduomenys, OG, laiškai). */
 export const SHOP_NAME = 'Vincento Macarons';
 
+/**
+ * Vienintelis apmokėjimo būdas (internetinių mokėjimų kol kas nėra). Vienas tekstas užsakymo
+ * formoje, patvirtinimo puslapyje ir laiškuose pirkėjui.
+ */
+export const PAYMENT_TEXT = 'Apmokėjimas atsiimant.';
+
 export const SELLER_FIELDS = ['name', 'businessId', 'address', 'email', 'phone'] as const;
 export type SellerField = (typeof SELLER_FIELDS)[number];
 export type SellerDetails = Readonly<Record<SellerField, string>>;

@@ -1,4 +1,4 @@
-import { formatEur, type OrderAccessDto, type OrderStatus } from '@desert-web/shared';
+import { formatEur, type OrderAccessDto, type OrderStatus, PAYMENT_TEXT } from '@desert-web/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -6,7 +6,6 @@ import { PickupInfo } from '@/components/pickup-info';
 import { ApiError, apiFetch, TOO_MANY_REQUESTS_MESSAGE } from '@/lib/api';
 import { forwardedClientHeaders } from '@/lib/client-headers';
 import { formatDateTime } from '@/lib/format';
-import { PAYMENT_TEXT } from '@/lib/shop';
 import { CopyLink } from './copy-link';
 
 // Užsakymo būsena keičiasi, o nuoroda slapta: niekada netalpinam (žr. ir proxy.ts antraštes).

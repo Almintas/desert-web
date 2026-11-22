@@ -2,6 +2,7 @@ import {
   type FulfillmentMethod,
   formatEur,
   formatPickupRange,
+  PAYMENT_TEXT,
   SELLER,
   sellerDisplayName,
   SHOP_NAME,
@@ -304,7 +305,7 @@ export function renderCustomerOrderReceived(data: OrderEmailData): RenderedEmail
 
   const html = layout({
     title: subject,
-    preheader: `Užsakymas ${data.orderNumber}, ${formatEur(data.totalCents)}. Apmokėjimas atsiimant.`,
+    preheader: `Užsakymas ${data.orderNumber}, ${formatEur(data.totalCents)}. ${PAYMENT_TEXT}`,
     body: [
       h1('Ačiū, užsakymą gavome!'),
       p(escapeHtml(intro)),

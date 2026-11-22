@@ -95,10 +95,13 @@ test.describe('Parduotuvė ir užsakymas', () => {
     const who = await fillCheckout(page);
     await expect(submitButton(page)).toBeEnabled();
     await expect(submitButton(page)).toHaveText(/44,00/);
+    // Tas pats apmokėjimo tekstas formoje ir patvirtinimo puslapyje (PAYMENT_TEXT).
+    await expect(page.getByText('Apmokėjimas atsiimant.', { exact: true })).toBeVisible();
     await submitButton(page).click();
 
     await expect(page).toHaveURL(/\/uzsakymas\/[A-Za-z0-9_-]{32}$/);
     await expect(page.getByText('Ačiū! Užsakymą gavome')).toBeVisible();
+    await expect(page.getByText('Neapmokėta Apmokėjimas atsiimant.')).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Užsakymas DW-\d{4}-\d{4}/);
     await expect(page.getByText('Gedimino pr. 1, Vilnius')).toBeVisible();
     await expect(page.getByText(itemLabel(item).split(' ')[0]!).first()).toBeVisible();

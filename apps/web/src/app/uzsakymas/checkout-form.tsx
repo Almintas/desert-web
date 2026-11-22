@@ -3,6 +3,7 @@
 import {
   canGiftWrap,
   formatEur,
+  PAYMENT_TEXT,
   type PublicSaleWindowDto,
   SELLER,
   telHref,
@@ -437,7 +438,7 @@ function CheckoutFacts({ saleWindow }: { saleWindow: PublicSaleWindowDto }) {
       <li>
         <strong>Atsiėmimas:</strong> {pickupLocation ?? 'vieta bus patikslinta'}, {when}
       </li>
-      <li>Apmokėjimas atsiimant.</li>
+      <li>{PAYMENT_TEXT}</li>
       <li>Užsakymai priimami iki {formatDateTime(saleWindow.closesAt)}</li>
     </ul>
   );
