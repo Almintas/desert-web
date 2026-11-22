@@ -44,13 +44,20 @@ a {
 }
 
 .brand {
-  font-family: var(--font-wordmark), 'Iowan Old Style', Palatino, Georgia, serif;
-  font-style: italic;
-  font-weight: 600;
-  font-size: 1.6rem;
-  line-height: 1.1;
-  color: var(--accent);
+  font-family: var(--font-wordmark), Didot, 'Bodoni 72', 'Bodoni MT', Georgia, serif;
+  font-weight: 400;
+  /* Mažame dydyje žemesnis opsz: plaukinės linijos (M kairė) neišnyksta. */
+  font-variation-settings: 'opsz' 32;
+  font-size: 1.75rem;
+  line-height: 0.9;
+  color: var(--text);
   margin: 0 0 1.5rem 0.5rem;
+}
+
+/* „Vincento“ virš „Macarons“. */
+.brand-line {
+  display: block;
+  white-space: nowrap;
 }
 
 .sidebar nav {

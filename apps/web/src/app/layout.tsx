@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { SELLER, SHOP_NAME } from '@desert-web/shared';
+import { Wordmark } from '@/components/wordmark';
 import { SHOP_DESCRIPTION } from '@/lib/shop';
 import { bodyFont, displayFont } from './fonts';
 import './globals.css';
@@ -44,9 +45,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </a>
         <header className="site-header">
           <div className="site-header-inner">
-            <Link href="/" className="wordmark">
-              {SHOP_NAME}
-            </Link>
+            <Wordmark href="/" />
           </div>
         </header>
         <main id="turinys" className="container">
@@ -54,7 +53,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         </main>
         <footer className="site-footer">
           <div className="site-footer-inner">
-            <p className="footer-shop wordmark-text">{SHOP_NAME}</p>
+            <p className="footer-shop">{SHOP_NAME}</p>
             <p>
               Parduoda: {SELLER.name}
               <br />

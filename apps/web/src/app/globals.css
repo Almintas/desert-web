@@ -3,6 +3,8 @@
   --surface: #ffffff;
   --surface-warm: #f6ece2;
   --text: #3a2a24;
+  /* Logotipo rašalas: tamsesnis už --text, kad plonos Bodoni linijos būtų ryškios. */
+  --ink: #241915;
   --muted: #6e5c55;
   --accent: #a3423a;
   --accent-hover: #8a352e;
@@ -17,11 +19,12 @@
   --radius: 16px;
   --radius-sm: 10px;
   --shadow: 0 1px 2px rgb(58 42 36 / 6%), 0 4px 16px rgb(58 42 36 / 6%);
-  /* --font-manrope / --font-cormorant: next/font (žr. src/app/fonts.ts). */
+  /* --font-manrope / --font-bodoni: next/font (žr. src/app/fonts.ts). */
   --font-body:
     var(--font-manrope), system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     sans-serif;
-  --font-heading: var(--font-cormorant), 'Iowan Old Style', Palatino, Georgia, serif;
+  --font-display: var(--font-bodoni), Didot, 'Bodoni 72', 'Bodoni MT', Georgia, serif;
+  --font-heading: var(--font-display);
   --container: 1160px;
   --gutter: 16px;
   color-scheme: light;
@@ -50,14 +53,17 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* Cormorant Garamond tik nuo ~1.25rem: mažesniame dydyje per plonas. */
+/*
+ * Bodoni Moda kaip logotipas: optinį dydį (opsz) naršyklė parenka pagal šrifto dydį, storis 500
+ * (400 smulkesnėse antraštėse per plonos plaukinės linijos, 600 per sunkus šalia logotipo).
+ */
 h1,
 h2,
 h3 {
   font-family: var(--font-heading);
-  font-weight: 600;
+  font-weight: 500;
   line-height: 1.15;
-  /* Cormorant pagal nutylėjimą rašo senovinius skaitmenis („2026“ šokinėja). */
+  /* Skaitmenys visada vienodo aukščio („2026“ nešokinėja). */
   font-variant-numeric: lining-nums;
 }
 
@@ -158,28 +164,74 @@ img {
   padding-bottom: 0.3rem;
 }
 
-/* Tekstinis logotipas. */
-.wordmark,
-.wordmark-text {
-  font-family: var(--font-heading);
-  font-style: italic;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  line-height: 1;
-  color: var(--accent);
-}
-
+/* Tekstinis logotipas (components/wordmark.tsx): Bodoni Moda dviem eilutėmis, po juo smulki eilutė. */
 .wordmark {
   display: inline-flex;
-  align-items: center;
-  min-height: 48px;
-  padding: 0 0.25rem;
-  font-size: 1.85rem;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.2rem 0.25rem;
+  color: var(--ink);
   text-decoration: none;
 }
 
 .wordmark:hover {
-  color: var(--accent-hover);
+  color: var(--ink);
+  opacity: 0.82;
+}
+
+.wordmark-name {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-display);
+  font-weight: 400;
+  /* Aukštas optinis dydis: kontrastingos, plonos linijos (kaip didelio formato Bodoni). */
+  font-variation-settings: 'opsz' var(--wordmark-opsz, 96);
+  line-height: 0.9;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.wordmark-line {
+  display: block;
+}
+
+.wordmark-dot {
+  display: inline-block;
+}
+
+.wordmark-sub {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.6rem;
+  line-height: 1;
+  letter-spacing: 0.4em;
+  text-transform: lowercase;
+  color: var(--muted);
+  white-space: nowrap;
+  /* Prasideda po „V“ kairiu kraštu. */
+  margin: 0.4rem 0 0 0.06em;
+}
+
+.wordmark-header .wordmark-name {
+  font-size: clamp(1.65rem, 1.2rem + 2.2vw, 2.35rem);
+  /* Antraštės dydyje su opsz 96 plaukinės linijos (M kairė) beveik išnyksta. */
+  --wordmark-opsz: 40;
+}
+
+.wordmark-large .wordmark-name {
+  font-size: clamp(3rem, 13vw, 6rem);
+}
+
+.wordmark-large .wordmark-sub {
+  font-size: clamp(0.75rem, 2.4vw, 1rem);
+  margin-top: 0.9rem;
+}
+
+.footer-shop {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--ink);
 }
 
 .container {
@@ -190,12 +242,12 @@ img {
 
 @media (min-width: 640px) {
   .site-header-inner {
-    padding-top: 0.6rem;
-    padding-bottom: 0.6rem;
+    padding-top: 0.45rem;
+    padding-bottom: 0.45rem;
   }
 
-  .wordmark {
-    font-size: 2.25rem;
+  .wordmark-sub {
+    font-size: 0.68rem;
   }
 
   .container {
@@ -352,7 +404,8 @@ img {
 
 .hero-title {
   font-size: clamp(2rem, 7.4vw, 3.25rem);
-  font-weight: 600;
+  /* Didelis šūkis lengvesnis, kaip logotipas. */
+  font-weight: 400;
   line-height: 1.05;
   margin: 0 0 0.4rem;
   text-wrap: balance;
