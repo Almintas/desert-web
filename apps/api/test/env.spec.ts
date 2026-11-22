@@ -1,4 +1,4 @@
-import { TURNSTILE_SITEVERIFY_URL, TURNSTILE_TEST_KEYS } from '@desert-web/shared';
+import { SHOP_NAME, TURNSTILE_SITEVERIFY_URL, TURNSTILE_TEST_KEYS } from '@desert-web/shared';
 import { validateEnv } from '../src/config/env';
 
 const SECRET = 'a'.repeat(32);
@@ -216,7 +216,7 @@ describe('validateEnv: laiškai (Resend)', () => {
   it('numatyta: be rakto, resend.dev siuntėjas, laiškai pirkėjams išjungti, vietiniai URL', () => {
     const env = validateEnv(base);
     expect(env.RESEND_API_KEY).toBeUndefined();
-    expect(env.RESEND_FROM_EMAIL).toBe('Ieva Macarons <onboarding@resend.dev>');
+    expect(env.RESEND_FROM_EMAIL).toBe(`${SHOP_NAME} <onboarding@resend.dev>`);
     expect(env.ORDER_NOTIFY_EMAIL).toBeUndefined();
     expect(env.CUSTOMER_EMAILS_ENABLED).toBe(false);
     expect(env.WEB_URL).toBe('http://localhost:3000');
@@ -250,7 +250,7 @@ describe('validateEnv: laiškai (Resend)', () => {
       ...production,
       ...emails,
       CUSTOMER_EMAILS_ENABLED: 'true',
-      RESEND_FROM_EMAIL: 'Ieva Macarons <uzsakymai@desertai.lt>',
+      RESEND_FROM_EMAIL: `${SHOP_NAME} <uzsakymai@desertai.lt>`,
     });
     expect(env.CUSTOMER_EMAILS_ENABLED).toBe(true);
   });

@@ -1,5 +1,5 @@
 import './env/emails';
-import { formatEur, SELLER } from '@desert-web/shared';
+import { formatEur, SELLER, SHOP_NAME } from '@desert-web/shared';
 import { Logger } from '@nestjs/common';
 import request from 'supertest';
 import type { Order } from '../src/orders/order.schema';
@@ -17,7 +17,7 @@ import {
 
 const WEB_URL = 'https://desertai.example'; // env: su pabaigos „/“, kuris nukerpamas
 const ADMIN_URL = 'https://admin.desertai.example';
-const FROM = 'Ieva Macarons <uzsakymai@desertai.example>';
+const FROM = `${SHOP_NAME} <uzsakymai@desertai.example>`; // kaip env/emails.ts
 const SELLER_EMAIL = 'pardavejas@desertai.example';
 
 describe('Užsakymų laiškai (visi įjungti)', () => {

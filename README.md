@@ -169,7 +169,7 @@ Railway → api service → Variables:
 | `RESEND_API_KEY`          | Resend → API Keys (užtenka „Sending access“). Be jo laiškai nesiunčiami (paleidžiant įspėjimas loguose) |
 | `ORDER_NOTIFY_EMAIL`      | pardavėjo adresas; kol siuntėjas `resend.dev`, tik Resend paskyros savininko el. paštas                 |
 | `ADMIN_URL`               | admin adresas, pvz. `https://admin.desertai.lt` (privalomas, kai nustatyti du ankstesni)                |
-| `RESEND_FROM_EMAIL`       | neprivaloma; numatyta `Ieva Macarons <onboarding@resend.dev>`                                           |
+| `RESEND_FROM_EMAIL`       | neprivaloma; numatyta `Vincento Macarons <onboarding@resend.dev>`                                       |
 | `CUSTOMER_EMAILS_ENABLED` | neprivaloma; numatyta `false`                                                                           |
 | `WEB_URL`                 | parduotuvės adresas, pvz. `https://desertai.lt` (privalomas, kai `CUSTOMER_EMAILS_ENABLED=true`)        |
 
@@ -186,7 +186,7 @@ Vystant be `RESEND_API_KEY` kiekvienas laiškas tik išvedamas į API logą (kam
 ##### Kaip įjungti laiškus pirkėjams
 
 1. Resend → Domains → Add domain (pvz., `desertai.lt`), įrašykite DNS įrašus ir palaukite, kol domenas bus „Verified“.
-2. Railway: `RESEND_FROM_EMAIL` nustatykite adresu tame domene, pvz. `Ieva Macarons <uzsakymai@desertai.lt>`, ir `WEB_URL` (pvz., `https://desertai.lt`).
+2. Railway: `RESEND_FROM_EMAIL` nustatykite adresu tame domene, pvz. `Vincento Macarons <uzsakymai@desertai.lt>`, ir `WEB_URL` (pvz., `https://desertai.lt`).
 3. Railway: `CUSTOMER_EMAILS_ENABLED=true`. Su `resend.dev` siuntėju API produkcijoje nepasileis (aiški klaida deploy loguose).
 4. Tada galima pakeisti patvirtinimo puslapio ir užsakymo formos tekstą „išsisaugokite nuorodą“ (dabar pirkėjas laiško negauna).
 

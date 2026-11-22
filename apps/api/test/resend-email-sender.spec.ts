@@ -1,7 +1,8 @@
+import { SHOP_NAME } from '@desert-web/shared';
 import { ResendEmailSender, ResendSendError } from '../src/notifications/resend-email-sender';
 
 const message = {
-  from: 'Ieva Macarons <onboarding@resend.dev>',
+  from: `${SHOP_NAME} <onboarding@resend.dev>`,
   to: 'pardavejas@example.com',
   replyTo: 'ona@example.com',
   subject: 'Naujas užsakymas',

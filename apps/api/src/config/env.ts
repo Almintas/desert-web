@@ -18,7 +18,7 @@ export const DEFAULT_FROM_EMAIL = `${SHOP_NAME} <onboarding@resend.dev>`;
 
 const SIMPLE_EMAIL = /^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/;
 
-/** „Ieva Macarons <info@desertai.lt>“ arba „info@desertai.lt“ -> „info@desertai.lt“; kitaip null. */
+/** „Vincento Macarons <info@desertai.lt>“ arba „info@desertai.lt“ -> „info@desertai.lt“; kitaip null. */
 export function emailAddressOf(from: string): string | null {
   const match = /^[^<>]*<([^<>]+)>$/.exec(from.trim());
   const address = (match ? match[1]! : from).trim();
