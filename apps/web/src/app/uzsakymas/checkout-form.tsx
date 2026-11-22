@@ -1,6 +1,12 @@
 'use client';
 
-import { canGiftWrap, formatEur, type PublicSaleWindowDto, SELLER } from '@desert-web/shared';
+import {
+  canGiftWrap,
+  formatEur,
+  type PublicSaleWindowDto,
+  SELLER,
+  telHref,
+} from '@desert-web/shared';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -281,16 +287,12 @@ export function CheckoutForm({
             </>
           )}
           <CheckoutFacts saleWindow={saleWindow} />
-          {empty && !selected ? null : (
+          {(empty && !selected) || !(SELLER.email || SELLER.phone) ? null : (
             <p className="allergy-note">
               Jei turite alergijų ar klausimų dėl sudėties, prieš užsakydami susisiekite:{' '}
-              <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a>
-              {SELLER.phone ? (
-                <>
-                  {' · '}
-                  <a href={`tel:${SELLER.phone.replace(/[^\d+]/g, '')}`}>{SELLER.phone}</a>
-                </>
-              ) : null}
+              {SELLER.email ? <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a> : null}
+              {SELLER.email && SELLER.phone ? ' · ' : null}
+              {SELLER.phone ? <a href={telHref(SELLER.phone)}>{SELLER.phone}</a> : null}
             </p>
           )}
         </section>

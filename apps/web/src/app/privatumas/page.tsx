@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SELLER, SHOP_NAME } from '@desert-web/shared';
+import { SELLER, SHOP_NAME, sellerDisplayName, telHref } from '@desert-web/shared';
 
 export const metadata: Metadata = {
   title: 'Privatumas',
@@ -60,11 +60,31 @@ export default function PrivacyPage() {
         arba paskambinkite:
       </p>
       <p>
-        {SELLER.name}
-        <br />
-        <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a>
-        <br />
-        <a href={`tel:${SELLER.phone.replace(/[^\d+]/g, '')}`}>{SELLER.phone}</a>
+        {sellerDisplayName()}
+        {SELLER.businessId ? (
+          <>
+            <br />
+            {SELLER.businessId}
+          </>
+        ) : null}
+        {SELLER.address ? (
+          <>
+            <br />
+            {SELLER.address}
+          </>
+        ) : null}
+        {SELLER.email ? (
+          <>
+            <br />
+            <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a>
+          </>
+        ) : null}
+        {SELLER.phone ? (
+          <>
+            <br />
+            <a href={telHref(SELLER.phone)}>{SELLER.phone}</a>
+          </>
+        ) : null}
       </p>
 
       <p>

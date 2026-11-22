@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { SELLER, SHOP_NAME } from '@desert-web/shared';
+import { SELLER, SHOP_NAME, sellerDisplayName, telHref } from '@desert-web/shared';
 import { Wordmark } from '@/components/wordmark';
 import { SHOP_DESCRIPTION } from '@/lib/shop';
 import { bodyFont, displayFont } from './fonts';
@@ -55,11 +55,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="site-footer-inner">
             <p className="footer-shop">{SHOP_NAME}</p>
             <p>
-              Parduoda: {SELLER.name}
-              <br />
-              <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a>
-              {' · '}
-              <a href={`tel:${SELLER.phone.replace(/[^\d+]/g, '')}`}>{SELLER.phone}</a>
+              Parduoda: {sellerDisplayName()}
+              {SELLER.email || SELLER.phone ? <br /> : null}
+              {SELLER.email ? <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a> : null}
+              {SELLER.email && SELLER.phone ? ' · ' : null}
+              {SELLER.phone ? <a href={telHref(SELLER.phone)}>{SELLER.phone}</a> : null}
             </p>
             <p>
               <Link href="/privatumas">Privatumas</Link>

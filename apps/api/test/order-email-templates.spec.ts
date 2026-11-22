@@ -1,4 +1,4 @@
-import { formatEur, SELLER } from '@desert-web/shared';
+import { formatEur, SELLER, sellerDisplayName } from '@desert-web/shared';
 import {
   escapeHtml,
   type OrderEmailData,
@@ -109,7 +109,13 @@ describe('Užsakymų laiškų šablonai', () => {
     expect(subject).toBe('Gavome jūsų užsakymą DW-2026-0042');
     expect(text).toContain('Apmokėjimas: atsiimant');
     expect(text).toContain('Jūsų pastabos: Be riešutų');
-    expect(html).toContain(SELLER.phone);
+    expect(html).toContain(sellerDisplayName());
+    // Neužpildyti (TODO) pardavėjo kontaktai praleidžiami, užpildyti rodomi.
+    for (const value of [SELLER.email, SELLER.phone].filter(Boolean)) {
+      expect(html).toContain(value);
+      expect(text).toContain(value);
+    }
+    expect(text).not.toMatch(/^\s*$\n^Šį laišką/m);
     expect(html).toMatch(/^<!doctype html>/);
     expect(html).toContain('name="viewport"');
     expect(html).not.toMatch(/<link|<img|<style/);

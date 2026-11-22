@@ -227,7 +227,7 @@ Du atskiri Vercel projektai iš to paties repo:
 
 Web naršyklė į API nesikreipia: puslapius ir užsakymo pateikimą (Server Action) atlieka web Next.js serveris. `NEXT_PUBLIC_API_URL` nebenaudojamas (jei liko Vercel, ištrink). Produkcijoje web be `API_URL` **nepasileidžia** (aiški klaida Vercel runtime loguose, `src/instrumentation.ts`). Be `INTERNAL_API_SECRET` ar `NEXT_TURNSTILE_SITE_KEY` svetainė veikia, bet užsakymo forma grąžina „Užsakymo pateikti nepavyko. Bandykite vėliau.“, o Vercel loguose kiekvieną kartą klaida su trūkstamų kintamųjų sąrašu (kaip admin prisijungimas be paslapties). Su `INTERNAL_API_SECRET` web serveris API perduoda tikrą pirkėjo IP (`X-Client-IP`), o API produkcijoje užsakymus priima tik su ja. `SITE_URL` (pvz., `https://desertai.lt`) naudojamas absoliutiems OG adresams.
 
-Pardavėjo vardas ir kontaktai (poraštė, `/privatumas`, laiškai pirkėjams ir jų Reply-To) yra `packages/shared/src/shop.ts` (`SELLER`, pažymėta TODO).
+Pardavėjo duomenys (vardas ar įmonės pavadinimas, IV pažymos Nr. ar įmonės kodas, adresas, el. paštas, telefonas) yra `packages/shared/src/shop.ts` (`SELLER`) ir rodomi poraštėje, `/privatumas`, užsakymo formoje ir laiškuose pirkėjams (el. paštas ir kaip Reply-To). Tuščias laukas reiškia TODO: jis niekur nerodomas, o **Vercel production build (`VERCEL_ENV=production`) nepraeina**, kol bent vienas laukas tuščias (aiški klaida build loguose, `apps/web/src/lib/seller-check.ts`). Preview ir vietiniai buildai veikia. API (Railway) šios patikros neturi: kol el. paštas tuščias, laiškai pirkėjams siunčiami be Reply-To.
 
 ## Pagrindinės taisyklės
 

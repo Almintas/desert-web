@@ -164,7 +164,8 @@ export class OrderNotificationsService implements OnApplicationShutdown {
       const message: EmailMessage = {
         from: this.from,
         to: email.audience === 'customer' ? order.customer.email : this.sellerEmail!,
-        replyTo: email.audience === 'customer' ? SELLER.email : order.customer.email,
+        // Kol pardavėjo el. paštas TODO (tuščias), pirkėjui Reply-To nenustatomas.
+        replyTo: email.audience === 'customer' ? SELLER.email || undefined : order.customer.email,
         subject: rendered.subject,
         html: rendered.html,
         text: rendered.text,

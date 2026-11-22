@@ -3,6 +3,7 @@ import {
   formatEur,
   formatPickupRange,
   SELLER,
+  sellerDisplayName,
   SHOP_NAME,
 } from '@desert-web/shared';
 
@@ -237,10 +238,20 @@ function boxHtml(colors: { bg: string; border: string }, html: string): string {
   return `<div style="margin:0 0 16px;padding:16px;background:${colors.bg};border-left:4px solid ${colors.border};border-radius:4px;">${html}</div>`;
 }
 
+/** Pardavėjo kontaktai laiško poraštėje (neužpildyti laukai praleidžiami, žr. SELLER). */
+function sellerContactsHtml(): string {
+  const parts = [
+    SELLER.email
+      ? `<a href="mailto:${escapeHtml(SELLER.email)}" style="color:${COLORS.muted};">${escapeHtml(SELLER.email)}</a>`
+      : '',
+    SELLER.phone ? escapeHtml(SELLER.phone) : '',
+  ].filter(Boolean);
+  return parts.length > 0 ? `${parts.join(' · ')}<br>\n` : '';
+}
+
 function customerFooterHtml(): string {
-  return `${escapeHtml(SELLER.name)}<br>
-<a href="mailto:${escapeHtml(SELLER.email)}" style="color:${COLORS.muted};">${escapeHtml(SELLER.email)}</a> · ${escapeHtml(SELLER.phone)}<br>
-Šį laišką gavote, nes pateikėte užsakymą parduotuvėje ${escapeHtml(SHOP_NAME)}. Klausimų turite? Tiesiog atsakykite į šį laišką.`;
+  return `${escapeHtml(sellerDisplayName())}<br>
+${sellerContactsHtml()}Šį laišką gavote, nes pateikėte užsakymą parduotuvėje ${escapeHtml(SHOP_NAME)}. Klausimų turite? Tiesiog atsakykite į šį laišką.`;
 }
 
 // --- Tekstinės dalys ---
@@ -261,10 +272,12 @@ const rowsText = (rows: [string, string][]) =>
 function customerFooterText(): string {
   return [
     '--',
-    SELLER.name,
-    `${SELLER.email} · ${SELLER.phone}`,
+    sellerDisplayName(),
+    [SELLER.email, SELLER.phone].filter(Boolean).join(' · '),
     `Šį laišką gavote, nes pateikėte užsakymą parduotuvėje ${SHOP_NAME}. Klausimų turite? Tiesiog atsakykite į šį laišką.`,
-  ].join('\n');
+  ]
+    .filter((line) => line.length > 0)
+    .join('\n');
 }
 
 /** Tekstinė versija: be nematomų žodžio jungčių (U+2060), kurias naudoja datų formatai. */

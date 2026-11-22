@@ -102,7 +102,8 @@ describe('Užsakymų laiškai (visi įjungti)', () => {
       const toCustomer = sent.find((m) => m.to === customer.email)!;
       expect(toCustomer).toMatchObject({
         from: FROM,
-        replyTo: SELLER.email,
+        // Kol pardavėjo el. paštas TODO (tuščias), Reply-To nenustatomas.
+        replyTo: SELLER.email || undefined,
         idempotencyKey: `order-created/${order.id}`,
       });
       expect(toCustomer.subject).toContain(order.orderNumber);
