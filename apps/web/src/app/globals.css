@@ -660,6 +660,67 @@ img {
   margin: 0.4rem 0 0;
 }
 
+/* Aprašymas kortelėje: iki 2 eilučių (pilnas tekstas title atribute). */
+.product-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+/* Alergenų eilutė (kortelėje po kiekiu ir krepšelio eilutėse). */
+.allergens {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.allergens-label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+/*
+ * Kortelėje: siaurame ekrane (vienas stulpelis) eilutė išsiskleidžia (0fr -> 1fr), plačiame
+ * vieta rezervuota visada, kad kaimyninės kortelės eilutėje nepašoktų, ir keičiasi tik matomumas.
+ */
+.allergen-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+}
+
+.allergen-reveal[data-shown='true'] {
+  grid-template-rows: 1fr;
+}
+
+.allergen-reveal-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.allergen-reveal .allergens {
+  padding-top: 0.5rem;
+  opacity: 0;
+  transform: translateY(-0.25rem);
+}
+
+.allergen-reveal[data-shown='true'] .allergens {
+  opacity: 1;
+  transform: none;
+}
+
+@media (min-width: 600px) {
+  .allergen-reveal {
+    grid-template-rows: 1fr;
+  }
+}
+
 /* --- Kiekio pasirinkimas --- */
 
 .stepper {
@@ -836,6 +897,16 @@ fieldset.checkout-section legend + * {
   font-size: 1.35rem;
 }
 
+.cart-line-body .allergens {
+  margin-top: 0.35rem;
+}
+
+.allergy-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
 .payment-note {
   margin: 0.75rem 0 0;
   padding: 0.75rem 1rem;
@@ -908,6 +979,40 @@ fieldset.checkout-section legend + * {
 .checkout-submit {
   display: grid;
   gap: 0.25rem;
+}
+
+/* --- Turnstile (robotų patikra) --- */
+
+/* Valdiklis matomas tik kai reikia paspaudimo (interaction-only); size: flexible = 100% pločio. */
+.turnstile {
+  width: 100%;
+}
+
+.turnstile:has(iframe) {
+  margin: 0.25rem 0 0.5rem;
+}
+
+.turnstile-text {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.25rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.turnstile-text.attention {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.turnstile-text.verified {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.turnstile-error .button {
+  margin-top: 0.6rem;
 }
 
 .empty-cart {
@@ -1169,5 +1274,15 @@ fieldset.checkout-section legend + * {
       background-color 0.15s ease,
       border-color 0.15s ease,
       color 0.15s ease;
+  }
+
+  .allergen-reveal {
+    transition: grid-template-rows 0.25s ease;
+  }
+
+  .allergen-reveal .allergens {
+    transition:
+      opacity 0.25s ease,
+      transform 0.25s ease;
   }
 }

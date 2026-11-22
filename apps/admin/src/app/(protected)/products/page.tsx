@@ -5,7 +5,7 @@ import { apiFetch } from '@/lib/api';
 import { requireAdmin } from '@/lib/dal';
 import { getSessionToken } from '@/lib/session';
 
-export const metadata: Metadata = { title: 'Produktai · Desert Web Admin' };
+export const metadata: Metadata = { title: 'Produktai' };
 
 const SAVED_MESSAGES: Record<string, string> = {
   created: 'Produktas sukurtas.',

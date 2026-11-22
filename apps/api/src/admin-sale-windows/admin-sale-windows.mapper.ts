@@ -30,6 +30,8 @@ export function toAdminSaleWindowDto(
       productName: product?.name ?? 'Nežinomas produktas',
       productSlug: product?.slug ?? '',
       variantName: variant?.name ?? 'Nežinomas variantas',
+      description: product?.description ?? '',
+      allergens: product?.allergens ?? [],
       imageUrl: product?.images[0]?.url ?? null,
       images: product ? toPublicImages(product) : [],
       productActive: product?.isActive ?? false,

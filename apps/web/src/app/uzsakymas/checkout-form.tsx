@@ -1,6 +1,6 @@
 'use client';
 
-import { formatEur, type PublicSaleWindowDto } from '@desert-web/shared';
+import { formatEur, type PublicSaleWindowDto, SELLER } from '@desert-web/shared';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -11,10 +11,11 @@ import {
   useRef,
   useState,
 } from 'react';
+import { AllergenLine } from '@/components/allergens';
 import { PickupInfo } from '@/components/pickup-info';
 import { ProductImage } from '@/components/product-image';
 import { Stepper } from '@/components/stepper';
-import { Turnstile, type TurnstileHandle } from '@/components/turnstile';
+import { preloadTurnstile, Turnstile, type TurnstileHandle } from '@/components/turnstile';
 import { adjustCart, maxQuantity } from '@/lib/cart-logic';
 import { clearCart, useCart } from '@/lib/cart-store';
 import { forgetRequestId, getRequestId, resetRequestId } from '@/lib/request-id';
@@ -25,9 +26,6 @@ import type { CheckoutField, CheckoutState } from './checkout-state';
 const INITIAL: CheckoutState = { status: 'idle' };
 
 type Values = Record<CheckoutField, string>;
-
-const TURNSTILE_ERROR =
-  'Nepavyko patikrinti, kad esate ne robotas. Atnaujinkite puslapį ir bandykite dar kartą.';
 
 export function CheckoutForm({
   saleWindow: initialWindow,
@@ -48,12 +46,14 @@ export function CheckoutForm({
   const [requestId, setRequestId] = useState<string | null>(null);
   const [cartChanges, setCartChanges] = useState<string[]>([]);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [turnstileError, setTurnstileError] = useState(false);
   const turnstile = useRef<TurnstileHandle>(null);
   const submitting = useRef(false);
   const handled = useRef<CheckoutState>(INITIAL);
   const messageRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Turnstile api.js pradedam krauti iškart, dar prieš įkeliant krepšelį ir rodant formą.
+  useEffect(preloadTurnstile, []);
 
   // Vienas ID visam pateikimo bandymui (ir pakartojimams), žr. request-id.ts.
   useEffect(() => {
@@ -196,6 +196,7 @@ export function CheckoutForm({
                       Pašalinti
                     </button>
                   </div>
+                  <AllergenLine allergens={item.allergens} />
                 </div>
                 <p className="cart-line-total">{formatEur(item.priceCents * line.quantity)}</p>
               </li>
@@ -205,6 +206,16 @@ export function CheckoutForm({
         <p className="cart-total">
           <span>Iš viso</span>
           <strong>{formatEur(cart.totalCents)}</strong>
+        </p>
+        <p className="allergy-note">
+          Jei turite alergijų ar klausimų dėl sudėties, prieš užsakydami susisiekite:{' '}
+          <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a>
+          {SELLER.phone ? (
+            <>
+              {' · '}
+              <a href={`tel:${SELLER.phone.replace(/[^\d+]/g, '')}`}>{SELLER.phone}</a>
+            </>
+          ) : null}
         </p>
       </section>
 
@@ -282,21 +293,9 @@ export function CheckoutForm({
         <Turnstile
           ref={turnstile}
           siteKey={turnstileSiteKey}
-          onToken={(token) => {
-            setTurnstileToken(token);
-            if (token) setTurnstileError(false);
-          }}
-          onError={() => setTurnstileError(true)}
+          onToken={setTurnstileToken}
+          showStatus={!done && !closed}
         />
-        {turnstileError ? (
-          <p className="alert error" role="alert">
-            {TURNSTILE_ERROR}
-          </p>
-        ) : !turnstileToken && !done && !closed ? (
-          <p className="muted small" role="status">
-            Tikriname, ar esate ne robotas…
-          </p>
-        ) : null}
         <p className="privacy-line">
           Jūsų duomenis naudosime tik šiam užsakymui įvykdyti ir susisiekti dėl atsiėmimo.{' '}
           <Link href="/privatumas">Privatumas</Link>

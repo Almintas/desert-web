@@ -1,3 +1,4 @@
+import { SHOP_NAME } from '@desert-web/shared';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { requireAdmin } from '@/lib/dal';
@@ -17,7 +18,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   return (
     <div className="shell">
       <aside className="sidebar">
-        <p className="brand">Desert Web</p>
+        <p className="brand">{SHOP_NAME}</p>
         <nav>
           {NAV.map((item) => (
             <Link key={item.href} href={item.href}>

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { fetchProductOptions } from '../data';
 import { SaleWindowForm } from '../sale-window-form';
 
-export const metadata: Metadata = { title: 'Naujas langas · Desert Web Admin' };
+export const metadata: Metadata = { title: 'Naujas langas' };
 
 export default async function NewSaleWindowPage() {
   const products = await fetchProductOptions();

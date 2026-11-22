@@ -5,7 +5,7 @@ import { fetchSaleWindow, quantitySummary } from '../data';
 import { PhaseBadge } from '../phase-badge';
 import { WindowActions } from '../window-actions';
 
-export const metadata: Metadata = { title: 'Pardavimo langas · Desert Web Admin' };
+export const metadata: Metadata = { title: 'Pardavimo langas' };
 
 const DONE_MESSAGES: Record<string, string> = {
   created: 'Langas sukurtas kaip juodraštis.',

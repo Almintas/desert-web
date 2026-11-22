@@ -13,31 +13,77 @@ import { createServer } from 'node:http';
 
 export const DUMMY_TOKEN = 'XXXX.DUMMY.TOKEN.XXXX';
 
-/** Naršyklės api.js pakaitalas (tik metodai, kuriuos naudoja web: render, reset, remove). */
-export const FAKE_WIDGET_SCRIPT = `
+/**
+ * Naršyklės api.js pakaitalas (render, reset, remove, getResponse).
+ *
+ * Be parametrų elgiasi pagal site key (kaip Cloudflare testiniai raktai): 1x… praeina,
+ * 2x… klaida. Testai gali priverstinai nustatyti scenarijų:
+ *   mode: 'pass'        → callback(token)
+ *         'error'       → error-callback
+ *         'unsupported' → unsupported-callback
+ *         'interactive' → before-interactive-callback, valdiklyje langelis; jį pažymėjus
+ *                         after-interactive-callback ir callback(token)
+ *   failTimes: N        → pirmi N bandymai baigiasi error-callback, toliau pagal mode
+ *   delayMs             → kiek laukti iki rezultato (numatyta 150 ms)
+ * Testams: window.__fakeTurnstile.expire() iškviečia expired-callback visiems valdikliams.
+ *
+ * @param {{ mode?: 'pass' | 'error' | 'unsupported' | 'interactive', failTimes?: number, delayMs?: number }} [options]
+ */
+export function fakeWidgetScript(options = {}) {
+  return `
 (() => {
+  const OPTIONS = ${JSON.stringify(options)};
+  const TOKEN = '${DUMMY_TOKEN}';
   const widgets = new Map();
   let seq = 0;
+  let attempts = 0;
+  function modeFor(w) {
+    if (OPTIONS.mode) return OPTIONS.mode;
+    return String(w.options.sitekey).startsWith('2x') ? 'error' : 'pass';
+  }
+  function pass(w) {
+    w.token = TOKEN;
+    w.options.callback && w.options.callback(w.token);
+  }
   function run(id) {
     const w = widgets.get(id);
     if (!w) return;
     clearTimeout(w.timer);
+    w.el && (w.el.innerHTML = '');
     w.timer = setTimeout(() => {
       if (!widgets.has(id)) return;
-      if (String(w.options.sitekey).startsWith('2x')) {
+      attempts += 1;
+      const mode = attempts <= (OPTIONS.failTimes || 0) ? 'error' : modeFor(w);
+      if (mode === 'error') {
         w.options['error-callback'] && w.options['error-callback']('110100');
+      } else if (mode === 'unsupported') {
+        w.options['unsupported-callback'] && w.options['unsupported-callback']();
+      } else if (mode === 'interactive') {
+        w.options['before-interactive-callback'] && w.options['before-interactive-callback']();
+        if (!w.el) return;
+        w.el.innerHTML =
+          '<label class="fake-turnstile-box" style="display:flex;gap:8px;align-items:center;' +
+          'padding:14px 16px;border:1px solid #ccc;border-radius:4px;background:#fafafa;' +
+          'font:14px sans-serif;color:#333"><input type="checkbox"> Patvirtinkite, kad esate žmogus</label>';
+        w.el.querySelector('input').addEventListener('change', () => {
+          w.options['after-interactive-callback'] && w.options['after-interactive-callback']();
+          setTimeout(() => {
+            if (!widgets.has(id)) return;
+            w.el.innerHTML = '';
+            pass(w);
+          }, OPTIONS.delayMs ?? 150);
+        });
       } else {
-        w.token = '${DUMMY_TOKEN}';
-        w.options.callback && w.options.callback(w.token);
+        pass(w);
       }
-    }, 150);
+    }, OPTIONS.delayMs ?? 150);
   }
   window.turnstile = {
     render(container, options) {
       const id = 'fake-' + (++seq);
       const el = typeof container === 'string' ? document.querySelector(container) : container;
       if (el) el.setAttribute('data-fake-turnstile', id);
-      widgets.set(id, { options, token: null, timer: 0 });
+      widgets.set(id, { options, el, token: null, timer: 0 });
       run(id);
       return id;
     },
@@ -56,8 +102,20 @@ export const FAKE_WIDGET_SCRIPT = `
       return widgets.get(id)?.token ?? undefined;
     },
   };
+  window.__fakeTurnstile = {
+    expire() {
+      for (const w of widgets.values()) {
+        w.token = null;
+        w.options['expired-callback'] && w.options['expired-callback']();
+      }
+    },
+  };
 })();
 `;
+}
+
+/** Numatytasis pakaitalas (elgiasi pagal site key). */
+export const FAKE_WIDGET_SCRIPT = fakeWidgetScript();
 
 function siteverifyResult(secret, response) {
   if (secret.startsWith('1x') && response === DUMMY_TOKEN) {

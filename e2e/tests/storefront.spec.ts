@@ -42,6 +42,45 @@ test.describe('Parduotuvė ir užsakymas', () => {
     );
   });
 
+  test('aprašymas kortelėje, alergenai pasirinkus prekę ir krepšelyje', async ({ page }) => {
+    const tart = await createProduct(
+      `Migdolų macarons ${Date.now()}`,
+      [{ name: '6 vnt.', priceCents: 1200 }],
+      {
+        description: 'Su migdolų kremu ir aviečių džemu.',
+        allergens: ['kiaušiniai', 'migdolai', 'pienas'],
+      },
+    );
+    const plain = await createProduct(`Be alergenų ${Date.now()}`);
+    const w = await openWindow([{ product: tart }, { product: plain }]);
+    const [tartItem, plainItem] = w.items;
+
+    await page.goto(env.webUrl);
+    const card = page.getByRole('listitem').filter({ hasText: tartItem!.productName });
+    await expect(card).toContainText('Su migdolų kremu ir aviečių džemu.');
+    const reveal = card.locator('.allergen-reveal');
+    await expect(reveal).toHaveAttribute('data-shown', 'false');
+    await expect(reveal).toHaveText('Alergenai: kiaušiniai, migdolai, pienas');
+
+    await addToCart(page, tartItem!, 1);
+    await expect(reveal).toHaveAttribute('data-shown', 'true');
+    await expect(reveal.locator('.allergens')).toHaveCSS('opacity', '1');
+
+    await addToCart(page, plainItem!, 1);
+    const plainCard = page.getByRole('listitem').filter({ hasText: plainItem!.productName });
+    await expect(plainCard.locator('.allergens')).toHaveCount(0);
+
+    await page.getByRole('link', { name: 'Užsakyti' }).click();
+    const lines = page.locator('.cart-line');
+    await expect(lines.filter({ hasText: tartItem!.productName })).toContainText(
+      'Alergenai: kiaušiniai, migdolai, pienas',
+    );
+    await expect(
+      lines.filter({ hasText: plainItem!.productName }).locator('.allergens'),
+    ).toHaveCount(0);
+    await expect(page.getByText('Jei turite alergijų ar klausimų dėl sudėties')).toBeVisible();
+  });
+
   test('užsakymas ir patvirtinimo puslapis', async ({ page }) => {
     const cake = await createProduct(`Šokoladinis tortas ${Date.now()}`, [
       { name: '1 kg', priceCents: 2500 },

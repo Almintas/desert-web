@@ -1,5 +1,7 @@
+import { TURNSTILE_ORIGIN } from '@desert-web/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { preconnect } from 'react-dom';
 import { webEnv } from '@/lib/env';
 import { loadCurrentWindows, pickOpenWindow, WINDOW_PARAM, windowHref } from '@/lib/window';
 import { CheckoutForm } from './checkout-form';
@@ -40,6 +42,9 @@ export default async function CheckoutPage({
       </section>
     );
   }
+
+  // Ryšys su Cloudflare užmezgamas dar kraunant puslapį (api.js kraunamas iškart prijungus formą).
+  preconnect(TURNSTILE_ORIGIN);
 
   const multiple = current.openWindows.length > 1;
   const backHref = windowHref('/', saleWindow.id, current.openWindows.length);

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .shell { fill: #a3423a; }
+    .filling { fill: #f2cfc6; }
+    @media (prefers-color-scheme: dark) {
+      .shell { fill: #e0857b; }
+    }
+  </style>
+  <rect class="shell" x="2" y="5" width="28" height="10" rx="5" />
+  <rect class="filling" x="4" y="14.5" width="24" height="4" rx="2" />
+  <rect class="shell" x="2" y="18" width="28" height="9" rx="4.5" />
+</svg>

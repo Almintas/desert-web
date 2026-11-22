@@ -10,7 +10,7 @@ import { fetchOrders, fetchWindowsForFilter } from './data';
 import { FULFILLMENT_LABELS, ORDER_STATUS_TABS } from './labels';
 import { OrderStatusBadge } from './status-badge';
 
-export const metadata: Metadata = { title: 'Užsakymai · Desert Web Admin' };
+export const metadata: Metadata = { title: 'Užsakymai' };
 
 const PAGE_SIZE = 20;
 const ALL_WINDOWS = 'all';

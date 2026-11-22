@@ -111,6 +111,8 @@ export async function createProduct(
   overrides: {
     name?: string;
     variants?: { name: string; priceCents: number }[];
+    description?: string;
+    allergens?: string[];
   } = {},
 ): Promise<ProductFixture> {
   const slugSuffix = new Types.ObjectId().toString();
@@ -119,6 +121,8 @@ export async function createProduct(
     slug: `produktas-${slugSuffix}`,
     category: 'tortai',
     variants: overrides.variants ?? [{ name: '1 kg', priceCents: 2500 }],
+    ...(overrides.description !== undefined ? { description: overrides.description } : {}),
+    ...(overrides.allergens !== undefined ? { allergens: overrides.allergens } : {}),
   });
   return { productId: product._id, variantIds: product.variants.map((v) => v._id) };
 }

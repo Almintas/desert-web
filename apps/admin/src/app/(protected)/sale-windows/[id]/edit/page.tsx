@@ -5,7 +5,7 @@ import { fetchProductOptions, fetchSaleWindow } from '../../data';
 import { PhaseBadge } from '../../phase-badge';
 import { SaleWindowForm } from '../../sale-window-form';
 
-export const metadata: Metadata = { title: 'Redaguoti langą · Desert Web Admin' };
+export const metadata: Metadata = { title: 'Redaguoti langą' };
 
 export default async function EditSaleWindowPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

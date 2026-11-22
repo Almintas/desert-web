@@ -6,18 +6,33 @@ import { SHOP_DESCRIPTION } from '@/lib/shop';
 import { bodyFont, displayFont } from './fonts';
 import './globals.css';
 
+/**
+ * Bazinis adresas absoliutiems OG / ikonų URL: SITE_URL (pvz., https://desertai.lt), o jo
+ * nenustačius Vercel produkcijos domenas (VERCEL_PROJECT_PRODUCTION_URL, be https://).
+ */
+function siteUrl(): URL | undefined {
+  const explicit = process.env.SITE_URL?.trim();
+  if (explicit) return new URL(explicit);
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  return vercel ? new URL(`https://${vercel}`) : undefined;
+}
+
 export const metadata: Metadata = {
-  // SITE_URL: absoliutiems OG adresams (pvz., https://desertai.lt). Neprivaloma.
-  metadataBase: process.env.SITE_URL ? new URL(process.env.SITE_URL) : undefined,
+  metadataBase: siteUrl(),
   title: { default: SHOP_NAME, template: `%s · ${SHOP_NAME}` },
   description: SHOP_DESCRIPTION,
   applicationName: SHOP_NAME,
+  // Paveikslėlį ir ikonas Next prideda pats (opengraph-image.tsx, icon.svg, apple-icon.tsx).
+  openGraph: { type: 'website', siteName: SHOP_NAME, locale: 'lt_LT' },
+  twitter: { card: 'summary_large_image' },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  // Kaip --bg: naršyklės juosta (Android, Safari) susilieja su puslapio viršumi.
   themeColor: '#fbf6f0',
+  colorScheme: 'light',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

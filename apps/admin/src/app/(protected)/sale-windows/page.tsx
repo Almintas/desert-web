@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { fetchSaleWindows, quantitySummary } from './data';
 import { PhaseBadge } from './phase-badge';
 
-export const metadata: Metadata = { title: 'Pardavimo langai · Desert Web Admin' };
+export const metadata: Metadata = { title: 'Pardavimo langai' };
 
 const GROUPS: { phase: SaleWindowPhase; title: string; empty?: string }[] = [
   { phase: 'open', title: 'Vyksta dabar', empty: 'Šiuo metu atidaryto lango nėra.' },

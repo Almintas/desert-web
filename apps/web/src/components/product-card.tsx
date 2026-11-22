@@ -3,6 +3,7 @@
 import { formatEur, type PublicSaleWindowItemDto } from '@desert-web/shared';
 import { itemLabel, maxQuantity } from '@/lib/cart-logic';
 import { LOW_STOCK_THRESHOLD } from '@/lib/shop';
+import { AllergenLine } from './allergens';
 import { ProductImage } from './product-image';
 import { Stepper } from './stepper';
 
@@ -14,6 +15,36 @@ interface Props {
   index: number;
   /** null: tik peržiūra (būsimas langas). */
   cart: { quantity: number; onChange: (q: number) => void } | null;
+}
+
+/**
+ * Aprašymas po varianto pavadinimu (iki 2 eilučių). Atskiras gabalas: jei aprašymų kortelėje
+ * neberodysim, užtenka išimti šį komponentą ir .product-description stilių.
+ */
+function ProductDescription({ text }: { text: string }) {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  return (
+    <p className="product-description" title={trimmed}>
+      {trimmed}
+    </p>
+  );
+}
+
+/**
+ * Alergenai po kiekio pasirinkimu, kai prekė jau krepšelyje. Vieta plačiame ekrane rezervuota
+ * iš anksto (tekstas tik permatomas), kad eilutėje esančios kortelės nepašoktų; siaurame
+ * (vienas stulpelis) eilutė išsiskleidžia. Ekrano skaitytuvai alergenus girdi visada.
+ */
+function AllergenReveal({ allergens, shown }: { allergens: string[]; shown: boolean }) {
+  if (allergens.length === 0) return null;
+  return (
+    <div className="allergen-reveal" data-shown={shown}>
+      <div className="allergen-reveal-inner">
+        <AllergenLine allergens={allergens} />
+      </div>
+    </div>
+  );
 }
 
 function stockText(available: number): string {
@@ -39,6 +70,7 @@ export function ProductCard({ item, index, cart }: Props) {
       <div className="product-body">
         <h3 className="product-name">{item.productName}</h3>
         <p className="product-variant">{item.variantName}</p>
+        <ProductDescription text={item.description} />
         <div className="product-meta">
           <span className="price">{formatEur(item.priceCents)}</span>
           {cart ? (
@@ -62,6 +94,7 @@ export function ProductCard({ item, index, cart }: Props) {
                     : 'Daugiau neturime'}
                 </p>
               ) : null}
+              <AllergenReveal allergens={item.allergens} shown={cart.quantity > 0} />
             </div>
           )
         ) : null}

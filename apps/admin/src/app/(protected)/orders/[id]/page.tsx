@@ -11,7 +11,7 @@ import {
 import { OrderActions } from '../order-actions';
 import { OrderStatusBadge } from '../status-badge';
 
-export const metadata: Metadata = { title: 'Užsakymas · Desert Web Admin' };
+export const metadata: Metadata = { title: 'Užsakymas' };
 
 const DONE_MESSAGES: Record<string, string> = {
   confirmed: 'Užsakymas patvirtintas.',

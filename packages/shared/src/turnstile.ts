@@ -20,6 +20,8 @@ export const TURNSTILE_TEST_KEYS = {
   dummyToken: 'XXXX.DUMMY.TOKEN.XXXX',
 } as const;
 
+/** Cloudflare Turnstile kilmė (preconnect naršyklėje). */
+export const TURNSTILE_ORIGIN = 'https://challenges.cloudflare.com';
 export const TURNSTILE_SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
 export const TURNSTILE_SCRIPT_URL =
   'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';

@@ -140,6 +140,8 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
           productName: 'Medaus tortas',
           productSlug: expect.any(String),
           variantName: '1 kg',
+          description: '',
+          allergens: [],
           imageUrl: null,
           images: [],
           productActive: true,
@@ -619,6 +621,32 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
       await actionOk(cancelled.id, 'publish');
       await actionOk(cancelled.id, 'cancel');
       expect(await current()).toEqual({ open: null, openWindows: [], upcoming: null });
+    });
+
+    it('prekės turi produkto aprašymą ir alergenus (atidarytame ir būsimame lange)', async () => {
+      const tart = await createProduct(ctx, {
+        name: 'Migdolų pyragas',
+        description: 'Su migdolų kremu.',
+        allergens: ['kiaušiniai', 'migdolai', 'pienas'],
+      });
+      const open = await createOk([item(tart), item(cake)]);
+      await actionOk(open.id, 'open-now');
+      const upcoming = await createOk([item(tart)], { opensAt: iso(5), closesAt: iso(6) });
+      await actionOk(upcoming.id, 'publish');
+
+      const res = await current();
+      expect(res.open!.items).toEqual([
+        expect.objectContaining({
+          productName: 'Migdolų pyragas',
+          description: 'Su migdolų kremu.',
+          allergens: ['kiaušiniai', 'migdolai', 'pienas'],
+        }),
+        expect.objectContaining({ productName: 'Medaus tortas', description: '', allergens: [] }),
+      ]);
+      expect(res.upcoming!.items[0]).toMatchObject({
+        description: 'Su migdolų kremu.',
+        allergens: ['kiaušiniai', 'migdolai', 'pienas'],
+      });
     });
 
     it('keli atidaryti langai: openWindows visi, anksčiausiai atidarytas pirmas', async () => {

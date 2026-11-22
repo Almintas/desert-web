@@ -9,7 +9,7 @@ import { categoriesOf } from '../categories';
 import { ProductForm } from '../product-form';
 import { ProductImages } from '../product-images';
 
-export const metadata: Metadata = { title: 'Produktas · Desert Web Admin' };
+export const metadata: Metadata = { title: 'Produktas' };
 
 export default async function EditProductPage({
   params,

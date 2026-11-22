@@ -1,6 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { test as base, type BrowserContext, expect, type Page } from '@playwright/test';
-import { DUMMY_TOKEN, FAKE_WIDGET_SCRIPT } from '../support/fake-turnstile.mjs';
+import {
+  DUMMY_TOKEN,
+  FAKE_WIDGET_SCRIPT,
+  type FakeWidgetOptions,
+  fakeWidgetScript,
+} from '../support/fake-turnstile.mjs';
 
 function required(name: string): string {
   const value = process.env[name];
@@ -23,6 +28,8 @@ export const env = {
   },
   turnstileMode: process.env.E2E_TURNSTILE_MODE === 'real' ? 'real' : 'fake',
 } as const;
+
+const TURNSTILE_API_JS = 'https://challenges.cloudflare.com/turnstile/v0/api.js**';
 
 /** 1×1 PNG vietoj Cloudinary nuotraukų. */
 const PNG = Buffer.from(
@@ -65,7 +72,7 @@ async function interceptExternal(context: BrowserContext): Promise<void> {
     route.fulfill({ status: 200, contentType: 'image/png', body: PNG }),
   );
   if (env.turnstileMode === 'fake') {
-    await context.route('https://challenges.cloudflare.com/turnstile/v0/api.js**', (route) =>
+    await context.route(TURNSTILE_API_JS, (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/javascript',
@@ -73,6 +80,20 @@ async function interceptExternal(context: BrowserContext): Promise<void> {
       }),
     );
   }
+}
+
+/**
+ * Šiam puslapiui Turnstile pakaitalas su nurodytu scenarijumi (ir kai run.mjs naudoja tikrą
+ * Cloudflare): valdiklio būsenoms tikrinti. Tokenas tas pats testinis, todėl API jį priima.
+ */
+export async function scriptTurnstile(page: Page, options: FakeWidgetOptions): Promise<void> {
+  await page.route(TURNSTILE_API_JS, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/javascript',
+      body: fakeWidgetScript(options),
+    }),
+  );
 }
 
 export const test = base.extend({
@@ -154,12 +175,14 @@ const unique = () => randomUUID().slice(0, 8);
 export async function createProduct(
   name: string,
   variants: { name: string; priceCents: number }[] = [{ name: '1 kg', priceCents: 2500 }],
+  extra: { description?: string; allergens?: string[] } = {},
 ): Promise<Product> {
   return adminApi<Product>('POST', '/admin/products', {
     name,
     slug: `e2e-${unique()}`,
     category: 'tortai',
     variants,
+    ...extra,
   });
 }
 

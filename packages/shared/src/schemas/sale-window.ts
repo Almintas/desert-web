@@ -135,6 +135,10 @@ export interface PublicSaleWindowItemDto {
   productName: string;
   productSlug: string;
   variantName: string;
+  /** Produkto aprašymas ('' jei nėra). */
+  description: string;
+  /** Alergenai, kaip įvedė adminas (mažosiomis, pvz. ['kiaušiniai', 'migdolai']); [] jei nėra. */
+  allergens: string[];
   /** Pagrindinės nuotraukos URL (= images[0].url) arba null. */
   imageUrl: string | null;
   /** Produkto nuotraukos, pagrindinė pirmoji. */

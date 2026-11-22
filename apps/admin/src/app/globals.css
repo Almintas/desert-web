@@ -44,7 +44,11 @@ a {
 }
 
 .brand {
-  font-weight: 700;
+  font-family: var(--font-wordmark), 'Iowan Old Style', Palatino, Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.6rem;
+  line-height: 1.1;
   color: var(--accent);
   margin: 0 0 1.5rem 0.5rem;
 }

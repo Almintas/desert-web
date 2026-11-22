@@ -61,6 +61,8 @@ export class SaleWindowsService {
         productName: product.name,
         productSlug: product.slug,
         variantName: variant.name,
+        description: product.description ?? '',
+        allergens: product.allergens ?? [],
         imageUrl: product.images[0]?.url ?? null,
         images: toPublicImages(product),
         priceCents: item.priceCents,

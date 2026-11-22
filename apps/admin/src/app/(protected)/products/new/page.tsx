@@ -7,7 +7,7 @@ import { getSessionToken } from '@/lib/session';
 import { categoriesOf } from '../categories';
 import { ProductForm } from '../product-form';
 
-export const metadata: Metadata = { title: 'Naujas produktas · Desert Web Admin' };
+export const metadata: Metadata = { title: 'Naujas produktas' };
 
 export default async function NewProductPage() {
   await requireAdmin();
