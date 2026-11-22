@@ -8,6 +8,7 @@ import {
 } from '@desert-web/shared';
 import { ApiError, apiFetch, TOO_MANY_REQUESTS_MESSAGE } from '@/lib/api';
 import { forwardedClientHeaders } from '@/lib/client-headers';
+import { ordersDisabledReason, webEnv } from '@/lib/env';
 import { loadCurrentWindows } from '@/lib/window';
 import type { CheckoutField, CheckoutState } from './checkout-state';
 
@@ -21,6 +22,9 @@ const FIELD_BY_PATH: Record<string, CheckoutField> = {
 const TURNSTILE_FAILED_MESSAGE = 'Nepavyko patvirtinti, kad esate ne robotas. Bandykite dar kartą.';
 const TURNSTILE_UNAVAILABLE_MESSAGE =
   'Šiuo metu nepavyksta patikrinti užklausos. Bandykite dar kartą po minutės.';
+
+/** Serverio konfigūracijos klaida (ne pirkėjo): detalės tik serverio loguose. */
+const ORDER_UNAVAILABLE_MESSAGE = 'Užsakymo pateikti nepavyko. Bandykite vėliau.';
 
 const CLOSED_MESSAGE =
   'Pardavimas ką tik baigėsi, todėl užsakymo pateikti nebegalima. Jūsų krepšelis neišsiųstas.';
@@ -68,6 +72,14 @@ export async function placeOrderAction(
   _prev: CheckoutState,
   formData: FormData,
 ): Promise<CheckoutState> {
+  // Produkcijoje be INTERNAL_API_SECRET ar Turnstile site key užsakymo nesiunčiam: API visus
+  // pirkėjus ribotų kaip vieną (Vercel IP) arba atmestų tokeną. Žr. lib/env.ts.
+  const disabledReason = ordersDisabledReason(webEnv());
+  if (disabledReason) {
+    console.error(`[web] ${disabledReason}`);
+    return { status: 'error', message: ORDER_UNAVAILABLE_MESSAGE };
+  }
+
   const windowId = text(formData, 'saleWindowId');
   const notes = text(formData, 'notes').trim();
   const input = {

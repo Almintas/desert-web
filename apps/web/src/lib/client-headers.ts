@@ -8,8 +8,9 @@ import { webEnv } from './env';
  *   (403 FORBIDDEN_CLIENT be jos), nes API Railway pasiekiamas viešai;
  * - X-Client-IP: tikras naršyklės IP, kad API ribotų pagal pirkėją, o ne pagal Vercel IP.
  *
- * Produkcijoje paslaptis privaloma: serveris be jos nepasileidžia (instrumentation.ts), o
- * webEnv() čia meta klaidą, jei kažkaip vis tiek trūktų.
+ * Be paslapties (vystant) antraščių nėra ir API riboja pagal Next.js serverio IP. Produkcijoje
+ * be paslapties užsakymas į API nesiunčiamas iš viso (žr. webEnv().missingForOrders ir
+ * uzsakymas/actions.ts); kitos užklausos (užsakymo peržiūra) veikia toliau.
  */
 export async function forwardedClientHeaders(): Promise<Record<string, string>> {
   const secret = webEnv().internalApiSecret;

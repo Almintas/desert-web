@@ -72,7 +72,7 @@ pnpm --filter @desert-web/api products:add
 
 Po pirmo `pnpm install` **užcommitink `pnpm-lock.yaml`**: Railway ir Vercel jo reikia.
 
-Naudingos komandos: `pnpm dev:web`, `pnpm dev:admin`, `pnpm dev:api`, `pnpm build`, `pnpm typecheck`, `pnpm test` (API Jest), `pnpm e2e` (žr. [E2E testai](#e2e-testai)), `pnpm format`.
+Naudingos komandos: `pnpm dev:web`, `pnpm dev:admin`, `pnpm dev:api`, `pnpm build`, `pnpm typecheck`, `pnpm test` (API Jest ir web Vitest), `pnpm e2e` (žr. [E2E testai](#e2e-testai)), `pnpm format`.
 
 ## E2E testai
 
@@ -113,7 +113,7 @@ Trukmė: apie 30–40 s su buildu (kai turbo talpykloje jo nėra) ir apie 25 s s
    - **Start Command:** `pnpm --filter @desert-web/api start`
    - **Healthcheck Path:** `/health`
    - **Watch Paths:** `apps/api/**`, `packages/shared/**` (kad nebūtų perdiegiama keičiant tik frontendą)
-3. Variables: `NODE_ENV=production`, `MONGODB_URI`, `CORS_ORIGIN` (web ir admin adresai per kablelį), laiškams `RESEND_API_KEY`, `ORDER_NOTIFY_EMAIL`, `ADMIN_URL` ir kt. (žr. [Užsakymų laiškai](#užsakymų-laiškai-resend)), `INTERNAL_API_SECRET` (žr. [Admin prisijungimas](#admin-prisijungimas)), `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (žr. [Produktų nuotraukos](#produktų-nuotraukos-cloudinary)). `PORT` Railway nustato pats. Neprivalomi: `TURNSTILE_SECRET_KEY` (kol kas; žr. [Apsauga nuo robotų](#užsakymų-apsauga-nuo-robotų)), `ADMIN_SESSION_TTL_DAYS`, `ADMIN_LOGIN_RATE_LIMIT`, `ADMIN_LOGIN_RATE_WINDOW_SECONDS`, `CLOUDINARY_FOLDER`, `ORDER_RATE_*`, `ORDER_ACCESS_RATE_*`, `TRUST_X_REAL_IP`.
+3. Variables: `NODE_ENV=production`, `MONGODB_URI`, `CORS_ORIGIN` (web ir admin adresai per kablelį), laiškams `RESEND_API_KEY`, `ORDER_NOTIFY_EMAIL`, `ADMIN_URL` ir kt. (žr. [Užsakymų laiškai](#užsakymų-laiškai-resend)), `INTERNAL_API_SECRET` (žr. [Admin prisijungimas](#admin-prisijungimas)), `TURNSTILE_SECRET_KEY` (žr. [Apsauga nuo robotų](#užsakymų-apsauga-nuo-robotų)), `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` (žr. [Produktų nuotraukos](#produktų-nuotraukos-cloudinary)). `PORT` Railway nustato pats. Neprivalomi: `ADMIN_SESSION_TTL_DAYS`, `ADMIN_LOGIN_RATE_LIMIT`, `ADMIN_LOGIN_RATE_WINDOW_SECONDS`, `CLOUDINARY_FOLDER`, `ORDER_RATE_*`, `ORDER_ACCESS_RATE_*`, `TRUST_X_REAL_IP`.
    - **Pre-deploy Command:** `pnpm --filter @desert-web/api db:indexes`
 4. Settings → Networking → Generate Domain (arba prijunk `api.tavodomenas.lt`).
 
@@ -194,12 +194,12 @@ Vystant be `RESEND_API_KEY` kiekvienas laiškas tik išvedamas į API logą (kam
 
 API Railway pasiekiamas viešai, todėl visos apsaugos taikomos API (ne tik web):
 
-- **Tik mūsų web serveris.** Produkcijoje `POST /orders` priimamas tik su teisinga `X-Internal-Secret` (`INTERNAL_API_SECRET`), kitaip 403 `FORBIDDEN_CLIENT`. Todėl `INTERNAL_API_SECRET` dabar privalomas ir web projekte (Vercel); be jo, kaip ir be `API_URL`, web serveris nepasileidžia.
+- **Tik mūsų web serveris.** Produkcijoje `POST /orders` priimamas tik su teisinga `X-Internal-Secret` (`INTERNAL_API_SECRET`), kitaip 403 `FORBIDDEN_CLIENT`. Todėl `INTERNAL_API_SECRET` privalomas ir web projekte (Vercel): be jo svetainė veikia, bet užsakymai nepateikiami (pirkėjui „Užsakymo pateikti nepavyko. Bandykite vėliau.“, Vercel loguose aiški klaida). Kitaip API visus pirkėjus ribotų kaip vieną Vercel IP.
 - **Ribojimas pagal pirkėjo IP** (atmintyje, viena API instancija): `POST /orders` 5 per 10 min. ir 20 per parą, `GET /orders/access/:token` 60 per min., admin prisijungimas `ADMIN_LOGIN_RATE_LIMIT` per `ADMIN_LOGIN_RATE_WINDOW_SECONDS`. Skaičiuojamas kiekvienas bandymas; viršijus 429 `TOO_MANY_REQUESTS` su `Retry-After`. Visos ribos `apps/api/src/rate-limit/rate-limits.ts`.
 - **Pirkėjo IP.** Web ir admin serveriai perduoda naršyklės IP (`X-Client-IP`, priimamas tik su paslaptimi). Tiesioginėms užklausoms Railway produkcijoje naudojamas `X-Real-IP`, kurį Railway edge nustato pats ([Railway: Public Networking specs](https://docs.railway.com/networking/public-networking/specs-and-limits)); `X-Forwarded-For` paskutinis šuolis gali būti vidinis Railway proxy. Kitur (vystant) `req.ip`.
 - **Cloudflare Turnstile.** Užsakymo formoje valdiklis (`interaction-only`, lietuviškai); API tikrina tokeną per `siteverify` (5 s limitas) prieš rezervuodamas kiekius. Netinkamas: 403 `TURNSTILE_FAILED`; Cloudflare nepasiekiamas: 503 `TURNSTILE_UNAVAILABLE` (užsakymas nepriimamas, klaida loguose). Jau sukurto užsakymo pakartojimui (tas pats `clientRequestId`) tokeno nereikia.
 
-Turnstile nustatymas: Cloudflare → Turnstile → Add widget, **Widget Mode: Managed**, hostnames: parduotuvės domenas. Site key → Vercel web `NEXT_TURNSTILE_SITE_KEY` (skaitomas serveryje, perdiegti nebūtina), Secret key → Railway `TURNSTILE_SECRET_KEY`. Kol kas abu neprivalomi ir produkcijoje: be jų naudojami Cloudflare testiniai „visada praeina“ raktai (apsaugos nuo robotų nėra, API loguose įspėjimas). Nustatyk abu kartu.
+Turnstile nustatymas: Cloudflare → Turnstile → Add widget, **Widget Mode: Managed**, hostnames: parduotuvės domenas. Site key → Vercel web `NEXT_TURNSTILE_SITE_KEY` (skaitomas serveryje, perdiegti nebūtina), Secret key → Railway `TURNSTILE_SECRET_KEY`. Produkcijoje (`NODE_ENV=production`, taip pat Vercel Preview) privalomi abu: API be `TURNSTILE_SECRET_KEY` nepasileidžia (klaida Railway deploy loguose), o web be `NEXT_TURNSTILE_SITE_KEY` veikia, bet užsakymų nepateikia (klaida Vercel loguose). Vystant ir testuose be jų naudojami Cloudflare testiniai „visada praeina“ raktai. Nustatyk abu kartu.
 
 #### DB indeksai
 
@@ -218,14 +218,14 @@ MongoDB Atlas → Network Access: leisk prisijungti iš Railway (paprasčiausia 
 
 Du atskiri Vercel projektai iš to paties repo:
 
-| Nustatymas     | web                                                                                                                                                                                                 | admin                                                                                    |
-| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Root Directory | `apps/web`                                                                                                                                                                                          | `apps/admin`                                                                             |
-| Framework      | Next.js                                                                                                                                                                                             | Next.js                                                                                  |
-| Build Command  | `cd ../.. && pnpm turbo run build --filter=@desert-web/web`                                                                                                                                         | `cd ../.. && pnpm turbo run build --filter=@desert-web/admin`                            |
-| Env            | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (ta pati kaip Railway), `INTERNAL_API_SECRET` ir `API_URL` privalomi, `NEXT_TURNSTILE_SITE_KEY` kol kas neprivalomas, neprivaloma `SITE_URL` | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (privaloma, ta pati kaip Railway) |
+| Nustatymas     | web                                                                                                                                                   | admin                                                                                    |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Root Directory | `apps/web`                                                                                                                                            | `apps/admin`                                                                             |
+| Framework      | Next.js                                                                                                                                               | Next.js                                                                                  |
+| Build Command  | `cd ../.. && pnpm turbo run build --filter=@desert-web/web`                                                                                           | `cd ../.. && pnpm turbo run build --filter=@desert-web/admin`                            |
+| Env            | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (ta pati kaip Railway), `NEXT_TURNSTILE_SITE_KEY`; visi trys privalomi, neprivaloma `SITE_URL` | `API_URL=https://<api domenas>`, `INTERNAL_API_SECRET` (privaloma, ta pati kaip Railway) |
 
-Web naršyklė į API nesikreipia: puslapius ir užsakymo pateikimą (Server Action) atlieka web Next.js serveris. `NEXT_PUBLIC_API_URL` nebenaudojamas (jei liko Vercel, ištrink). Produkcijoje web be `API_URL` ar `INTERNAL_API_SECRET` **nepasileidžia** (aiški klaida Vercel runtime loguose, `src/instrumentation.ts`). Su `INTERNAL_API_SECRET` web serveris API perduoda tikrą pirkėjo IP (`X-Client-IP`), o API produkcijoje užsakymus priima tik su ja. `SITE_URL` (pvz., `https://desertai.lt`) naudojamas absoliutiems OG adresams.
+Web naršyklė į API nesikreipia: puslapius ir užsakymo pateikimą (Server Action) atlieka web Next.js serveris. `NEXT_PUBLIC_API_URL` nebenaudojamas (jei liko Vercel, ištrink). Produkcijoje web be `API_URL` **nepasileidžia** (aiški klaida Vercel runtime loguose, `src/instrumentation.ts`). Be `INTERNAL_API_SECRET` ar `NEXT_TURNSTILE_SITE_KEY` svetainė veikia, bet užsakymo forma grąžina „Užsakymo pateikti nepavyko. Bandykite vėliau.“, o Vercel loguose kiekvieną kartą klaida su trūkstamų kintamųjų sąrašu (kaip admin prisijungimas be paslapties). Su `INTERNAL_API_SECRET` web serveris API perduoda tikrą pirkėjo IP (`X-Client-IP`), o API produkcijoje užsakymus priima tik su ja. `SITE_URL` (pvz., `https://desertai.lt`) naudojamas absoliutiems OG adresams.
 
 Pardavėjo vardas ir kontaktai (poraštė, `/privatumas`, laiškai pirkėjams ir jų Reply-To) yra `packages/shared/src/shop.ts` (`SELLER`, pažymėta TODO).
 
