@@ -7,7 +7,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TURNSTILE_TEST_KEYS, type OrderErrorCode } from '@desert-web/shared';
+import type { OrderErrorCode } from '@desert-web/shared';
 import type { Env } from '../config/env';
 import { SITEVERIFY_CLIENT, type SiteverifyClient } from './siteverify';
 
@@ -45,16 +45,8 @@ export class TurnstileService {
     config: ConfigService<Env, true>,
     @Inject(SITEVERIFY_CLIENT) private readonly siteverify: SiteverifyClient,
   ) {
+    // Produkcijoje raktas privalomas (env.ts), todėl testinis čia būna tik vystant ir testuose.
     this.secret = config.get('TURNSTILE_SECRET_KEY', { infer: true });
-    if (
-      config.get('NODE_ENV', { infer: true }) === 'production' &&
-      this.secret === TURNSTILE_TEST_KEYS.secretPass
-    ) {
-      this.logger.warn(
-        'TURNSTILE_SECRET_KEY is not set: using the Cloudflare always-pass test key, ' +
-          'orders have no bot protection.',
-      );
-    }
   }
 
   /** Meta 403 TURNSTILE_FAILED arba 503 TURNSTILE_UNAVAILABLE; kitaip tokenas galioja. */

@@ -115,10 +115,11 @@ describe('validateEnv: Turnstile', () => {
   );
 
   it.each([undefined, '', '   '])(
-    'produkcijoje TURNSTILE_SECRET_KEY=%j: neprivalomas, naudojamas testinis raktas',
+    'produkcijoje TURNSTILE_SECRET_KEY=%j: aiški klaida (testinis raktas netaikomas)',
     (value) => {
-      const env = validateEnv({ ...production, TURNSTILE_SECRET_KEY: value });
-      expect(env.TURNSTILE_SECRET_KEY).toBe(TURNSTILE_TEST_KEYS.secretPass);
+      expect(() => validateEnv({ ...production, TURNSTILE_SECRET_KEY: value })).toThrow(
+        /TURNSTILE_SECRET_KEY: TURNSTILE_SECRET_KEY is required in production/,
+      );
     },
   );
 
@@ -179,6 +180,7 @@ describe('validateEnv: visi trūkstami kintamieji vienoje klaidoje', () => {
     for (const key of [
       'MONGODB_URI',
       'INTERNAL_API_SECRET',
+      'TURNSTILE_SECRET_KEY',
       'CLOUDINARY_CLOUD_NAME',
       'CLOUDINARY_API_KEY',
       'CLOUDINARY_API_SECRET',
