@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { PickupInfo } from '@/components/pickup-info';
 import { Storefront, UpcomingProducts } from '@/components/storefront';
+import { WindowTabs } from '@/components/window-tabs';
 import { formatDateTime, formatDateTimeWithWeekday } from '@/lib/format';
 import { SHOP_DESCRIPTION, SHOP_NAME } from '@/lib/shop';
-import { loadCurrentWindows } from '@/lib/window';
+import { loadCurrentWindows, pickOpenWindow, WINDOW_PARAM } from '@/lib/window';
 
 // Lango būsena ir likučiai priklauso nuo laiko, todėl puslapis visada generuojamas iš naujo.
 export const dynamic = 'force-dynamic';
@@ -22,8 +23,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function HomePage() {
-  const current = await loadCurrentWindows();
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const [current, params] = await Promise.all([loadCurrentWindows(), searchParams]);
 
   if (!current) {
     return (
@@ -34,11 +39,13 @@ export default async function HomePage() {
     );
   }
 
-  const { open, upcoming } = current;
+  const { upcoming, openWindows } = current;
+  const open = pickOpenWindow(current, params[WINDOW_PARAM]);
 
   if (open) {
     return (
       <>
+        <WindowTabs windows={openWindows} activeId={open.id} />
         <header className="window-header">
           <p className="eyebrow">Prekyba vyksta</p>
           <h1>{open.title}</h1>
@@ -52,7 +59,7 @@ export default async function HomePage() {
           />
         </header>
         {open.items.length > 0 ? (
-          <Storefront saleWindow={open} />
+          <Storefront key={open.id} saleWindow={open} openCount={openWindows.length} />
         ) : (
           <p className="notice">Prekės netrukus atsiras.</p>
         )}

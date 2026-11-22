@@ -6,7 +6,14 @@ import { CartBar } from './cart-bar';
 import { ProductCard } from './product-card';
 
 /** Atidaryto lango prekės su krepšeliu. */
-export function Storefront({ saleWindow }: { saleWindow: PublicSaleWindowDto }) {
+export function Storefront({
+  saleWindow,
+  openCount,
+}: {
+  saleWindow: PublicSaleWindowDto;
+  /** Kiek langų atidaryta dabar: jei daugiau nei vienas, užsakymo nuoroda nurodo langą. */
+  openCount: number;
+}) {
   const cart = useCart(saleWindow);
   return (
     <>
@@ -37,7 +44,13 @@ export function Storefront({ saleWindow }: { saleWindow: PublicSaleWindowDto }) 
         ))}
       </ul>
       {cart.count > 0 ? <div className="cart-bar-spacer" aria-hidden="true" /> : null}
-      <CartBar count={cart.count} totalCents={cart.totalCents} />
+      <CartBar
+        count={cart.count}
+        totalCents={cart.totalCents}
+        href={
+          openCount > 1 ? `/uzsakymas?langas=${encodeURIComponent(saleWindow.id)}` : '/uzsakymas'
+        }
+      />
     </>
   );
 }

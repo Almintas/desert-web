@@ -31,9 +31,12 @@ const TURNSTILE_ERROR =
 
 export function CheckoutForm({
   saleWindow: initialWindow,
+  backHref,
   turnstileSiteKey,
 }: {
   saleWindow: PublicSaleWindowDto;
+  /** Šio lango prekių puslapis. */
+  backHref: string;
   /** Cloudflare Turnstile site key (NEXT_TURNSTILE_SITE_KEY, žr. lib/env.ts). */
   turnstileSiteKey: string;
 }) {
@@ -139,7 +142,7 @@ export function CheckoutForm({
         {cartChanges.length > 0 ? <CartChanges changes={cartChanges} /> : null}
         <p>Krepšelis tuščias.</p>
         <p>
-          <Link href="/" className="button primary">
+          <Link href={backHref} className="button primary">
             Rinktis prekes
           </Link>
         </p>
@@ -271,7 +274,7 @@ export function CheckoutForm({
             <p>{state.message}</p>
             {closed ? (
               <p>
-                <Link href="/">Grįžti į parduotuvę</Link>
+                <Link href={backHref}>Grįžti į parduotuvę</Link>
               </p>
             ) : null}
           </div>

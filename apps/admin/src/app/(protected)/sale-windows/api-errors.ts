@@ -1,5 +1,5 @@
 import type { ApiError } from '@/lib/api';
-import type { OverlapWindow, SaleWindowFormState } from './form-state';
+import type { SaleWindowFormState } from './form-state';
 
 /**
  * API klaida -> formos būsena. `variantIndex` leidžia prekės klaidą (pagal variantId)
@@ -9,7 +9,7 @@ export function saleWindowApiErrorState(
   error: ApiError,
   variantIndex: (variantId: string) => number = () => -1,
 ): SaleWindowFormState {
-  const body = (error.body ?? {}) as { variantId?: unknown; window?: OverlapWindow };
+  const body = (error.body ?? {}) as { variantId?: unknown };
   const index = typeof body.variantId === 'string' ? variantIndex(body.variantId) : -1;
 
   switch (error.code) {
@@ -25,8 +25,6 @@ export function saleWindowApiErrorState(
             .map((field) => [`fulfillment.${field}`, 'Privaloma paskelbtam langui']),
         ),
       };
-    case 'WINDOW_OVERLAP':
-      return { error: error.message, overlap: body.window };
     case 'QUANTITY_BELOW_SOLD':
       return {
         error: 'Patikrink pažymėtus laukus.',

@@ -12,7 +12,6 @@ import {
   clearDatabase,
   createProduct,
   createTestContext,
-  iso,
   item,
   loginAdmin,
   orderBody,
@@ -135,25 +134,6 @@ describe('Admin pardavimo langai: lygiagretumas', () => {
       }
     }
     expect(outcomes.size).toBeGreaterThan(0);
-  });
-
-  it('du persidengiantys langai skelbiami vienu metu: paskelbiamas tik vienas', async () => {
-    for (let round = 0; round < 5; round++) {
-      await ctx.saleWindowModel.deleteMany({});
-      const a = await createWindow(
-        windowBody([item(product)], { opensAt: iso(10), closesAt: iso(20) }),
-      );
-      const b = await createWindow(
-        windowBody([item(product)], { opensAt: iso(15), closesAt: iso(25) }),
-      );
-
-      const responses = await Promise.all(
-        [a, b].map((w) => auth(http().post(`/admin/sale-windows/${w.id}/publish`))),
-      );
-      expect(responses.map((r) => r.status).sort()).toEqual([200, 409]);
-      expect(responses.find((r) => r.status === 409)!.body.code).toBe('WINDOW_OVERLAP');
-      expect(await ctx.saleWindowModel.countDocuments({ status: 'published' })).toBe(1);
-    }
   });
 
   it('lango atšaukimas lenktyniaujant su užsakymais: niekada atšauktas langas su užsakymais', async () => {

@@ -3,7 +3,6 @@
 import {
   type AdminSaleWindowDto,
   centsToInput,
-  formatShopDateTime,
   parseEurToCents,
   utcToVilniusLocal,
 } from '@desert-web/shared';
@@ -157,16 +156,6 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
       {state.error ? (
         <div className="alert error" role="alert">
           <p>{state.error}</p>
-          {state.overlap ? (
-            <p>
-              Kertasi su:{' '}
-              <Link href={`/sale-windows/${state.overlap.id}`} className="strong">
-                {state.overlap.title}
-              </Link>{' '}
-              ({formatShopDateTime(state.overlap.opensAt)} –{' '}
-              {formatShopDateTime(state.overlap.closesAt)})
-            </p>
-          ) : null}
         </div>
       ) : null}
 

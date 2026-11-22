@@ -1,20 +1,11 @@
 import type { SaleWindowPhase } from '@desert-web/shared';
 
-/** Langas, su kuriuo kertasi laikas (WINDOW_OVERLAP). */
-export interface OverlapWindow {
-  id: string;
-  title: string;
-  opensAt: string;
-  closesAt: string;
-}
-
 /** Server Action atsakymas (sėkmės atveju vyksta redirect). */
 export interface SaleWindowFormState {
   /** Bendra klaida formos viršuje. */
   error?: string;
   /** Laukų klaidos pagal kelią kaip API `issues` (pvz., "closesAt", "items.0.quantityTotal"). */
   fieldErrors?: Record<string, string>;
-  overlap?: OverlapWindow;
   /** WINDOW_HAS_ORDERS: nuoroda į to lango užsakymų sąrašą. */
   ordersHref?: string;
   /** PICKUP_INFO_REQUIRED: nuoroda į lango redagavimą. */

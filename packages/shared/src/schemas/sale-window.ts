@@ -162,7 +162,10 @@ export interface PublicSaleWindowDto {
 
 /** /sale-windows/current atsakymas: atidarytas langas, arba artimiausias būsimas. */
 export interface CurrentSaleWindowResponse {
+  /** Anksčiausiai atidarytas iš `openWindows` (null, jei nė vienas neatidarytas). */
   open: PublicSaleWindowDto | null;
+  /** Visi šiuo metu atidaryti langai (gali persidengti), anksčiausiai atidarytas pirmas. */
+  openWindows: PublicSaleWindowDto[];
   upcoming: PublicSaleWindowDto | null;
 }
 
@@ -190,8 +193,6 @@ export interface AdminSaleWindowDto extends Omit<PublicSaleWindowDto, 'items'> {
 export const SALE_WINDOW_ERROR_CODES = [
   /** 404 */
   'SALE_WINDOW_NOT_FOUND',
-  /** 409: paskelbto lango laikas kertasi su kitu paskelbtu langu (`window: { id, title }`). */
-  'WINDOW_OVERLAP',
   /** 409: naujas kiekis mažesnis nei parduota (`variantId`, `sold`, `requestedTotal`). */
   'QUANTITY_BELOW_SOLD',
   /** 409: išimama prekė, kurią turi neatšaukti užsakymai (`variantId`). */

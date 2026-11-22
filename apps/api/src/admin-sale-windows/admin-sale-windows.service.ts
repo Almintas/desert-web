@@ -14,19 +14,10 @@ import {
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { type ClientSession, type Connection, type Model, Types } from 'mongoose';
-import { CountersService } from '../counters/counters.service';
 import { Order } from '../orders/order.schema';
 import { Product } from '../products/product.schema';
 import { SaleWindow, type SaleWindowItem } from '../sale-windows/sale-window.schema';
 import { type OrderStats, toAdminSaleWindowDto } from './admin-sale-windows.mapper';
-
-/**
- * Raktas counters kolekcijoje. Kiekviena transakcija, kuri gali padaryti langą paskelbtą
- * ar pakeisti paskelbto lango laikus, jį padidina. Taip tokios transakcijos rašo tą patį
- * dokumentą ir lygiagrečiai vykti negali (antroji gauna WriteConflict ir kartojama), todėl
- * „ne daugiau kaip vienas paskelbtas langas tuo pačiu metu“ galioja ir lenktynėse.
- */
-const PUBLISH_LOCK_KEY = 'sale-window-publish-lock';
 
 function windowError(
   Exception: new (body: object) => Error,
@@ -70,7 +61,7 @@ const MINUTE_MS = 60_000;
  * „Uždaryti dabar“ juos išsaugo su sekundėmis. Jei pateiktas laikas lygus išsaugotam,
  * nukirptam iki minutės, laikom, kad jis nekeistas, ir paliekam išsaugotą (su sekundėmis).
  * Kitaip nepakeistas langas „pasislinktų“ atgal iki minutės pradžios: pvz., ką tik
- * atidarytas langas imtų kirstis su ką tik uždarytu (WINDOW_OVERLAP).
+ * atidarytas langas „atsidarytų“ anksčiau, nei buvo atidarytas iš tikrųjų.
  */
 function keepStoredSeconds(input: AdminSaleWindowInput, stored: SaleWindow): AdminSaleWindowInput {
   const keep = <T extends Date | undefined>(submitted: T, prev: Date | undefined): T =>
@@ -98,7 +89,6 @@ export class AdminSaleWindowsService {
     @InjectModel(SaleWindow.name) private readonly saleWindowModel: Model<SaleWindow>,
     @InjectModel(Product.name) private readonly productModel: Model<Product>,
     @InjectModel(Order.name) private readonly orderModel: Model<Order>,
-    private readonly countersService: CountersService,
   ) {}
 
   /** Visi langai, naujausias opensAt pirmas. */
@@ -207,13 +197,6 @@ export class AdminSaleWindowsService {
 
     if (stored.status === 'published') assertPickupInfo(input.fulfillment);
 
-    const timesChanged =
-      stored.opensAt.getTime() !== input.opensAt.getTime() ||
-      stored.closesAt.getTime() !== input.closesAt.getTime();
-    if (stored.status === 'published' && timesChanged) {
-      await this.assertNoOverlap(stored._id, input.opensAt, input.closesAt, session);
-    }
-
     await this.linkProducts(input.items, session);
     const updated = await this.saleWindowModel
       .findByIdAndUpdate(
@@ -227,15 +210,14 @@ export class AdminSaleWindowsService {
     return updated;
   }
 
-  /** draft -> published (jei nesikerta su kitu paskelbtu langu ir turi atsiėmimo info). */
+  /** draft -> published (jei turi atsiėmimo info). Paskelbti langai gali persidengti. */
   publish(id: string): Promise<AdminSaleWindowDto> {
-    return this.mutate(id, async (w, session, now) => {
+    return this.mutate(id, async (w, _session, now) => {
       if (w.status !== 'draft') throw invalidStatus('Paskelbti galima tik juodraštį');
       if (w.closesAt <= now) {
         throw invalidStatus('Lango pabaiga jau praėjo. Pirmiau pakeisk lango laikus.');
       }
       assertPickupInfo(w.fulfillment);
-      await this.assertNoOverlap(w._id, w.opensAt, w.closesAt, session);
       return { status: 'published' };
     });
   }
@@ -263,15 +245,14 @@ export class AdminSaleWindowsService {
     });
   }
 
-  /** opensAt = dabar ir paskelbia (taikoma ta pati persidengimo taisyklė). */
+  /** opensAt = dabar ir paskelbia. */
   openNow(id: string): Promise<AdminSaleWindowDto> {
-    return this.mutate(id, async (w, session, now) => {
+    return this.mutate(id, async (w, _session, now) => {
       if (getSaleWindowPhase(w, now) === 'open') throw invalidStatus('Langas jau atidarytas');
       if (w.closesAt <= now) {
         throw invalidStatus('Lango pabaiga jau praėjo. Pirmiau pakeisk uždarymo laiką.');
       }
       assertPickupInfo(w.fulfillment);
-      await this.assertNoOverlap(w._id, now, w.closesAt, session);
       return { status: 'published', opensAt: now };
     });
   }
@@ -338,45 +319,6 @@ export class AdminSaleWindowsService {
       );
     }
     return w;
-  }
-
-  /**
-   * Ne daugiau kaip vienas paskelbtas langas tuo pačiu metu: [opensAt, closesAt) neturi
-   * kirstis su kitu paskelbtu langu. Pasibaigę langai su būsimais natūraliai nesikerta.
-   */
-  private async assertNoOverlap(
-    windowId: Types.ObjectId,
-    opensAt: Date,
-    closesAt: Date,
-    session: ClientSession,
-  ): Promise<void> {
-    await this.countersService.next(PUBLISH_LOCK_KEY, session);
-    const other = await this.saleWindowModel
-      .findOne({
-        _id: { $ne: windowId },
-        status: 'published',
-        opensAt: { $lt: closesAt },
-        closesAt: { $gt: opensAt },
-      })
-      .session(session)
-      .lean<SaleWindow>()
-      .exec();
-    if (other) {
-      throw windowError(
-        ConflictException,
-        'WINDOW_OVERLAP',
-        `Laikas kertasi su kitu paskelbtu langu „${other.title}“. Vienu metu gali būti tik ` +
-          'vienas paskelbtas langas.',
-        {
-          window: {
-            id: other._id.toString(),
-            title: other.title,
-            opensAt: other.opensAt.toISOString(),
-            closesAt: other.closesAt.toISOString(),
-          },
-        },
-      );
-    }
   }
 
   /**

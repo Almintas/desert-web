@@ -121,13 +121,14 @@ export async function placeOrderAction(
     }
     if (code && (ORDER_ITEM_ERROR_CODES as readonly string[]).includes(code)) {
       const current = await loadCurrentWindows();
-      if (!current?.open || current.open.id !== windowId) {
+      const saleWindow = current?.openWindows.find((w) => w.id === windowId);
+      if (!saleWindow) {
         return { status: 'closed', message: CLOSED_MESSAGE };
       }
       return {
         status: 'stock',
         message: error.message,
-        window: current.open,
+        window: saleWindow,
         problems: problemsFrom(error.body),
       };
     }

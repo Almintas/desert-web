@@ -18,23 +18,25 @@ export class SaleWindowsService {
     @InjectModel(Product.name) private readonly productModel: Model<Product>,
   ) {}
 
-  /** Atidarytas langas (jei yra) ir artimiausias būsimas langas. */
+  /** Visi atidaryti langai ir artimiausias būsimas langas. */
   async getCurrent(now: Date = new Date()): Promise<CurrentSaleWindowResponse> {
     const [open, upcoming] = await Promise.all([
       this.saleWindowModel
-        .findOne({ status: 'published', opensAt: { $lte: now }, closesAt: { $gt: now } })
-        .sort({ opensAt: 1 })
-        .lean<SaleWindow>()
+        .find({ status: 'published', opensAt: { $lte: now }, closesAt: { $gt: now } })
+        .sort({ opensAt: 1, _id: 1 })
+        .lean<SaleWindow[]>()
         .exec(),
       this.saleWindowModel
         .findOne({ status: 'published', opensAt: { $gt: now } })
-        .sort({ opensAt: 1 })
+        .sort({ opensAt: 1, _id: 1 })
         .lean<SaleWindow>()
         .exec(),
     ]);
 
+    const openWindows = await Promise.all(open.map((w) => this.toPublicDto(w, now)));
     return {
-      open: open ? await this.toPublicDto(open, now) : null,
+      open: openWindows[0] ?? null,
+      openWindows,
       upcoming: upcoming ? await this.toPublicDto(upcoming, now) : null,
     };
   }

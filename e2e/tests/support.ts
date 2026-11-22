@@ -167,8 +167,8 @@ const HOUR = 3_600_000;
 const iso = (ms: number) => new Date(Date.now() + ms).toISOString();
 
 /**
- * Sukuria ir iškart atidaro langą (open-now). Prieš tai uždaro / atšaukia kitus langus, nes
- * vienu metu gali būti tik vienas paskelbtas langas.
+ * Sukuria ir iškart atidaro langą (open-now). Prieš tai uždaro / atšaukia kitus langus, kad
+ * pagrindiniame puslapyje būtų rodomas būtent šis langas.
  */
 export async function openWindow(
   items: { product: Product; variant?: number; quantity?: number; priceCents?: number }[],

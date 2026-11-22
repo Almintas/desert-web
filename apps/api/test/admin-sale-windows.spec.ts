@@ -9,7 +9,6 @@ import {
   bodyFrom,
   clearDatabase,
   createProduct,
-  createSaleWindow,
   createTestContext,
   iso,
   item,
@@ -261,51 +260,11 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
       expect(published).toMatchObject({ status: 'published', phase: 'upcoming' });
     });
 
-    it('persidengiantis su kitu paskelbtu: 409 WINDOW_OVERLAP su kito lango id ir pavadinimu', async () => {
-      const first = await createOk([item(cake)], {
-        title: 'Pirmas',
-        opensAt: iso(10),
-        closesAt: iso(20),
-      });
+    it('paskelbti langai gali persidengti', async () => {
+      const first = await createOk([item(cake)], { opensAt: iso(10), closesAt: iso(20) });
       await actionOk(first.id, 'publish');
-      const second = await createOk([item(cake)], {
-        title: 'Antras',
-        opensAt: iso(19),
-        closesAt: iso(30),
-      });
-
-      const res = await action(second.id, 'publish');
-      expect(res.status).toBe(409);
-      expect(res.body).toMatchObject({
-        code: 'WINDOW_OVERLAP',
-        window: { id: first.id, title: 'Pirmas' },
-      });
-      expect(res.body.message).toMatch(/Pirmas/);
-      expect((await getOne(second.id)).body.status).toBe('draft');
-    });
-
-    it('besiliečiantys langai (vieno pabaiga = kito pradžia) nesikerta', async () => {
-      const t = iso(20);
-      const first = await createOk([item(cake)], { opensAt: iso(10), closesAt: t });
-      await actionOk(first.id, 'publish');
-      const second = await createOk([item(cake)], { opensAt: t, closesAt: iso(30) });
-      expect((await action(second.id, 'publish')).status).toBe(200);
-    });
-
-    it('pasibaigęs paskelbtas langas būsimo netrukdo', async () => {
-      await createSaleWindow(ctx, {
-        items: [{ productId: cake.productId, variantId: cake.variantIds[0]! }],
-        opensInMinutes: -120,
-        closesInMinutes: -60,
-      });
-      const w = await createOk();
-      expect((await action(w.id, 'publish')).status).toBe(200);
-    });
-
-    it('juodraščiai tarpusavyje gali persidengti', async () => {
-      await createOk();
-      const second = await createOk();
-      expect(second.status).toBe('draft');
+      const second = await createOk([item(cake)], { opensAt: iso(15), closesAt: iso(30) });
+      expect(await actionOk(second.id, 'publish')).toMatchObject({ status: 'published' });
     });
 
     it('paskelbti jau paskelbtą: 409 INVALID_STATUS; pasibaigusio juodraščio: 409', async () => {
@@ -319,31 +278,16 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
       expect(res.body.code).toBe('INVALID_STATUS');
     });
 
-    it('paskelbto lango laikų keitimas į persidengiančius: 409 WINDOW_OVERLAP', async () => {
-      const first = await createOk([item(cake)], {
-        title: 'Pirmas',
-        opensAt: iso(10),
-        closesAt: iso(20),
-      });
+    it('paskelbto lango laikus galima keisti į persidengiančius su kitu paskelbtu', async () => {
+      const first = await createOk([item(cake)], { opensAt: iso(10), closesAt: iso(20) });
       const second = await createOk([item(cake)], { opensAt: iso(30), closesAt: iso(40) });
       await actionOk(first.id, 'publish');
       const published = await actionOk(second.id, 'publish');
 
-      const res = await update(second.id, bodyFrom(published, { opensAt: iso(15) }));
-      expect(res.status).toBe(409);
-      expect(res.body).toMatchObject({ code: 'WINDOW_OVERLAP', window: { id: first.id } });
-
-      // Nekeičiant laikų kitus laukus keisti galima.
-      const renamed = await update(second.id, bodyFrom(published, { title: 'Naujas' }));
-      expect(renamed.status).toBe(200);
-    });
-
-    it('juodraščio laikus galima keisti net jei kertasi su paskelbtu', async () => {
-      const first = await createOk([item(cake)], { opensAt: iso(10), closesAt: iso(20) });
-      await actionOk(first.id, 'publish');
-      const draft = await createOk([item(cake)], { opensAt: iso(30), closesAt: iso(40) });
-      const res = await update(draft.id, bodyFrom(draft, { opensAt: iso(15) }));
+      const opensAt = iso(15);
+      const res = await update(second.id, bodyFrom(published, { opensAt }));
       expect(res.status).toBe(200);
+      expect(res.body.opensAt).toBe(opensAt);
     });
   });
 
@@ -547,7 +491,7 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
       expect((await action(w.id, 'open-now')).body.code).toBe('INVALID_STATUS'); // pabaiga praėjo
     });
 
-    it('open-now paskelbtam būsimam langui ir persidengimas', async () => {
+    it('open-now paskelbtam būsimam langui; kitas langas gali būti atidarytas tuo pačiu metu', async () => {
       const upcoming = await createOk([item(cake)], { opensAt: iso(10), closesAt: iso(20) });
       await actionOk(upcoming.id, 'publish');
       expect((await actionOk(upcoming.id, 'open-now')).phase).toBe('open');
@@ -557,9 +501,11 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
         opensAt: iso(15),
         closesAt: iso(30),
       });
-      const res = await action(other.id, 'open-now');
-      expect(res.status).toBe(409);
-      expect(res.body).toMatchObject({ code: 'WINDOW_OVERLAP', window: { id: upcoming.id } });
+      expect((await actionOk(other.id, 'open-now')).phase).toBe('open');
+
+      const v = cake.variantIds[0]!;
+      expect((await order(upcoming.id, v)).status).toBe(201);
+      expect((await order(other.id, v)).status).toBe(201);
     });
 
     it('close-now neatidarytam langui: 409 INVALID_STATUS', async () => {
@@ -617,7 +563,7 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
       expect(res.body.opensAt).toBe(earlier.toISOString());
     });
 
-    it('uždarius A ir tuoj pat atidarius B, B išsaugojimas be pakeitimų nesukelia WINDOW_OVERLAP', async () => {
+    it('uždarius A ir tuoj pat atidarius B, B išsaugojimas be pakeitimų nepakeičia opensAt', async () => {
       // Deterministiškai toje pačioje minutėje m: A uždarytas m+20 s, B atidarytas m+30 s.
       const m = Math.floor(Date.now() / MINUTE) * MINUTE - MINUTE;
       const a = await createOk([item(cake)], { title: 'A' });
@@ -641,12 +587,6 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
       const res = await update(b.id, unchanged);
       expect(res.status).toBe(200);
       expect(res.body.opensAt).toBe(new Date(m + 30_000).toISOString());
-
-      // Kontrolė: tikrai pakeitus pradžią į kertančią A, persidengimas aptinkamas.
-      const overlapping = bodyFrom(stored, { opensAt: new Date(m - MINUTE).toISOString() });
-      const conflict = await update(b.id, overlapping);
-      expect(conflict.status).toBe(409);
-      expect(conflict.body).toMatchObject({ code: 'WINDOW_OVERLAP', window: { id: a.id } });
     });
   });
 
@@ -656,7 +596,7 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
 
     it('rodo tik paskelbtus langus pagal fazę', async () => {
       const draft = await createOk([item(cake)], { opensAt: iso(1), closesAt: iso(2) });
-      expect(await current()).toEqual({ open: null, upcoming: null });
+      expect(await current()).toEqual({ open: null, openWindows: [], upcoming: null });
 
       await actionOk(draft.id, 'publish');
       let res = await current();
@@ -669,15 +609,27 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
       res = await current();
       expect(res.open).toMatchObject({ id: draft.id, phase: 'open' });
       expect(res.open!.items[0]!.quantityAvailable).toBe(8);
+      expect(res.openWindows.map((w) => w.id)).toEqual([draft.id]);
       expect(res.upcoming).toBeNull();
 
       await actionOk(draft.id, 'close-now');
-      expect(await current()).toEqual({ open: null, upcoming: null });
+      expect(await current()).toEqual({ open: null, openWindows: [], upcoming: null });
 
       const cancelled = await createOk([item(cake)], { opensAt: iso(5), closesAt: iso(6) });
       await actionOk(cancelled.id, 'publish');
       await actionOk(cancelled.id, 'cancel');
-      expect(await current()).toEqual({ open: null, upcoming: null });
+      expect(await current()).toEqual({ open: null, openWindows: [], upcoming: null });
+    });
+
+    it('keli atidaryti langai: openWindows visi, anksčiausiai atidarytas pirmas', async () => {
+      const a = await createOk([item(cake)], { title: 'A' });
+      const b = await createOk([item(cake)], { title: 'B' });
+      await actionOk(a.id, 'open-now');
+      await actionOk(b.id, 'open-now');
+
+      const res = await current();
+      expect(res.openWindows.map((w) => w.id)).toEqual([a.id, b.id]);
+      expect(res.open).toMatchObject({ id: a.id });
     });
   });
 });
