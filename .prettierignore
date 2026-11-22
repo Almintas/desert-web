@@ -3,3 +3,7 @@ dist
 .next
 .turbo
 pnpm-lock.yaml
+# e2e (pnpm e2e) sugeneruoti failai
+e2e/.logs
+e2e/test-results
+e2e/playwright-report
