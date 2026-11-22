@@ -1,6 +1,12 @@
 // Pavadinimas ir pardavėjo duomenys bendri su API laiškais: žr. packages/shared/src/shop.ts.
 export { SHOP_NAME } from '@desert-web/shared';
 
+/**
+ * Smulki eilutė po logotipu (antraštėje ir dalinimosi paveikslėlyje). Tuščia eilutė ją paslepia.
+ * Rašoma mažosiomis raidėmis.
+ */
+export const SHOP_LOGO_SUBLINE = 'rankų darbo';
+
 /** Pagrindinio puslapio šūkis (h1) ir antra eilutė po juo. */
 export const SHOP_TAGLINE = 'Tokių macarons niekur kitur nerasite.';
 export const SHOP_SUBTAGLINE = 'Rankų darbo, kepami mažais kiekiais – tik pardavimo dienomis.';

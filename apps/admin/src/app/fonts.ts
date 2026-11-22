@@ -1,10 +1,13 @@
-import { Cormorant_Garamond } from 'next/font/google';
+import { Bodoni_Moda } from 'next/font/google';
 
-/** Tas pats tekstinis logotipas kaip parduotuvėje (apps/web/src/app/fonts.ts). latin-ext: ą č ę… */
-export const wordmarkFont = Cormorant_Garamond({
+/**
+ * Tas pats logotipo šriftas kaip parduotuvėje (apps/web/src/app/fonts.ts): kintamas, su optiniu
+ * dydžiu (opsz). latin-ext: ą č ę…
+ */
+export const wordmarkFont = Bodoni_Moda({
   subsets: ['latin', 'latin-ext'],
-  weight: '600',
-  style: 'italic',
+  weight: 'variable',
+  axes: ['opsz'],
   display: 'swap',
   variable: '--font-wordmark',
 });
