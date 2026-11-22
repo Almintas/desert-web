@@ -19,6 +19,7 @@ export function toAdminOrderListItemDto(o: Order, titles: WindowTitles): AdminOr
     createdAt: o.createdAt.toISOString(),
     customer: { name: o.customer.name, phone: o.customer.phone },
     itemCount: o.items.reduce((sum, i) => sum + i.quantity, 0),
+    giftWrapQuantity: o.items.reduce((sum, i) => sum + (i.giftWrapQuantity ?? 0), 0),
     totalCents: o.totalCents,
     fulfillmentMethod: o.fulfillment.method,
     status: o.status,

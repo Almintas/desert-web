@@ -22,5 +22,12 @@ export type CheckoutState =
       window: PublicSaleWindowDto;
       problems: OrderItemProblemDto[];
     }
+  /** Dovanų pakavimas nebegalimas (`variantIds`): naujas lango vaizdas krepšeliui pataisyti. */
+  | {
+      status: 'gift-wrap';
+      message: string;
+      window: PublicSaleWindowDto;
+      variantIds: string[];
+    }
   /** Langas uždarytas (arba jo nebėra). */
   | { status: 'closed'; message: string };

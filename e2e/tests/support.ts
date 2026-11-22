@@ -128,6 +128,7 @@ export interface WindowItem {
 export interface SaleWindow {
   id: string;
   title: string;
+  giftWrap: GiftWrap;
   phase: 'draft' | 'upcoming' | 'open' | 'closed' | 'cancelled';
   ordersCount: number;
   items: WindowItem[];
@@ -197,10 +198,10 @@ const iso = (ms: number) => new Date(Date.now() + ms).toISOString();
 export async function openWindow(
   items: WindowInputItem[],
   title = `E2E langas ${unique()}`,
-  { reset = true }: { reset?: boolean } = {},
+  { reset = true, giftWrap }: { reset?: boolean; giftWrap?: GiftWrap } = {},
 ): Promise<SaleWindow> {
   if (reset) await resetWindows();
-  const draft = await createDraftWindow(items, title);
+  const draft = await createDraftWindow(items, title, giftWrap);
   return adminApi<SaleWindow>('POST', `/admin/sale-windows/${draft.id}/open-now`);
 }
 
@@ -219,9 +220,18 @@ type WindowInputItem = {
   variant?: number;
   quantity?: number;
   priceCents?: number;
+  /** Numatyta: true. */
+  giftWrapAllowed?: boolean;
 };
 
-function createDraftWindow(items: WindowInputItem[], title: string): Promise<SaleWindow> {
+/** Lango dovanų pakavimas (numatyta: išjungtas). */
+export type GiftWrap = { enabled: boolean; priceCents: number };
+
+export function createDraftWindow(
+  items: WindowInputItem[],
+  title = `E2E juodraštis ${unique()}`,
+  giftWrap?: GiftWrap,
+): Promise<SaleWindow> {
   return adminApi<SaleWindow>('POST', '/admin/sale-windows', {
     title,
     opensAt: iso(HOUR),
@@ -238,7 +248,9 @@ function createDraftWindow(items: WindowInputItem[], title: string): Promise<Sal
       variantId: i.product.variants[i.variant ?? 0]!.id,
       priceCents: i.priceCents ?? i.product.variants[i.variant ?? 0]!.priceCents,
       quantityTotal: i.quantity ?? 10,
+      ...(i.giftWrapAllowed === undefined ? {} : { giftWrapAllowed: i.giftWrapAllowed }),
     })),
+    ...(giftWrap ? { giftWrap } : {}),
   });
 }
 

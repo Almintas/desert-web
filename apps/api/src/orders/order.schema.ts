@@ -51,8 +51,20 @@ export class OrderItem {
   @Prop({ required: true, min: 1 })
   quantity!: number;
 
+  /** Tik prekės (unitPriceCents × quantity), be dovanų pakavimo. */
   @Prop({ required: true, min: 0 })
   lineTotalCents!: number;
+
+  /** Kiek vienetų supakuoti kaip dovaną. Seni užsakymai šių laukų neturi (= 0). */
+  @Prop({ min: 0 })
+  giftWrapQuantity?: number;
+
+  /** Lango pakavimo kaina už vienetą užsakymo metu (0, kai nepakuojama). */
+  @Prop({ min: 0 })
+  giftWrapUnitPriceCents?: number;
+
+  @Prop({ min: 0 })
+  giftWrapTotalCents?: number;
 }
 export const OrderItemSchema = SchemaFactory.createForClass(OrderItem);
 
@@ -130,6 +142,15 @@ export class Order {
   @Prop({ type: [OrderItemSchema], required: true })
   items!: OrderItem[];
 
+  /** Prekių suma. Seni užsakymai jos neturi (= totalCents, žr. orders.mapper). */
+  @Prop({ min: 0 })
+  itemsTotalCents?: number;
+
+  /** Dovanų pakavimo suma. Seni užsakymai jos neturi (= 0). */
+  @Prop({ min: 0 })
+  giftWrapTotalCents?: number;
+
+  /** itemsTotalCents + giftWrapTotalCents. */
   @Prop({ required: true, min: 0 })
   totalCents!: number;
 

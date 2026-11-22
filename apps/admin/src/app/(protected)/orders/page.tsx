@@ -147,7 +147,17 @@ export default async function OrdersPage({
                     <span className="muted small nowrap">{o.customer.phone}</span>
                   </td>
                   <td className="nowrap">{formatEur(o.totalCents)}</td>
-                  <td>{o.itemCount}</td>
+                  <td className="nowrap">
+                    {o.itemCount}
+                    {o.giftWrapQuantity > 0 ? (
+                      <span
+                        className="badge gift"
+                        title={`Supakuoti kaip dovaną: ${o.giftWrapQuantity} vnt.`}
+                      >
+                        Dovana
+                      </span>
+                    ) : null}
+                  </td>
                   <td>{FULFILLMENT_LABELS[o.fulfillmentMethod]}</td>
                   {windowId ? null : (
                     <td>

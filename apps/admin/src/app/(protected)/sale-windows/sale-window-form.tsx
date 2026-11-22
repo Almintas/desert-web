@@ -3,6 +3,7 @@
 import {
   type AdminSaleWindowDto,
   centsToInput,
+  formatEur,
   parseEurToCents,
   utcToVilniusLocal,
 } from '@desert-web/shared';
@@ -24,6 +25,8 @@ interface ItemRow {
   quantityTotal: string;
   maxPerOrder: string;
   maxPerCustomer: string;
+  /** Galima supakuoti kaip dovaną (rodoma tik kai pakavimas lange įjungtas). */
+  giftWrapAllowed: boolean;
   sold: number;
   ordersCount: number;
 }
@@ -57,6 +60,10 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
     f?.pickupFrom ? utcToVilniusLocal(f.pickupFrom) : '',
   );
   const [pickupTo, setPickupTo] = useState(f?.pickupTo ? utcToVilniusLocal(f.pickupTo) : '');
+  const [giftWrapEnabled, setGiftWrapEnabled] = useState(initial?.giftWrap.enabled ?? false);
+  const [giftWrapPrice, setGiftWrapPrice] = useState(
+    initial && initial.giftWrap.priceCents > 0 ? centsToInput(initial.giftWrap.priceCents) : '',
+  );
 
   const emptyRow = (): ItemRow => ({
     key: nextKey(),
@@ -69,6 +76,7 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
     quantityTotal: '',
     maxPerOrder: '',
     maxPerCustomer: '',
+    giftWrapAllowed: true,
     sold: 0,
     ordersCount: 0,
   });
@@ -85,6 +93,7 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
           quantityTotal: String(i.quantityTotal),
           maxPerOrder: i.maxPerOrder ? String(i.maxPerOrder) : '',
           maxPerCustomer: i.maxPerCustomer ? String(i.maxPerCustomer) : '',
+          giftWrapAllowed: i.giftWrapAllowed,
           sold: i.sold,
           ordersCount: i.ordersCount,
         }))
@@ -150,6 +159,12 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
     const formData = new FormData(event.currentTarget);
     startTransition(() => dispatch(formData));
   }
+
+  const giftWrapPriceError =
+    giftWrapEnabled && giftWrapPrice.trim() !== '' && parseEurToCents(giftWrapPrice) === null
+      ? 'Netinkama kaina (pvz., 2,00)'
+      : errors['giftWrap.priceCents'];
+  const giftWrapPriceCents = parseEurToCents(giftWrapPrice);
 
   return (
     <form className="form window-form" onSubmit={onSubmit} noValidate>
@@ -253,6 +268,52 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
       </fieldset>
 
       <fieldset>
+        <legend>Dovanų pakavimas</legend>
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            name="giftWrap.enabled"
+            checked={giftWrapEnabled}
+            onChange={(e) => {
+              setGiftWrapEnabled(e.target.checked);
+              dismiss('giftWrap.priceCents');
+            }}
+          />
+          Leisti supakuoti kaip dovaną
+        </label>
+        {giftWrapEnabled ? (
+          <>
+            <label className="narrow">
+              Kaina už vienetą, €
+              <input
+                name="giftWrap.price"
+                value={giftWrapPrice}
+                onChange={(e) => {
+                  setGiftWrapPrice(e.target.value);
+                  dismiss('giftWrap.priceCents');
+                }}
+                inputMode="decimal"
+                placeholder="2,00"
+                aria-invalid={Boolean(giftWrapPriceError)}
+                aria-describedby="gift-wrap-hint"
+              />
+              <FieldError message={giftWrapPriceError} />
+            </label>
+            <p className="hint" id="gift-wrap-hint">
+              {giftWrapPriceCents && giftWrapPriceCents > 0
+                ? `Pirkėjas mokės ${formatEur(giftWrapPriceCents)} už kiekvieną supakuotą vienetą. `
+                : 'Pirkėjas mokės šią sumą už kiekvieną supakuotą vienetą. '}
+              Kurias prekes galima pakuoti, pažymėk prekių lentelėje. Pakeitimai galioja tik
+              naujiems užsakymams.
+            </p>
+          </>
+        ) : (
+          // Išjungus kaina neprarandama: išsaugoma, kad įjungus vėl nereikėtų įvesti.
+          <input type="hidden" name="giftWrap.price" value={giftWrapPrice} />
+        )}
+      </fieldset>
+
+      <fieldset>
         <legend>Prekės</legend>
         <div className="table-wrap">
           <table className="table items-table">
@@ -263,6 +324,7 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
                 <th scope="col">Kiekis</th>
                 <th scope="col">Maks. užsakymui</th>
                 <th scope="col">Maks. pirkėjui</th>
+                {giftWrapEnabled ? <th scope="col">Dovana</th> : null}
                 <th scope="col">
                   <span className="visually-hidden">Veiksmai</span>
                 </th>
@@ -289,6 +351,11 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
                     <td className="item-cell">
                       {/* Eilutės žymė: išjungtas select į FormData nepatenka. */}
                       <input type="hidden" name={`${prefix}.row`} value="1" />
+                      <input
+                        type="hidden"
+                        name={`${prefix}.giftWrapAllowed`}
+                        value={row.giftWrapAllowed ? '1' : '0'}
+                      />
                       {row.existing ? (
                         <>
                           <input type="hidden" name={`${prefix}.productId`} value={row.productId} />
@@ -392,6 +459,20 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
                       />
                       <FieldError message={errors[`${prefix}.maxPerCustomer`]} />
                     </td>
+                    {giftWrapEnabled ? (
+                      <td>
+                        <label className="checkbox gift-wrap-allowed">
+                          <input
+                            type="checkbox"
+                            checked={row.giftWrapAllowed}
+                            onChange={(e) =>
+                              updateItem(row.key, { giftWrapAllowed: e.target.checked })
+                            }
+                          />
+                          Galima supakuoti kaip dovaną
+                        </label>
+                      </td>
+                    ) : null}
                     <td className="actions">
                       <button
                         type="button"

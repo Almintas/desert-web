@@ -132,6 +132,8 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
           pickupTo: body.fulfillment.pickupTo,
           deliveryAvailable: false,
         },
+        // Be giftWrap įvestyje pakavimas išjungtas.
+        giftWrap: { enabled: false, priceCents: 0 },
       });
       expect(dto.items).toEqual([
         {
@@ -151,6 +153,7 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
           sold: 0,
           maxPerOrder: 2,
           maxPerCustomer: 3,
+          giftWrapAllowed: true,
           ordersCount: 0,
         },
         expect.objectContaining({ variantId: macarons.variantIds[0]!.toString(), sold: 0 }),

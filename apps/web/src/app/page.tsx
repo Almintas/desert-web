@@ -56,6 +56,9 @@ export default async function HomePage({
           <h2 className="window-title">{open.title}</h2>
         </header>
         <OrderSteps saleWindow={open} />
+        {open.giftWrap ? (
+          <p className="order-steps-note">Desertus galima supakuoti kaip dovaną.</p>
+        ) : null}
         {open.items.length > 0 ? (
           <Storefront key={open.id} saleWindow={open} openCount={openWindows.length} />
         ) : (

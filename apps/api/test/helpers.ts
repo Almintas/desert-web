@@ -134,6 +134,8 @@ export interface WindowItemFixture {
   quantity?: number;
   maxPerOrder?: number;
   maxPerCustomer?: number;
+  /** Numatyta: neįrašoma (kaip seni langai), t. y. leidžiama. */
+  giftWrapAllowed?: boolean;
 }
 
 /**
@@ -150,6 +152,8 @@ export async function createSaleWindow(
     pickupAvailable?: boolean;
     deliveryAvailable?: boolean;
     pickupLocation?: string;
+    /** Numatyta: laukas neįrašomas (kaip seni langai), t. y. pakavimas išjungtas. */
+    giftWrap?: { enabled: boolean; priceCents: number };
   },
 ): Promise<SaleWindow> {
   const now = Date.now();
@@ -165,6 +169,7 @@ export async function createSaleWindow(
       pickupTo: options.pickupLocation ? new Date(now + 4 * HOUR) : undefined,
       deliveryAvailable: options.deliveryAvailable ?? true,
     },
+    ...(options.giftWrap ? { giftWrap: options.giftWrap } : {}),
     items: options.items.map((i) => ({
       productId: i.productId,
       variantId: i.variantId,
@@ -173,6 +178,7 @@ export async function createSaleWindow(
       quantityAvailable: i.quantity ?? 10,
       maxPerOrder: i.maxPerOrder,
       maxPerCustomer: i.maxPerCustomer,
+      ...(i.giftWrapAllowed === undefined ? {} : { giftWrapAllowed: i.giftWrapAllowed }),
     })),
   });
   return doc.toObject();
@@ -200,7 +206,7 @@ export function uniqueCustomer(): { name: string; email: string; phone: string }
 
 export function orderBody(
   saleWindowId: Types.ObjectId | string,
-  items: { variantId: Types.ObjectId | string; quantity: number }[],
+  items: { variantId: Types.ObjectId | string; quantity: number; giftWrapQuantity?: number }[],
   overrides: {
     customer?: { name: string; email: string; phone: string };
     fulfillment?: { method: 'pickup' | 'delivery'; address?: string; notes?: string };
@@ -219,7 +225,11 @@ export function orderBody(
     ...(token === undefined ? {} : { turnstileToken: token }),
     saleWindowId: saleWindowId.toString(),
     customer: overrides.customer ?? uniqueCustomer(),
-    items: items.map((i) => ({ variantId: i.variantId.toString(), quantity: i.quantity })),
+    items: items.map((i) => ({
+      variantId: i.variantId.toString(),
+      quantity: i.quantity,
+      ...(i.giftWrapQuantity === undefined ? {} : { giftWrapQuantity: i.giftWrapQuantity }),
+    })),
     fulfillment: overrides.fulfillment ?? { method: 'pickup' },
   };
 }
@@ -296,6 +306,7 @@ export function bodyFrom(
       pickupTo: w.fulfillment.pickupTo ?? undefined,
       deliveryAvailable: w.fulfillment.deliveryAvailable,
     },
+    giftWrap: w.giftWrap,
     items: w.items.map((i) => ({
       productId: i.productId,
       variantId: i.variantId,
@@ -303,6 +314,7 @@ export function bodyFrom(
       quantityTotal: i.quantityTotal,
       maxPerOrder: i.maxPerOrder ?? undefined,
       maxPerCustomer: i.maxPerCustomer ?? undefined,
+      giftWrapAllowed: i.giftWrapAllowed,
     })),
     ...overrides,
   };

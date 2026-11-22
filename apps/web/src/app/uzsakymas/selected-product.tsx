@@ -19,6 +19,7 @@ const IMAGE_SIZES = '(max-width: 599px) calc(100vw - 66px), 300px';
  */
 export function SelectedProduct({
   variants,
+  giftWrapAvailable,
   selectedVariantId,
   quantityOf,
   setQuantity,
@@ -26,6 +27,8 @@ export function SelectedProduct({
 }: {
   /** To paties produkto variantai šiame lange (lango tvarka), tarp jų ir pasirinktas. */
   variants: PublicSaleWindowItemDto[];
+  /** Lange įjungtas dovanų pakavimas (pats pasirinkimas yra krepšelio eilutėje). */
+  giftWrapAvailable: boolean;
   selectedVariantId: string;
   quantityOf: (variantId: string) => number;
   setQuantity: (variantId: string, quantity: number) => void;
@@ -44,6 +47,10 @@ export function SelectedProduct({
   const emphasised =
     variants.find((v) => v.variantId === selectedVariantId && v.quantityAvailable > 0) ??
     variants.find((v) => v.quantityAvailable > 0);
+
+  // Užuomina apie pakavimą: viena visam produktui, o jei leidžia ne visi variantai, prie jų.
+  const giftVariants = giftWrapAvailable ? variants.filter((v) => v.giftWrapAllowed) : [];
+  const giftForAll = giftVariants.length > 0 && giftVariants.length === variants.length;
 
   // Ekrano skaitytuvams: atėjus iš kortelės, fokusas ant prekės pavadinimo (be slinkimo).
   useEffect(() => {
@@ -97,6 +104,7 @@ export function SelectedProduct({
             <p className="selected-product-description">{product.description.trim()}</p>
           ) : null}
           <AllergenLine allergens={product.allergens} />
+          {giftForAll ? <p className="gift-wrap-hint">Galima supakuoti kaip dovaną</p> : null}
         </div>
       </div>
 
@@ -141,6 +149,9 @@ export function SelectedProduct({
                 )}
               </div>
               {hint ? <p className="limit-hint">{hint}</p> : null}
+              {!giftForAll && giftVariants.includes(v) ? (
+                <p className="gift-wrap-hint">Galima supakuoti kaip dovaną</p>
+              ) : null}
             </li>
           );
         })}

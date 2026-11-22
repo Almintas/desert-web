@@ -12,9 +12,23 @@ const data = (overrides: Partial<OrderEmailData> = {}): OrderEmailData => ({
   orderNumber: 'DW-2026-0042',
   customer: { name: 'Ona Onaitė', email: 'ona@example.com', phone: '+370 612 34567' },
   items: [
-    { productName: 'Makaronai', variantName: '6 vnt.', quantity: 2, lineTotalCents: 1000 },
-    { productName: 'Medaus tortas', variantName: '1 kg', quantity: 1, lineTotalCents: 250 },
+    {
+      productName: 'Makaronai',
+      variantName: '6 vnt.',
+      quantity: 2,
+      lineTotalCents: 1000,
+      giftWrapQuantity: 0,
+    },
+    {
+      productName: 'Medaus tortas',
+      variantName: '1 kg',
+      quantity: 1,
+      lineTotalCents: 250,
+      giftWrapQuantity: 0,
+    },
   ],
+  itemsTotalCents: 1250,
+  giftWrapTotalCents: 0,
   totalCents: 1250,
   fulfillment: { method: 'pickup', address: null, notes: null },
   pickup: {
@@ -156,7 +170,13 @@ describe('Užsakymų laiškų šablonai', () => {
     const evil = data({
       customer: { name: '<script>alert(1)</script>', email: 'a"b@example.com', phone: '+370' },
       items: [
-        { productName: '<b>Tortas</b>', variantName: '1 kg', quantity: 1, lineTotalCents: 100 },
+        {
+          productName: '<b>Tortas</b>',
+          variantName: '1 kg',
+          quantity: 1,
+          lineTotalCents: 100,
+          giftWrapQuantity: 0,
+        },
       ],
       fulfillment: { method: 'pickup', address: null, notes: '"><img src=x onerror=alert(2)>' },
       cancellationReason: '<iframe src=//evil>',
@@ -185,6 +205,63 @@ describe('Užsakymų laiškų šablonai', () => {
       }),
     );
     expect(subject).not.toMatch(/[\r\n]/);
+  });
+
+  it('dovanų pakavimas: eilutė prie prekės ir sumų išskaidymas (HTML ir tekstas)', () => {
+    const gift = data({
+      items: [
+        {
+          productName: 'Makaronai',
+          variantName: '6 vnt.',
+          quantity: 3,
+          lineTotalCents: 1500,
+          giftWrapQuantity: 2,
+        },
+        {
+          productName: 'Medaus tortas',
+          variantName: '1 kg',
+          quantity: 1,
+          lineTotalCents: 250,
+          giftWrapQuantity: 0,
+        },
+      ],
+      itemsTotalCents: 1750,
+      giftWrapTotalCents: 400,
+      totalCents: 2150,
+    });
+    for (const email of [renderCustomerOrderReceived(gift), renderSellerNewOrder(gift)]) {
+      for (const body of [email.html, email.text]) {
+        expect(body.match(/Supakuoti kaip dovaną: 2 vnt\./g)).toHaveLength(1);
+        expect(body).not.toContain('Supakuoti kaip dovaną: 0');
+        expect(body).toContain('Prekės');
+        expect(body).toContain('Dovanų pakavimas (2 vnt.)');
+        expect(body).toContain(formatEur(1750));
+        expect(body).toContain(formatEur(400));
+        expect(body).toContain(formatEur(2150));
+      }
+    }
+    const text = renderCustomerOrderReceived(gift).text;
+    expect(text).toContain(
+      [
+        `- Makaronai 6 vnt. × 3: ${formatEur(1500)}`,
+        '  Supakuoti kaip dovaną: 2 vnt.',
+        `- Medaus tortas 1 kg × 1: ${formatEur(250)}`,
+        `Prekės: ${formatEur(1750)}`,
+        `Dovanų pakavimas (2 vnt.): ${formatEur(400)}`,
+        `Iš viso: ${formatEur(2150)}`,
+      ].join('\n'),
+    );
+  });
+
+  it('be pakavimo: tik „Iš viso“ (be išskaidymo)', () => {
+    for (const body of [
+      renderCustomerOrderReceived(data()).text,
+      renderCustomerOrderReceived(data()).html,
+    ]) {
+      expect(body).not.toContain('Dovanų pakavimas');
+      expect(body).not.toContain('Supakuoti kaip dovaną');
+      expect(body).toContain('Iš viso');
+    }
   });
 
   it('escapeHtml', () => {

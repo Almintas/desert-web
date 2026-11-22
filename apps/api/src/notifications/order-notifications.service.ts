@@ -5,6 +5,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import type { Env } from '../config/env';
 import type { Order } from '../orders/order.schema';
+import { orderTotals } from '../orders/orders.mapper';
 import { SaleWindow } from '../sale-windows/sale-window.schema';
 import { EMAIL_SENDER, type EmailMessage, type EmailSender } from './email-sender';
 import {
@@ -217,8 +218,9 @@ export class OrderNotificationsService implements OnApplicationShutdown {
         variantName: i.variantName,
         quantity: i.quantity,
         lineTotalCents: i.lineTotalCents,
+        giftWrapQuantity: i.giftWrapQuantity ?? 0,
       })),
-      totalCents: order.totalCents,
+      ...orderTotals(order),
       fulfillment: {
         method: order.fulfillment.method,
         address: order.fulfillment.address ?? null,

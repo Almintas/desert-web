@@ -36,12 +36,39 @@ export const adminSaleWindowItemInputSchema = z
       .max(100_000, 'Per didelis kiekis'),
     maxPerOrder: optionalLimitSchema,
     maxPerCustomer: optionalLimitSchema,
+    /** Ar šią prekę galima supakuoti kaip dovaną (kai pakavimas įjungtas lange). */
+    giftWrapAllowed: z.boolean().default(true),
   })
   .refine((i) => !i.maxPerOrder || !i.maxPerCustomer || i.maxPerOrder <= i.maxPerCustomer, {
     message: 'Negali būti didesnis už limitą vienam pirkėjui',
     path: ['maxPerOrder'],
   });
 export type AdminSaleWindowItemInput = z.infer<typeof adminSaleWindowItemInputSchema>;
+
+/** Didžiausia dovanų pakavimo kaina už vienetą (100,00 €). */
+export const GIFT_WRAP_MAX_PRICE_CENTS = 10_000;
+
+/**
+ * Lango dovanų pakavimas. Kaina ir jungiklis keičiami bet kada (ir atidarytame lange):
+ * užsakymai saugo kainos kopiją, todėl pakeitimas veikia tik naujus užsakymus.
+ */
+export const giftWrapInputSchema = z
+  .object({
+    enabled: z.boolean(),
+    priceCents: z
+      .number({ error: 'Įvesk kainą' })
+      .int('Kaina turi būti nurodyta centais')
+      .nonnegative('Kaina negali būti neigiama')
+      .max(GIFT_WRAP_MAX_PRICE_CENTS, 'Kaina negali būti didesnė nei 100,00 €'),
+  })
+  .refine((g) => !g.enabled || g.priceCents > 0, {
+    message: 'Įjungus pakavimą, kaina turi būti didesnė už 0',
+    path: ['priceCents'],
+  });
+export type GiftWrapInput = z.infer<typeof giftWrapInputSchema>;
+
+/** Langas be dovanų pakavimo (ir seni langai be šio lauko). */
+export const GIFT_WRAP_DISABLED: GiftWrapInput = { enabled: false, priceCents: 0 };
 
 /**
  * POST / PUT /admin/sale-windows. Būsenos čia nėra: kuriama visada kaip juodraštis,
@@ -59,6 +86,8 @@ export const adminSaleWindowInputSchema = z
       pickupTo: isoDateSchema.optional(),
       deliveryAvailable: z.boolean(),
     }),
+    /** Neprivaloma: be jo pakavimas išjungtas. */
+    giftWrap: giftWrapInputSchema.default(() => ({ ...GIFT_WRAP_DISABLED })),
     items: z
       .array(adminSaleWindowItemInputSchema)
       .min(1, 'Lange turi būti bent viena prekė')
@@ -146,6 +175,11 @@ export interface PublicSaleWindowItemDto {
   priceCents: number;
   quantityAvailable: number;
   maxPerOrder: number | null;
+  /**
+   * Ar prekę galima supakuoti kaip dovaną. Galioja tik kai lango `giftWrap` ne null
+   * (žr. canGiftWrap).
+   */
+  giftWrapAllowed: boolean;
 }
 
 export interface PublicSaleWindowDto {
@@ -161,7 +195,17 @@ export interface PublicSaleWindowDto {
     pickupTo: string | null;
     deliveryAvailable: boolean;
   };
+  /** Dovanų pakavimo kaina už vienetą; null, kai lange pakavimas išjungtas. */
+  giftWrap: { priceCents: number } | null;
   items: PublicSaleWindowItemDto[];
+}
+
+/** Ar šią lango prekę galima supakuoti kaip dovaną (langas leidžia ir prekė leidžia). */
+export function canGiftWrap(
+  saleWindow: Pick<PublicSaleWindowDto, 'giftWrap'>,
+  item: Pick<PublicSaleWindowItemDto, 'giftWrapAllowed'> | undefined,
+): boolean {
+  return saleWindow.giftWrap !== null && item?.giftWrapAllowed === true;
 }
 
 /** /sale-windows/current atsakymas: atidarytas langas, arba artimiausias būsimas. */
@@ -184,8 +228,10 @@ export interface AdminSaleWindowItemDto extends PublicSaleWindowItemDto {
   ordersCount: number;
 }
 
-export interface AdminSaleWindowDto extends Omit<PublicSaleWindowDto, 'items'> {
+export interface AdminSaleWindowDto extends Omit<PublicSaleWindowDto, 'items' | 'giftWrap'> {
   status: SaleWindowStatus;
+  /** Kaina išsaugoma ir išjungus (kad įjungus vėl nereikėtų įvesti). */
+  giftWrap: GiftWrapInput;
   items: AdminSaleWindowItemDto[];
   /** Neatšauktų užsakymų skaičius lange. */
   ordersCount: number;

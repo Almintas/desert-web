@@ -139,7 +139,8 @@ export class AdminSaleWindowsService {
    * - esama: quantityAvailable keičiamas tiek pat, kiek quantityTotal (parduotas kiekis
    *   išlieka), o naujas quantityTotal negali būti mažesnis nei parduota;
    * - išimta: tik jei jos neturi neatšaukti užsakymai.
-   * Kaina keičiama laisvai: užsakymai saugo kainos kopiją, todėl tai veikia tik naujus.
+   * Kaina (ir dovanų pakavimo kaina bei jungikliai) keičiama laisvai: užsakymai saugo kainos
+   * kopiją, todėl tai veikia tik naujus.
    *
    * Lygiagretūs užsakymai: transakcija skaito ir rašo lango dokumentą, o užsakymas
    * jame mažina quantityAvailable. Abu rašo tą patį dokumentą, todėl vienas gauna
@@ -427,6 +428,8 @@ export class AdminSaleWindowsService {
         pickupTo: f.pickupTo,
         deliveryAvailable: f.deliveryAvailable,
       },
+      // Kaip ir prekių kainos: keičiama bet kada, užsakymai saugo kopiją.
+      giftWrap: { enabled: input.giftWrap.enabled, priceCents: input.giftWrap.priceCents },
     };
   }
 
@@ -440,6 +443,7 @@ export class AdminSaleWindowsService {
       quantityTotal: i.quantityTotal,
       maxPerOrder: i.maxPerOrder,
       maxPerCustomer: i.maxPerCustomer,
+      giftWrapAllowed: i.giftWrapAllowed,
     };
   }
 

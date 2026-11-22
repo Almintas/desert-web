@@ -23,16 +23,31 @@ const sample: OrderEmailData = {
   orderNumber: 'DW-2026-0042',
   customer: { name: 'Ona Onaitė', email: 'ona@example.com', phone: '+370 612 34567' },
   items: [
-    { productName: 'Makaronai', variantName: '6 vnt. dėžutė', quantity: 2, lineTotalCents: 1500 },
-    { productName: 'Medaus tortas', variantName: '1 kg', quantity: 1, lineTotalCents: 2500 },
+    {
+      productName: 'Makaronai',
+      variantName: '6 vnt. dėžutė',
+      quantity: 2,
+      lineTotalCents: 1500,
+      giftWrapQuantity: 2,
+    },
+    {
+      productName: 'Medaus tortas',
+      variantName: '1 kg',
+      quantity: 1,
+      lineTotalCents: 2500,
+      giftWrapQuantity: 0,
+    },
     {
       productName: 'Pistacijų pyragas',
       variantName: 'gabalėlis',
       quantity: 3,
       lineTotalCents: 1050,
+      giftWrapQuantity: 1,
     },
   ],
-  totalCents: 5050,
+  itemsTotalCents: 5050,
+  giftWrapTotalCents: 600, // 3 vnt. × 2,00 €
+  totalCents: 5650,
   fulfillment: {
     method: 'pickup',
     address: null,

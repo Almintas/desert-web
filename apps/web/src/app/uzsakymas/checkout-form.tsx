@@ -1,6 +1,6 @@
 'use client';
 
-import { formatEur, type PublicSaleWindowDto, SELLER } from '@desert-web/shared';
+import { canGiftWrap, formatEur, type PublicSaleWindowDto, SELLER } from '@desert-web/shared';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -16,12 +16,13 @@ import { PickupInfo } from '@/components/pickup-info';
 import { ProductImage } from '@/components/product-image';
 import { Stepper } from '@/components/stepper';
 import { preloadTurnstile, Turnstile, type TurnstileHandle } from '@/components/turnstile';
-import { adjustCart, maxQuantity } from '@/lib/cart-logic';
+import { adjustCart, giftWrapQuantityOf, maxQuantity, removeGiftWrap } from '@/lib/cart-logic';
 import { clearCart, useCart } from '@/lib/cart-store';
 import { forgetRequestId, getRequestId, resetRequestId } from '@/lib/request-id';
 import { PAYMENT_TEXT } from '@/lib/shop';
 import { placeOrderAction } from './actions';
 import type { CheckoutField, CheckoutState } from './checkout-state';
+import { GiftWrapControl } from './gift-wrap-control';
 import { SelectedProduct } from './selected-product';
 
 const INITIAL: CheckoutState = { status: 'idle' };
@@ -86,6 +87,13 @@ export function CheckoutForm({
         setCartChanges(adjusted.changes.length > 0 ? adjusted.changes : [state.message]);
         break;
       }
+      case 'gift-wrap': {
+        const adjusted = removeGiftWrap(cart.lines, state.window, state.variantIds);
+        cart.replace(adjusted.lines);
+        setSaleWindow(state.window);
+        setCartChanges(adjusted.changes.length > 0 ? adjusted.changes : [state.message]);
+        break;
+      }
       case 'error':
         if (state.resetRequestId) setRequestId(resetRequestId(saleWindow.id));
         break;
@@ -104,6 +112,7 @@ export function CheckoutForm({
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const items = new Map(saleWindow.items.map((i) => [i.variantId, i]));
     if (pending || submitting.current || done || closed || !requestId || !turnstileToken) return;
     if (cart.lines.length === 0) return;
     submitting.current = true;
@@ -112,7 +121,18 @@ export function CheckoutForm({
     formData.set('turnstileToken', turnstileToken);
     formData.set(
       'items',
-      JSON.stringify(cart.lines.map((l) => ({ variantId: l.variantId, quantity: l.quantity }))),
+      JSON.stringify(
+        cart.lines.map((l) => {
+          const giftWrapQuantity = canGiftWrap(saleWindow, items.get(l.variantId))
+            ? giftWrapQuantityOf(l)
+            : 0;
+          return {
+            variantId: l.variantId,
+            quantity: l.quantity,
+            ...(giftWrapQuantity > 0 ? { giftWrapQuantity } : {}),
+          };
+        }),
+      ),
     );
     startTransition(() => dispatch(formData));
   }
@@ -158,6 +178,7 @@ export function CheckoutForm({
       {selected ? (
         <SelectedProduct
           variants={variants}
+          giftWrapAvailable={saleWindow.giftWrap !== null}
           selectedVariantId={selected.variantId}
           quantityOf={cart.quantityOf}
           setQuantity={cart.setQuantity}
@@ -191,6 +212,7 @@ export function CheckoutForm({
           {cart.lines.map((line) => {
             const item = items.get(line.variantId);
             if (!item) return null;
+            const giftWrap = canGiftWrap(saleWindow, item) ? saleWindow.giftWrap : null;
             return (
               <li key={line.variantId} className="cart-line">
                 <ProductImage image={item.images[0]} alt="" eager={false} priority={false} />
@@ -219,15 +241,39 @@ export function CheckoutForm({
                   <AllergenLine allergens={item.allergens} />
                 </div>
                 <p className="cart-line-total">{formatEur(item.priceCents * line.quantity)}</p>
+                {/* Atskira eilutė po prekės (per tekstą ir sumą), kad telefone neliktų siaura. */}
+                {giftWrap ? (
+                  <GiftWrapControl
+                    label={line.label}
+                    quantity={line.quantity}
+                    giftWrapQuantity={giftWrapQuantityOf(line)}
+                    priceCents={giftWrap.priceCents}
+                    onChange={(g) => cart.setGiftWrap(line.variantId, g)}
+                  />
+                ) : null}
               </li>
             );
           })}
         </ul>
         {empty ? null : (
-          <p className="cart-total">
-            <span>Iš viso</span>
-            <strong>{formatEur(cart.totalCents)}</strong>
-          </p>
+          <>
+            {cart.totals.giftWrapCount > 0 ? (
+              <dl className="cart-subtotals">
+                <div>
+                  <dt>Prekės</dt>
+                  <dd>{formatEur(cart.totals.itemsCents)}</dd>
+                </div>
+                <div>
+                  <dt>Dovanų pakavimas ({cart.totals.giftWrapCount} vnt.)</dt>
+                  <dd>{formatEur(cart.totals.giftWrapCents)}</dd>
+                </div>
+              </dl>
+            ) : null}
+            <p className="cart-total">
+              <span>Iš viso</span>
+              <strong>{formatEur(cart.totalCents)}</strong>
+            </p>
+          </>
         )}
         {empty && !selected ? null : (
           <p className="allergy-note">

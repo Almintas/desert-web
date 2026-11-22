@@ -111,9 +111,30 @@ export default async function OrderPage({ params }: { params: Promise<{ accessTo
                 {i.quantity} × {formatEur(i.unitPriceCents)}
               </span>
               <span className="order-line-total">{formatEur(i.lineTotalCents)}</span>
+              {i.giftWrapQuantity > 0 ? (
+                <span className="order-line-gift">
+                  Supakuoti kaip dovaną: {i.giftWrapQuantity} vnt. ×{' '}
+                  {formatEur(i.giftWrapUnitPriceCents)}
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>
+        {order.giftWrapTotalCents > 0 ? (
+          <dl className="cart-subtotals">
+            <div>
+              <dt>Prekės</dt>
+              <dd>{formatEur(order.itemsTotalCents)}</dd>
+            </div>
+            <div>
+              <dt>
+                Dovanų pakavimas ({order.items.reduce((sum, i) => sum + i.giftWrapQuantity, 0)}{' '}
+                vnt.)
+              </dt>
+              <dd>{formatEur(order.giftWrapTotalCents)}</dd>
+            </div>
+          </dl>
+        ) : null}
         <p className="cart-total">
           <span>Iš viso</span>
           <strong>{formatEur(order.totalCents)}</strong>

@@ -9,7 +9,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Product } from '../products/product.schema';
 import { toPublicImages } from '../products/products.mapper';
-import { SaleWindow } from './sale-window.schema';
+import { giftWrapAllowedOf, giftWrapOf, SaleWindow } from './sale-window.schema';
 
 @Injectable()
 export class SaleWindowsService {
@@ -68,10 +68,12 @@ export class SaleWindowsService {
         priceCents: item.priceCents,
         quantityAvailable: item.quantityAvailable,
         maxPerOrder: item.maxPerOrder ?? null,
+        giftWrapAllowed: giftWrapAllowedOf(item),
       });
     }
 
     const f = window.fulfillment;
+    const giftWrap = giftWrapOf(window);
     return {
       id: window._id.toString(),
       title: window.title,
@@ -85,6 +87,8 @@ export class SaleWindowsService {
         pickupTo: f?.pickupTo?.toISOString() ?? null,
         deliveryAvailable: f?.deliveryAvailable ?? false,
       },
+      // Kaina viešai rodoma tik kai pakavimas įjungtas.
+      giftWrap: giftWrap.enabled ? { priceCents: giftWrap.priceCents } : null,
       items,
     };
   }

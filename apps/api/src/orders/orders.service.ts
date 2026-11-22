@@ -23,7 +23,12 @@ import { type ClientSession, type Connection, type Model, mongo, type Types } fr
 import { CountersService } from '../counters/counters.service';
 import { OrderNotificationsService } from '../notifications/order-notifications.service';
 import { Product } from '../products/product.schema';
-import { SaleWindow, type SaleWindowItem } from '../sale-windows/sale-window.schema';
+import {
+  giftWrapAllowedOf,
+  giftWrapOf,
+  SaleWindow,
+  type SaleWindowItem,
+} from '../sale-windows/sale-window.schema';
 import { TurnstileService } from '../turnstile/turnstile.service';
 import { Order, type OrderItem } from './order.schema';
 import { toOrderAccessDto, toOrderDto } from './orders.mapper';
@@ -32,6 +37,8 @@ import { toOrderAccessDto, toOrderDto } from './orders.mapper';
 interface OrderLine {
   variantId: string;
   quantity: number;
+  /** Kiek vienetų supakuoti kaip dovaną (schema jau užtikrino 0..quantity). */
+  giftWrapQuantity: number;
   windowItem: SaleWindowItem;
 }
 
@@ -65,6 +72,13 @@ function itemError(
 }
 
 const PAYMENT_METHOD: PaymentMethod = 'on_pickup';
+
+/** Užsakymo sumos iš eilučių kopijų: prekės + dovanų pakavimas. */
+function sumTotals(items: OrderItem[]) {
+  const itemsTotalCents = items.reduce((sum, i) => sum + i.lineTotalCents, 0);
+  const giftWrapTotalCents = items.reduce((sum, i) => sum + (i.giftWrapTotalCents ?? 0), 0);
+  return { itemsTotalCents, giftWrapTotalCents, totalCents: itemsTotalCents + giftWrapTotalCents };
+}
 
 /** Rezultatas su požymiu, ar užsakymas sukurtas dabar (201), ar rastas pagal clientRequestId (200). */
 export interface CreateOrderResult {
@@ -174,6 +188,7 @@ export class OrdersService {
 
         this.assertFulfillmentAvailable(saleWindow, input.fulfillment.method);
         const lines = this.matchLines(saleWindow, input.items);
+        this.assertGiftWrapAvailable(saleWindow, lines);
         await this.assertCustomerLimits(
           saleWindow._id,
           lines,
@@ -182,7 +197,11 @@ export class OrdersService {
           session,
         );
         this.assertStock(lines);
-        const items = await this.buildItemSnapshots(lines, session);
+        const items = await this.buildItemSnapshots(
+          lines,
+          giftWrapOf(saleWindow).priceCents,
+          session,
+        );
         await this.reserveStock(saleWindow._id, lines, now, session);
 
         const year = getShopYear(now);
@@ -202,7 +221,7 @@ export class OrdersService {
                 phoneNormalized,
               },
               items,
-              totalCents: items.reduce((sum, i) => sum + i.lineTotalCents, 0),
+              ...sumTotals(items),
               currency: 'EUR',
               fulfillment: {
                 method: input.fulfillment.method,
@@ -288,7 +307,7 @@ export class OrdersService {
     const notInWindow: OrderItemProblemDto[] = [];
     const overMax: OrderItemProblemDto[] = [];
     const lines: OrderLine[] = [];
-    for (const { variantId, quantity } of requested) {
+    for (const { variantId, quantity, giftWrapQuantity } of requested) {
       const windowItem = saleWindow.items.find((i) => i.variantId.equals(variantId));
       if (!windowItem) {
         notInWindow.push({ variantId, requested: quantity, allowed: 0 });
@@ -297,7 +316,7 @@ export class OrdersService {
       if (windowItem.maxPerOrder && quantity > windowItem.maxPerOrder) {
         overMax.push({ variantId, requested: quantity, allowed: windowItem.maxPerOrder });
       }
-      lines.push({ variantId, quantity, windowItem });
+      lines.push({ variantId, quantity, giftWrapQuantity, windowItem });
     }
 
     if (notInWindow.length > 0) {
@@ -321,6 +340,27 @@ export class OrdersService {
       );
     }
     return lines;
+  }
+
+  /**
+   * Dovanų pakavimas: lange įjungtas ir prekė jį leidžia. Kainos kopija imama iš to paties
+   * transakcijos momentinio lango vaizdo; lygiagretus admino lango PUT rašo tą patį dokumentą,
+   * todėl viena transakcija gauna WriteConflict ir kartojama su naujausiais duomenimis.
+   */
+  private assertGiftWrapAvailable(saleWindow: SaleWindow, lines: OrderLine[]): void {
+    const enabled = giftWrapOf(saleWindow).enabled;
+    const unavailable = lines
+      .filter((l) => l.giftWrapQuantity > 0 && (!enabled || !giftWrapAllowedOf(l.windowItem)))
+      .map((l) => ({ variantId: l.variantId, requested: l.giftWrapQuantity, allowed: 0 }));
+    if (unavailable.length === 0) return;
+    throw itemError(
+      ConflictException,
+      'GIFT_WRAP_UNAVAILABLE',
+      enabled
+        ? 'Kai kurių prekių supakuoti kaip dovaną negalima'
+        : 'Šiame pardavime supakuoti kaip dovaną nebegalima',
+      unavailable,
+    );
   }
 
   /**
@@ -410,8 +450,10 @@ export class OrdersService {
     }
   }
 
+  /** `giftWrapPriceCents`: lango pakavimo kaina užsakymo metu (kopija į eilutes). */
   private async buildItemSnapshots(
     lines: OrderLine[],
+    giftWrapPriceCents: number,
     session: ClientSession,
   ): Promise<OrderItem[]> {
     const productIds = [...new Set(lines.map((l) => l.windowItem.productId.toString()))];
@@ -438,6 +480,7 @@ export class OrdersService {
     return lines.map((line) => {
       const product = productsById.get(line.windowItem.productId.toString())!;
       const variant = product.variants.find((v) => v._id.equals(line.windowItem.variantId))!;
+      const giftWrapUnitPriceCents = line.giftWrapQuantity > 0 ? giftWrapPriceCents : 0;
       return {
         productId: product._id,
         variantId: variant._id,
@@ -446,6 +489,9 @@ export class OrdersService {
         unitPriceCents: line.windowItem.priceCents, // lango kaina, ne bazinė
         quantity: line.quantity,
         lineTotalCents: line.windowItem.priceCents * line.quantity,
+        giftWrapQuantity: line.giftWrapQuantity,
+        giftWrapUnitPriceCents,
+        giftWrapTotalCents: giftWrapUnitPriceCents * line.giftWrapQuantity,
       };
     });
   }

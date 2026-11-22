@@ -5,7 +5,7 @@ import {
 } from '@desert-web/shared';
 import type { Product } from '../products/product.schema';
 import { toPublicImages } from '../products/products.mapper';
-import type { SaleWindow } from '../sale-windows/sale-window.schema';
+import { giftWrapAllowedOf, giftWrapOf, type SaleWindow } from '../sale-windows/sale-window.schema';
 
 export interface OrderStats {
   /** Neatšaukti užsakymai lange. */
@@ -41,6 +41,7 @@ export function toAdminSaleWindowDto(
       sold: item.quantityTotal - item.quantityAvailable,
       maxPerOrder: item.maxPerOrder ?? null,
       maxPerCustomer: item.maxPerCustomer ?? null,
+      giftWrapAllowed: giftWrapAllowedOf(item),
       ordersCount: stats.ordersByVariant.get(variantId) ?? 0,
     };
   });
@@ -60,6 +61,7 @@ export function toAdminSaleWindowDto(
       pickupTo: f?.pickupTo?.toISOString() ?? null,
       deliveryAvailable: f?.deliveryAvailable ?? false,
     },
+    giftWrap: giftWrapOf(w),
     items,
     ordersCount: stats.ordersCount,
     createdAt: w.createdAt.toISOString(),

@@ -7,10 +7,17 @@ import {
 } from '../enums';
 import { customerInputSchema, fulfillmentInputSchema, objectIdSchema } from './common';
 
-export const orderItemInputSchema = z.object({
-  variantId: objectIdSchema,
-  quantity: z.number().int().positive().max(1000),
-});
+export const orderItemInputSchema = z
+  .object({
+    variantId: objectIdSchema,
+    quantity: z.number().int().positive().max(1000),
+    /** Kiek šios eilutės vienetų supakuoti kaip dovaną (0..quantity). */
+    giftWrapQuantity: z.number().int().nonnegative().max(1000).default(0),
+  })
+  .refine((i) => i.giftWrapQuantity <= i.quantity, {
+    message: 'Supakuoti kaip dovaną galima ne daugiau vienetų, nei užsakyta',
+    path: ['giftWrapQuantity'],
+  });
 
 export const createOrderInputSchema = z
   .object({
@@ -35,6 +42,8 @@ export const createOrderInputSchema = z
     path: ['items'],
   });
 export type CreateOrderInput = z.infer<typeof createOrderInputSchema>;
+/** Ką siunčia klientas (giftWrapQuantity neprivalomas). */
+export type CreateOrderInputBody = z.input<typeof createOrderInputSchema>;
 
 export interface OrderItemDto {
   productId: string;
@@ -43,7 +52,14 @@ export interface OrderItemDto {
   variantName: string;
   unitPriceCents: number;
   quantity: number;
+  /** Tik prekės (unitPriceCents × quantity), be dovanų pakavimo. */
   lineTotalCents: number;
+  /** Kiek vienetų supakuoti kaip dovaną (seni užsakymai: 0). */
+  giftWrapQuantity: number;
+  /** Pakavimo kaina už vienetą užsakymo metu (0, kai nepakuojama). */
+  giftWrapUnitPriceCents: number;
+  /** giftWrapUnitPriceCents × giftWrapQuantity. */
+  giftWrapTotalCents: number;
 }
 
 export interface OrderDto {
@@ -52,6 +68,11 @@ export interface OrderDto {
   saleWindowId: string;
   customer: { name: string; email: string; phone: string };
   items: OrderItemDto[];
+  /** Prekių suma (be pakavimo). Seni užsakymai: = totalCents. */
+  itemsTotalCents: number;
+  /** Dovanų pakavimo suma (seni užsakymai: 0). */
+  giftWrapTotalCents: number;
+  /** itemsTotalCents + giftWrapTotalCents. */
   totalCents: number;
   currency: 'EUR';
   fulfillment: { method: FulfillmentMethod; address: string | null; notes: string | null };
@@ -97,7 +118,7 @@ export interface OrderItemProblemDto {
 
 /**
  * Prekių klaidų (ITEM_NOT_IN_WINDOW, ITEM_UNAVAILABLE, MAX_PER_ORDER_EXCEEDED,
- * MAX_PER_CUSTOMER_EXCEEDED, INSUFFICIENT_STOCK) atsakymo body. `details.items` išvardija
+ * MAX_PER_CUSTOMER_EXCEEDED, INSUFFICIENT_STOCK, GIFT_WRAP_UNAVAILABLE) atsakymo body. `details.items` išvardija
  * visas tos rūšies problemines eilutes.
  */
 export interface OrderItemErrorBody {
@@ -125,6 +146,12 @@ export const ORDER_ERROR_CODES = [
   'MAX_PER_ORDER_EXCEEDED',
   'MAX_PER_CUSTOMER_EXCEEDED',
   'INSUFFICIENT_STOCK',
+  /**
+   * 409: prašoma supakuoti kaip dovaną, bet lange pakavimas išjungtas arba prekė jo neleidžia.
+   * `details.items`: { variantId, requested (giftWrapQuantity), allowed: 0 }. Kiekių tai
+   * nekeičia, todėl šis kodas nėra ORDER_ITEM_ERROR_CODES: klientas išima tik pakavimą.
+   */
+  'GIFT_WRAP_UNAVAILABLE',
   /** 409: tas pats clientRequestId jau panaudotas kitam pirkėjui ar kitame lange. */
   'IDEMPOTENCY_CONFLICT',
   /** 403: Turnstile tokeno nėra, jis netinkamas arba pasibaigęs. */
@@ -189,6 +216,8 @@ export interface AdminOrderListItemDto {
   customer: { name: string; phone: string };
   /** Vienetų skaičius (visų eilučių kiekių suma). */
   itemCount: number;
+  /** Kiek vienetų supakuoti kaip dovaną (0: nė vieno). */
+  giftWrapQuantity: number;
   totalCents: number;
   fulfillmentMethod: FulfillmentMethod;
   status: OrderStatus;

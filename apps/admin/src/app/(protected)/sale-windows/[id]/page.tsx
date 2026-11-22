@@ -97,6 +97,24 @@ export default async function SaleWindowPage({
             )}
           </dd>
         </div>
+        <div>
+          <dt>Dovanų pakavimas</dt>
+          <dd>
+            {w.giftWrap.enabled ? (
+              <>
+                {formatEur(w.giftWrap.priceCents)} / vnt.
+                {w.items.some((i) => !i.giftWrapAllowed) ? (
+                  <span className="muted small">
+                    ne visoms prekėms ({w.items.filter((i) => i.giftWrapAllowed).length} iš{' '}
+                    {w.items.length})
+                  </span>
+                ) : null}
+              </>
+            ) : (
+              'Išjungtas'
+            )}
+          </dd>
+        </div>
       </dl>
 
       <h2>Prekės</h2>
@@ -119,6 +137,7 @@ export default async function SaleWindowPage({
                   <span className="muted small">
                     {i.variantName}
                     {i.productActive ? '' : ' · produktas archyvuotas'}
+                    {w.giftWrap.enabled && !i.giftWrapAllowed ? ' · be dovanų pakavimo' : ''}
                   </span>
                 </td>
                 <td className="nowrap">{formatEur(i.priceCents)}</td>

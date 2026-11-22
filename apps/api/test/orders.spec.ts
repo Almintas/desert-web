@@ -77,6 +77,9 @@ describe('Užsakymai (POST /orders, GET /orders/access/:token)', () => {
           unitPriceCents: 2200, // lango kaina, ne bazinė 2500
           quantity: 2,
           lineTotalCents: 4400,
+          giftWrapQuantity: 0,
+          giftWrapUnitPriceCents: 0,
+          giftWrapTotalCents: 0,
         },
         {
           productId: cookies.productId.toString(),
@@ -86,9 +89,14 @@ describe('Užsakymai (POST /orders, GET /orders/access/:token)', () => {
           unitPriceCents: 750,
           quantity: 3,
           lineTotalCents: 2250,
+          giftWrapQuantity: 0,
+          giftWrapUnitPriceCents: 0,
+          giftWrapTotalCents: 0,
         },
       ]);
       expect(order.totalCents).toBe(6650);
+      expect(order.itemsTotalCents).toBe(6650);
+      expect(order.giftWrapTotalCents).toBe(0);
       expect(order.currency).toBe('EUR');
       expect(typeof accessToken).toBe('string');
 

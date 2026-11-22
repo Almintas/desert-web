@@ -15,8 +15,16 @@ export interface OrderEmailData {
     productName: string;
     variantName: string;
     quantity: number;
+    /** Tik prekės, be pakavimo. */
     lineTotalCents: number;
+    /** Kiek vienetų supakuoti kaip dovaną (0: nepakuojama). */
+    giftWrapQuantity: number;
   }[];
+  /** Prekių suma (be pakavimo). */
+  itemsTotalCents: number;
+  /** Dovanų pakavimo suma (0: nepakuojama). */
+  giftWrapTotalCents: number;
+  /** itemsTotalCents + giftWrapTotalCents. */
   totalCents: number;
   fulfillment: { method: FulfillmentMethod; address: string | null; notes: string | null };
   pickup: { location: string | null; from: Date | string | null; to: Date | string | null };
@@ -59,6 +67,26 @@ const multiline = (value: string) => escapeHtml(value).replace(/\r?\n/g, '<br>')
 const oneLine = (value: string) => value.replace(/[\r\n]+/g, ' ').trim();
 
 const itemLabel = (i: OrderEmailData['items'][number]) => `${i.productName} ${i.variantName}`;
+
+const giftWrapLine = (i: OrderEmailData['items'][number]) =>
+  i.giftWrapQuantity > 0 ? `Supakuoti kaip dovaną: ${i.giftWrapQuantity} vnt.` : null;
+
+const giftWrapCount = (data: OrderEmailData) =>
+  data.items.reduce((sum, i) => sum + i.giftWrapQuantity, 0);
+
+/**
+ * Sumos eilutės: su pakavimu išskaidoma (Prekės / Dovanų pakavimas / Iš viso), kitaip tik
+ * „Iš viso“. [etiketė, suma, ar paryškinta].
+ */
+function totalRows(data: OrderEmailData): [string, string, boolean][] {
+  const total: [string, string, boolean] = ['Iš viso', formatEur(data.totalCents), true];
+  if (data.giftWrapTotalCents <= 0) return [total];
+  return [
+    ['Prekės', formatEur(data.itemsTotalCents), false],
+    [`Dovanų pakavimas (${giftWrapCount(data)} vnt.)`, formatEur(data.giftWrapTotalCents), false],
+    total,
+  ];
+}
 
 const COLORS = {
   page: '#f6f1eb',
@@ -151,19 +179,33 @@ const p = (html: string) => `<p style="margin:0 0 12px;">${html}</p>`;
 
 function itemsTableHtml(data: OrderEmailData): string {
   const rows = data.items
-    .map(
-      (i) => `<tr>
-<td style="padding:8px 0;border-bottom:1px solid ${COLORS.border};">${escapeHtml(itemLabel(i))} <span style="color:${COLORS.muted};white-space:nowrap;">× ${i.quantity}</span></td>
-<td align="right" style="padding:8px 0 8px 12px;border-bottom:1px solid ${COLORS.border};white-space:nowrap;">${escapeHtml(formatEur(i.lineTotalCents))}</td>
-</tr>`,
-    )
+    .map((i) => {
+      const gift = giftWrapLine(i);
+      const giftHtml = gift
+        ? `<br><span style="font-size:13px;color:${COLORS.accent};">${escapeHtml(gift)}</span>`
+        : '';
+      return `<tr>
+<td style="padding:8px 0;border-bottom:1px solid ${COLORS.border};">${escapeHtml(itemLabel(i))} <span style="color:${COLORS.muted};white-space:nowrap;">× ${i.quantity}</span>${giftHtml}</td>
+<td align="right" valign="top" style="padding:8px 0 8px 12px;border-bottom:1px solid ${COLORS.border};white-space:nowrap;">${escapeHtml(formatEur(i.lineTotalCents))}</td>
+</tr>`;
+    })
+    .join('\n');
+  const totals = totalRows(data);
+  const sums = totals
+    .map(([label, amount, bold], index) => {
+      const weight = bold ? 'font-weight:bold;' : `color:${COLORS.muted};`;
+      // Pirma sumų eilutė atskiriama nuo prekių šiek tiek didesniu tarpu.
+      const top = index === 0 ? 10 : 4;
+      const bottom = index === totals.length - 1 ? 10 : 4;
+      return `<tr>
+<td style="padding:${top}px 0 ${bottom}px;${weight}">${escapeHtml(label)}</td>
+<td align="right" style="padding:${top}px 0 ${bottom}px 12px;${weight}white-space:nowrap;">${escapeHtml(amount)}</td>
+</tr>`;
+    })
     .join('\n');
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:15px;">
 ${rows}
-<tr>
-<td style="padding:10px 0;font-weight:bold;">Iš viso</td>
-<td align="right" style="padding:10px 0 10px 12px;font-weight:bold;white-space:nowrap;">${escapeHtml(formatEur(data.totalCents))}</td>
-</tr>
+${sums}
 </table>`;
 }
 
@@ -204,10 +246,13 @@ function customerFooterHtml(): string {
 // --- Tekstinės dalys ---
 
 function itemsText(data: OrderEmailData): string {
-  const lines = data.items.map(
-    (i) => `- ${itemLabel(i)} × ${i.quantity}: ${formatEur(i.lineTotalCents)}`,
-  );
-  return [...lines, `Iš viso: ${formatEur(data.totalCents)}`].join('\n');
+  const lines = data.items.flatMap((i) => {
+    const gift = giftWrapLine(i);
+    const line = `- ${itemLabel(i)} × ${i.quantity}: ${formatEur(i.lineTotalCents)}`;
+    return gift ? [line, `  ${gift}`] : [line];
+  });
+  const sums = totalRows(data).map(([label, amount]) => `${label}: ${amount}`);
+  return [...lines, ...sums].join('\n');
 }
 
 const rowsText = (rows: [string, string][]) =>

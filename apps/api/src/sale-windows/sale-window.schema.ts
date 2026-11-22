@@ -44,8 +44,32 @@ export class SaleWindowItem {
 
   @Prop({ min: 1 })
   maxPerCustomer?: number;
+
+  /** Seni langai šio lauko neturi: tada leidžiama (žr. giftWrapAllowedOf). */
+  @Prop({ default: true })
+  giftWrapAllowed?: boolean;
 }
 export const SaleWindowItemSchema = SchemaFactory.createForClass(SaleWindowItem);
+
+/** Dovanų pakavimas lange. Kaina centais už vienetą; užsakymai saugo jos kopiją. */
+@Schema({ _id: false })
+export class SaleWindowGiftWrap {
+  @Prop({ default: false })
+  enabled!: boolean;
+
+  @Prop({ default: 0, min: 0 })
+  priceCents!: number;
+}
+export const SaleWindowGiftWrapSchema = SchemaFactory.createForClass(SaleWindowGiftWrap);
+
+/** Seni langai be `giftWrap` skaitomi kaip išjungti. */
+export function giftWrapOf(w: Pick<SaleWindow, 'giftWrap'>): SaleWindowGiftWrap {
+  return { enabled: w.giftWrap?.enabled ?? false, priceCents: w.giftWrap?.priceCents ?? 0 };
+}
+
+/** Seni langai neturi `giftWrapAllowed`: numatyta reikšmė true. */
+export const giftWrapAllowedOf = (item: Pick<SaleWindowItem, 'giftWrapAllowed'>): boolean =>
+  item.giftWrapAllowed !== false;
 
 @Schema({ collection: 'saleWindows', timestamps: true })
 export class SaleWindow {
@@ -68,6 +92,10 @@ export class SaleWindow {
 
   @Prop({ type: [SaleWindowItemSchema], default: [] })
   items!: SaleWindowItem[];
+
+  /** Seni langai šio lauko neturi (žr. giftWrapOf). */
+  @Prop({ type: SaleWindowGiftWrapSchema })
+  giftWrap?: SaleWindowGiftWrap;
 
   createdAt!: Date;
   updatedAt!: Date;

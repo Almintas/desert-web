@@ -1,6 +1,25 @@
 import type { OrderAccessDto, OrderDto } from '@desert-web/shared';
 import type { SaleWindow } from '../sale-windows/sale-window.schema';
-import type { Order } from './order.schema';
+import type { Order, OrderItem } from './order.schema';
+
+/** Eilutės pakavimo laukai; seni užsakymai jų neturi (0). */
+export function giftWrapOfItem(i: OrderItem) {
+  return {
+    giftWrapQuantity: i.giftWrapQuantity ?? 0,
+    giftWrapUnitPriceCents: i.giftWrapUnitPriceCents ?? 0,
+    giftWrapTotalCents: i.giftWrapTotalCents ?? 0,
+  };
+}
+
+/** Sumos; seni užsakymai be išskaidymo: prekės = totalCents, pakavimas = 0. */
+export function orderTotals(o: Order) {
+  const giftWrapTotalCents = o.giftWrapTotalCents ?? 0;
+  return {
+    itemsTotalCents: o.itemsTotalCents ?? o.totalCents - giftWrapTotalCents,
+    giftWrapTotalCents,
+    totalCents: o.totalCents,
+  };
+}
 
 export function toOrderDto(o: Order): OrderDto {
   return {
@@ -16,8 +35,9 @@ export function toOrderDto(o: Order): OrderDto {
       unitPriceCents: i.unitPriceCents,
       quantity: i.quantity,
       lineTotalCents: i.lineTotalCents,
+      ...giftWrapOfItem(i),
     })),
-    totalCents: o.totalCents,
+    ...orderTotals(o),
     currency: 'EUR',
     fulfillment: {
       method: o.fulfillment.method,

@@ -30,13 +30,18 @@ function text(formData: FormData, key: string): string {
   return typeof value === 'string' ? value : '';
 }
 
-function parseItems(raw: string): { variantId: string; quantity: number }[] {
+function parseItems(
+  raw: string,
+): { variantId: string; quantity: number; giftWrapQuantity?: number }[] {
   try {
     const data: unknown = JSON.parse(raw);
     return Array.isArray(data)
-      ? data.map((i: { variantId?: unknown; quantity?: unknown }) => ({
+      ? data.map((i: { variantId?: unknown; quantity?: unknown; giftWrapQuantity?: unknown }) => ({
           variantId: String(i?.variantId ?? ''),
           quantity: Number(i?.quantity),
+          ...(i?.giftWrapQuantity === undefined
+            ? {}
+            : { giftWrapQuantity: Number(i.giftWrapQuantity) }),
         }))
       : [];
   } catch {
@@ -130,6 +135,20 @@ export async function placeOrderAction(
         message: error.message,
         window: saleWindow,
         problems: problemsFrom(error.body),
+      };
+    }
+    if (code === 'GIFT_WRAP_UNAVAILABLE') {
+      // Pakavimą adminas ką tik išjungė (lange ar prekei): išimam jį iš krepšelio, kiekiai lieka.
+      const current = await loadCurrentWindows();
+      const saleWindow = current?.openWindows.find((w) => w.id === windowId);
+      if (!saleWindow) {
+        return { status: 'closed', message: CLOSED_MESSAGE };
+      }
+      return {
+        status: 'gift-wrap',
+        message: error.message,
+        window: saleWindow,
+        variantIds: problemsFrom(error.body).map((p) => p.variantId),
       };
     }
     if (code === 'IDEMPOTENCY_CONFLICT') {

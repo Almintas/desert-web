@@ -75,8 +75,21 @@ function readSaleWindowForm(formData: FormData) {
       quantityTotal: integer(text(formData, `${prefix}.quantityTotal`)),
       maxPerOrder: optionalInteger(text(formData, `${prefix}.maxPerOrder`)),
       maxPerCustomer: optionalInteger(text(formData, `${prefix}.maxPerCustomer`)),
+      // Paslėptas laukas visada siunčiamas (ir išjungus pakavimą lange), kad reikšmė išliktų.
+      giftWrapAllowed: text(formData, `${prefix}.giftWrapAllowed`) !== '0',
     };
   });
+
+  // Dovanų pakavimas: kaina eurais („2,00“) -> centai. Išjungus pakavimą kaina tik
+  // išsaugoma (netinkama ar tuščia -> 0), kad įjungus vėl nereikėtų įvesti iš naujo.
+  const giftWrapEnabled = text(formData, 'giftWrap.enabled') === 'on';
+  const rawGiftWrapPrice = text(formData, 'giftWrap.price');
+  const giftWrapPriceCents = parseEurToCents(rawGiftWrapPrice);
+  if (giftWrapEnabled && giftWrapPriceCents === null) {
+    errors['giftWrap.priceCents'] = rawGiftWrapPrice
+      ? 'Netinkama kaina (pvz., 2,00)'
+      : 'Įvesk kainą';
+  }
 
   const input = {
     title: text(formData, 'title'),
@@ -89,6 +102,10 @@ function readSaleWindowForm(formData: FormData) {
       pickupFrom: date('fulfillment.pickupFrom', false),
       pickupTo: date('fulfillment.pickupTo', false),
       deliveryAvailable: false,
+    },
+    giftWrap: {
+      enabled: giftWrapEnabled,
+      priceCents: giftWrapPriceCents ?? (giftWrapEnabled ? Number.NaN : 0),
     },
     items,
   };

@@ -2,7 +2,18 @@
 
 import type { PublicSaleWindowDto } from '@desert-web/shared';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { adjustCart, type CartLine, cartTotals, itemLabel, maxQuantity } from './cart-logic';
+import { canGiftWrap } from '@desert-web/shared';
+import {
+  adjustCart,
+  type CartLine,
+  type CartTotals,
+  cartTotals,
+  giftWrapQuantityOf,
+  itemLabel,
+  maxQuantity,
+  sameLine,
+  withGiftWrap,
+} from './cart-logic';
 
 /**
  * Krepšelis naršyklėje, atskirai kiekvienam langui (`dw-cart:v1:<windowId>`).
@@ -30,13 +41,23 @@ function parse(raw: string | null): CartLine[] | null {
     if (!Array.isArray(data)) return null;
     return data.flatMap((l: unknown) => {
       const line = l as Partial<CartLine> | null;
-      return line &&
-        typeof line.variantId === 'string' &&
-        typeof line.label === 'string' &&
-        Number.isInteger(line.quantity) &&
-        (line.quantity ?? 0) > 0
-        ? [{ variantId: line.variantId, label: line.label, quantity: line.quantity! }]
-        : [];
+      if (
+        !line ||
+        typeof line.variantId !== 'string' ||
+        typeof line.label !== 'string' ||
+        !Number.isInteger(line.quantity) ||
+        (line.quantity ?? 0) <= 0
+      ) {
+        return [];
+      }
+      const parsed: CartLine = {
+        variantId: line.variantId,
+        label: line.label,
+        quantity: line.quantity!,
+      };
+      // Senas krepšelis be pakavimo arba sugadinta reikšmė: tiesiog be pakavimo.
+      const gift = Number.isInteger(line.giftWrapQuantity) ? line.giftWrapQuantity! : 0;
+      return [withGiftWrap(parsed, gift)];
     });
   } catch {
     return null;
@@ -110,8 +131,12 @@ export interface UseCart {
   lines: CartLine[];
   count: number;
   totalCents: number;
+  /** Sumos su išskaidymu (prekės ir dovanų pakavimas). */
+  totals: CartTotals;
   quantityOf: (variantId: string) => number;
   setQuantity: (variantId: string, quantity: number) => void;
+  /** Kiek vienetų supakuoti kaip dovaną (apribojama iki kiekio; tik kur pakavimas galimas). */
+  setGiftWrap: (variantId: string, giftWrapQuantity: number) => void;
   replace: (lines: CartLine[]) => void;
   clear: () => void;
   /** Ką pakeitė suderinimas su langu įkeliant (rodoma vieną kartą). */
@@ -141,9 +166,7 @@ export function useCart(saleWindow: PublicSaleWindowDto): UseCart {
     const adjusted = adjustCart(current, saleWindow);
     const changed =
       adjusted.lines.length !== current.length ||
-      adjusted.lines.some(
-        (l, i) => l.quantity !== current[i]?.quantity || l.label !== current[i]?.label,
-      );
+      adjusted.lines.some((l, i) => !sameLine(l, current[i]));
     if (changed) save(windowId, adjusted.lines);
     if (adjusted.changes.length > 0) setLoadChanges(adjusted.changes);
   }, [windowId, saleWindow]);
@@ -155,13 +178,32 @@ export function useCart(saleWindow: PublicSaleWindowDto): UseCart {
       const q = Math.max(0, Math.min(Math.trunc(quantity), maxQuantity(item)));
       const current = load(windowId);
       const exists = current.some((l) => l.variantId === variantId);
+      // Sumažinus kiekį, pakavimas apribojamas iki naujo kiekio (withGiftWrap).
       const next =
         q === 0
           ? current.filter((l) => l.variantId !== variantId)
           : exists
-            ? current.map((l) => (l.variantId === variantId ? { ...l, quantity: q } : l))
+            ? current.map((l) =>
+                l.variantId === variantId
+                  ? withGiftWrap({ ...l, quantity: q }, giftWrapQuantityOf(l))
+                  : l,
+              )
             : [...current, { variantId, quantity: q, label: itemLabel(item) }];
       save(windowId, next);
+    },
+    [saleWindow, windowId],
+  );
+
+  const setGiftWrap = useCallback(
+    (variantId: string, giftWrapQuantity: number) => {
+      const item = saleWindow.items.find((i) => i.variantId === variantId);
+      if (!canGiftWrap(saleWindow, item)) return;
+      const current = load(windowId);
+      if (!current.some((l) => l.variantId === variantId)) return;
+      save(
+        windowId,
+        current.map((l) => (l.variantId === variantId ? withGiftWrap(l, giftWrapQuantity) : l)),
+      );
     },
     [saleWindow, windowId],
   );
@@ -173,8 +215,10 @@ export function useCart(saleWindow: PublicSaleWindowDto): UseCart {
     lines,
     count: totals.count,
     totalCents: totals.totalCents,
+    totals,
     quantityOf: (variantId) => lines.find((l) => l.variantId === variantId)?.quantity ?? 0,
     setQuantity,
+    setGiftWrap,
     replace: (next) => save(windowId, next),
     clear: () => save(windowId, EMPTY),
     loadChanges,

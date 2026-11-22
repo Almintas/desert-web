@@ -138,6 +138,14 @@ export default async function OrderPage({
                 <td>
                   <span className="strong">{i.productName}</span>
                   <span className="muted small">{i.variantName}</span>
+                  {i.giftWrapQuantity > 0 ? (
+                    <span className="gift-line">
+                      Supakuoti kaip dovaną:{' '}
+                      <span className="nowrap">
+                        {i.giftWrapQuantity} vnt. × {formatEur(i.giftWrapUnitPriceCents)}
+                      </span>
+                    </span>
+                  ) : null}
                 </td>
                 <td className="nowrap">{formatEur(i.unitPriceCents)}</td>
                 <td>{i.quantity}</td>
@@ -146,6 +154,23 @@ export default async function OrderPage({
             ))}
           </tbody>
           <tfoot>
+            {order.giftWrapTotalCents > 0 ? (
+              <>
+                <tr className="subtotal">
+                  <th scope="row" colSpan={3}>
+                    Prekės
+                  </th>
+                  <td className="nowrap">{formatEur(order.itemsTotalCents)}</td>
+                </tr>
+                <tr className="subtotal">
+                  <th scope="row" colSpan={3}>
+                    Dovanų pakavimas ({order.items.reduce((sum, i) => sum + i.giftWrapQuantity, 0)}{' '}
+                    vnt.)
+                  </th>
+                  <td className="nowrap">{formatEur(order.giftWrapTotalCents)}</td>
+                </tr>
+              </>
+            ) : null}
             <tr>
               <th scope="row" colSpan={3}>
                 Iš viso
