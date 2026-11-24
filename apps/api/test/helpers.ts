@@ -4,8 +4,12 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import {
+  addCalendarDays,
   type AdminSaleWindowDto,
   type AdminSaleWindowInputBody,
+  DEFAULT_SPECIAL_ORDER_SETTINGS,
+  shopToday,
+  type SpecialOrderSettings,
   TURNSTILE_TEST_KEYS,
 } from '@desert-web/shared';
 import type { Connection, Model } from 'mongoose';
@@ -113,6 +117,8 @@ export async function createProduct(
     variants?: { name: string; priceCents: number }[];
     description?: string;
     allergens?: string[];
+    specialOrder?: { enabled: boolean; minQuantity: number };
+    isActive?: boolean;
   } = {},
 ): Promise<ProductFixture> {
   const slugSuffix = new Types.ObjectId().toString();
@@ -123,6 +129,8 @@ export async function createProduct(
     variants: overrides.variants ?? [{ name: '1 kg', priceCents: 2500 }],
     ...(overrides.description !== undefined ? { description: overrides.description } : {}),
     ...(overrides.allergens !== undefined ? { allergens: overrides.allergens } : {}),
+    ...(overrides.specialOrder !== undefined ? { specialOrder: overrides.specialOrder } : {}),
+    ...(overrides.isActive !== undefined ? { isActive: overrides.isActive } : {}),
   });
   return { productId: product._id, variantIds: product.variants.map((v) => v._id) };
 }
@@ -317,5 +325,47 @@ export function bodyFrom(
       giftWrapAllowed: i.giftWrapAllowed,
     })),
     ...overrides,
+  };
+}
+
+// --- Specialūs užsakymai ---
+
+/** Įjungia (ar pakeičia) specialių užsakymų nustatymus tiesiai DB (kaip PUT /admin/settings). */
+export async function setSpecialOrderSettings(
+  ctx: TestContext,
+  settings: Partial<SpecialOrderSettings> = {},
+): Promise<void> {
+  await ctx.connection.db!.collection<{ _id: string }>('settings').updateOne(
+    { _id: 'global' },
+    {
+      $set: { specialOrders: { ...DEFAULT_SPECIAL_ORDER_SETTINGS, enabled: true, ...settings } },
+    },
+    { upsert: true },
+  );
+}
+
+export function specialOrderBody(
+  items: { variantId: Types.ObjectId | string; quantity: number }[],
+  overrides: {
+    customer?: { name: string; email: string; phone: string };
+    /** Numatyta: šiandien Vilniuje + 14 d. (tinka su numatytais 7 / 90). */
+    desiredDate?: string;
+    customerNotes?: string;
+    clientRequestId?: string;
+    /** Numatyta: Cloudflare testinis tokenas; null: be tokeno. */
+    turnstileToken?: string | null;
+  } = {},
+) {
+  const token =
+    overrides.turnstileToken === undefined
+      ? TURNSTILE_TEST_KEYS.dummyToken
+      : (overrides.turnstileToken ?? undefined);
+  return {
+    clientRequestId: overrides.clientRequestId ?? randomUUID(),
+    ...(token === undefined ? {} : { turnstileToken: token }),
+    customer: overrides.customer ?? uniqueCustomer(),
+    desiredDate: overrides.desiredDate ?? addCalendarDays(shopToday(), 14),
+    items: items.map((i) => ({ variantId: i.variantId.toString(), quantity: i.quantity })),
+    ...(overrides.customerNotes === undefined ? {} : { customerNotes: overrides.customerNotes }),
   };
 }

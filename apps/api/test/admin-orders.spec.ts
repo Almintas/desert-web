@@ -9,7 +9,7 @@ import request from 'supertest';
 import { getModelToken } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { Admin } from '../src/admin-auth/admin.schema';
-import { localPhonePrefix } from '../src/admin-orders/admin-orders.service';
+import { localPhonePrefix } from '../src/common/customer-search';
 import {
   clearDatabase,
   createProduct,

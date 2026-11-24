@@ -19,6 +19,11 @@ const SECTIONS = [
     title: 'Specialūs užsakymai',
     text: 'Užklausos dideliems kiekiams: patvirtink su kaina arba atmesk.',
   },
+  {
+    href: '/settings',
+    title: 'Nustatymai',
+    text: 'Specialių užsakymų priėmimas ir datų ribos.',
+  },
 ];
 
 export default async function DashboardPage() {

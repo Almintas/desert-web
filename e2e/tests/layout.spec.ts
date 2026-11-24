@@ -1,3 +1,4 @@
+import { shopToday } from '@desert-web/shared';
 import {
   addToCart,
   adminApi,
@@ -8,6 +9,8 @@ import {
   loginAdmin,
   openWindow,
   placeOrder,
+  placeSpecialOrder,
+  setSpecialOrderSettings,
   test,
 } from './support';
 
@@ -32,6 +35,22 @@ test('nėra horizontalaus slinkimo 390 px pločio ekrane (visi puslapiai)', asyn
     },
   );
   const product = await adminApi<{ id: string }>('GET', `/admin/products/${cake.id}`);
+  const special = await createProduct(
+    `${LONG} specialus`,
+    [{ name: 'Didelis variantas su ilgu pavadinimu 2 kg', priceCents: 123456 }],
+    { specialOrder: { enabled: true, minQuantity: 1 } },
+  );
+  await setSpecialOrderSettings({ enabled: true, leadTimeDays: 0, maxDaysAhead: 30 });
+  const { specialOrder } = await placeSpecialOrder(
+    [{ variantId: special.variants[0]!.id, quantity: 100 }],
+    shopToday(),
+    {
+      name: `Vardenis ${LONG}`,
+      email: `labai.ilgas.el.pasto.adresas.${Date.now()}@pavyzdys-su-ilgu-domenu.example.com`,
+      phone: '+37061234567',
+    },
+    `${LONG} pastabos`,
+  );
 
   // Web
   await page.goto(env.webUrl);
@@ -59,6 +78,9 @@ test('nėra horizontalaus slinkimo 390 px pločio ekrane (visi puslapiai)', asyn
     '/orders',
     `/orders?window=${w.id}`,
     `/orders/${order.id}`,
+    '/special-orders',
+    `/special-orders/${specialOrder.id}`,
+    '/settings',
   ]) {
     await page.goto(`${env.adminUrl}${path}`);
     await expectNoHorizontalScroll(page);

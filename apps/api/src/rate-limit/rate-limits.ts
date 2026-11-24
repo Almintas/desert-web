@@ -36,19 +36,19 @@ export function rateLimitsFromConfig(
       ttlMs: env('ADMIN_LOGIN_RATE_WINDOW_SECONDS') * 1000,
       message: 'Per daug bandymų prisijungti. Pabandyk vėliau.',
     },
-    /** POST /orders: 5 per 10 min. */
+    /** POST /orders ir POST /special-orders (atskiri skaitikliai): 5 per 10 min. */
     'order-create-short': {
       limit: env('ORDER_RATE_LIMIT_SHORT'),
       ttlMs: env('ORDER_RATE_WINDOW_SHORT_SECONDS') * 1000,
       message: TOO_MANY,
     },
-    /** POST /orders: 20 per parą. */
+    /** POST /orders ir POST /special-orders: 20 per parą. */
     'order-create-daily': {
       limit: env('ORDER_RATE_LIMIT_DAILY'),
       ttlMs: env('ORDER_RATE_WINDOW_DAILY_SECONDS') * 1000,
       message: TOO_MANY,
     },
-    /** GET /orders/access/:token: 60 per minutę (slaptų nuorodų spėliojimui). */
+    /** GET /orders/access/:token ir /special-orders/access/:token: 60 per minutę (spėliojimui). */
     'order-access': {
       limit: env('ORDER_ACCESS_RATE_LIMIT'),
       ttlMs: env('ORDER_ACCESS_RATE_WINDOW_SECONDS') * 1000,

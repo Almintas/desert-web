@@ -180,7 +180,11 @@ const unique = () => randomUUID().slice(0, 8);
 export async function createProduct(
   name: string,
   variants: { name: string; priceCents: number }[] = [{ name: '1 kg', priceCents: 2500 }],
-  extra: { description?: string; allergens?: string[] } = {},
+  extra: {
+    description?: string;
+    allergens?: string[];
+    specialOrder?: { enabled: boolean; minQuantity: number };
+  } = {},
 ): Promise<Product> {
   return adminApi<Product>('POST', '/admin/products', {
     name,
@@ -300,6 +304,48 @@ export async function placeOrder(
   if (res.status !== 201)
     throw new Error(`POST /orders: ${res.status} ${JSON.stringify(res.body)}`);
   return res.body as { order: { id: string; orderNumber: string }; accessToken: string };
+}
+
+/** Specialių užsakymų nustatymai (PUT /admin/settings, kaip owner). */
+export function setSpecialOrderSettings(specialOrders: {
+  enabled: boolean;
+  leadTimeDays: number;
+  maxDaysAhead: number;
+}): Promise<unknown> {
+  return adminApi('PUT', '/admin/settings', { specialOrders });
+}
+
+/** Speciali užklausa kaip iš web serverio (paslaptis + Turnstile testinis tokenas). */
+export async function placeSpecialOrder(
+  items: { variantId: string; quantity: number }[],
+  desiredDate: string,
+  who = customer(),
+  customerNotes?: string,
+): Promise<{ specialOrder: { id: string; requestNumber: string }; accessToken: string }> {
+  const res = await apiRaw('POST', '/special-orders', {
+    headers: { 'X-Internal-Secret': env.internalSecret, 'X-Client-IP': '203.0.113.201' },
+    body: {
+      clientRequestId: randomUUID(),
+      customer: who,
+      desiredDate,
+      items,
+      ...(customerNotes ? { customerNotes } : {}),
+      turnstileToken: DUMMY_TOKEN,
+    },
+  });
+  if (res.status !== 201) {
+    throw new Error(`POST /special-orders: ${res.status} ${JSON.stringify(res.body)}`);
+  }
+  return res.body as { specialOrder: { id: string; requestNumber: string }; accessToken: string };
+}
+
+/** Pirkėjo vaizdas pagal slaptą nuorodą. */
+export async function getSpecialOrderByToken<T = Record<string, unknown>>(
+  accessToken: string,
+): Promise<T> {
+  const res = await apiRaw('GET', `/special-orders/access/${accessToken}`);
+  if (res.status !== 200) throw new Error(`GET special order: ${res.status}`);
+  return res.body as T;
 }
 
 export async function findOrders(

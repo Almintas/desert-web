@@ -161,3 +161,62 @@ export function formatPickupRange(from: string | Date, to: string | Date): strin
   if (sameDay) return capitalize(`${formatDateTimeWithWeekday(from)}⁠–⁠${formatTime(to)}`);
   return `${formatDateTime(from)} – ${formatDateTime(to)}`;
 }
+
+// --- Kalendorinės datos („YYYY-MM-DD“, be laiko) ---
+//
+// Kalendorinė data (pvz., specialaus užsakymo pageidaujama diena) nėra laiko momentas: ji
+// saugoma ir perduodama kaip „YYYY-MM-DD“ eilutė, todėl negali pasislinkti per dieną dėl laiko
+// zonos ar vasaros laiko. „Šiandien“ visada skaičiuojama Vilniaus laiku (shopToday).
+
+const CALENDAR_DATE = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+/** Ar eilutė yra egzistuojanti kalendorinė data „YYYY-MM-DD“ (2026-02-30 netinka). */
+export function isCalendarDate(value: string): boolean {
+  const m = CALENDAR_DATE.exec(value);
+  if (!m) return false;
+  const [year, month, day] = m.slice(1).map(Number) as [number, number, number];
+  const check = new Date(Date.UTC(year, month - 1, day));
+  return (
+    check.getUTCFullYear() === year &&
+    check.getUTCMonth() === month - 1 &&
+    check.getUTCDate() === day
+  );
+}
+
+/** Šiandienos data Vilniaus laiku („YYYY-MM-DD“), pvz., 2026-12-31T22:30Z -> „2027-01-01“. */
+export function shopToday(now: Date | string = new Date()): string {
+  const p = vilniusParts(new Date(now).getTime());
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}`;
+}
+
+/** Kalendorinė data + `days` dienų (gryna kalendoriaus aritmetika, be laiko zonų). */
+export function addCalendarDays(date: string, days: number): string {
+  const m = CALENDAR_DATE.exec(date);
+  if (!m) throw new Error(`Netinkama data: ${date}`);
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + days));
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+}
+
+const calendarDayFormatter = new Intl.DateTimeFormat('lt-LT', {
+  timeZone: 'UTC',
+  month: 'long',
+  day: 'numeric',
+});
+const calendarWeekdayFormatter = new Intl.DateTimeFormat('lt-LT', {
+  timeZone: 'UTC',
+  weekday: 'long',
+});
+
+/** Kalendorinė data „YYYY-MM-DD“ -> Date (vidurdienis UTC), tik formatavimui UTC zonoje. */
+function calendarNoon(date: string): Date {
+  const m = CALENDAR_DATE.exec(date);
+  if (!m) throw new Error(`Netinkama data: ${date}`);
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12));
+}
+
+/** „2026-12-20“ -> „gruodžio 20 d., sekmadienis“ (be laiko zonos poslinkio). */
+export function formatCalendarDate(date: string): string {
+  const noon = calendarNoon(date);
+  const day = calendarDayFormatter.format(noon).replace(/(\d+) d\./, '$1 d.');
+  return `${day}, ${calendarWeekdayFormatter.format(noon)}`;
+}

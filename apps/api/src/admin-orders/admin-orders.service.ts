@@ -4,8 +4,6 @@ import {
   type AdminOrderListQuery,
   type AdminOrderListResponse,
   isFinalOrderStatus,
-  normalizeEmail,
-  normalizePhone,
   objectIdSchema,
   ORDER_STATUSES,
   type OrderErrorCode,
@@ -15,6 +13,7 @@ import {
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { type ClientSession, type Connection, type Model, type FilterQuery, Types } from 'mongoose';
+import { customerSearchConditions } from '../common/customer-search';
 import { Order } from '../orders/order.schema';
 import { SaleWindow } from '../sale-windows/sale-window.schema';
 import { AdminAccountsService } from '../admin-auth/admin-accounts.service';
@@ -36,18 +35,6 @@ function orderError(
 }
 
 const notFound = () => orderError(NotFoundException, 'ORDER_NOT_FOUND', 'Užsakymas nerastas');
-
-const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-/**
- * Telefono pradžia be šalies kodo: tik skaitmenys (galima su tarpais / brūkšneliais), kurie
- * prasideda 8, 370 arba +370. Pvz., "8612" → "612", "+370 612" → "612". Kitaip null.
- */
-export function localPhonePrefix(q: string): string | null {
-  const compact = q.replace(/[\s\-()]/g, '');
-  const match = /^(?:\+370|370|8)(\d+)$/.exec(compact);
-  return match ? match[1]! : null;
-}
 
 /** Kodėl perėjimas `from -> to` negalimas (lietuviškas pranešimas). */
 function transitionMessage(from: OrderStatus, to: OrderStatus): string {
@@ -72,7 +59,7 @@ export class AdminOrdersService {
   async list(query: AdminOrderListQuery): Promise<AdminOrderListResponse> {
     const base: FilterQuery<Order> = {};
     if (query.saleWindowId) base.saleWindowId = new Types.ObjectId(query.saleWindowId);
-    if (query.q) base.$or = this.searchConditions(query.q);
+    if (query.q) base.$or = customerSearchConditions(query.q, 'orderNumber');
     const filter: FilterQuery<Order> = query.status?.length
       ? { ...base, status: { $in: query.status } }
       : base;
@@ -226,29 +213,6 @@ export class AdminOrdersService {
         { arrayFilters: lines.map((l, i) => ({ [`i${i}.variantId`]: l.variantId })), session },
       )
       .exec();
-  }
-
-  /** Užsakymo numeris, vardas, el. paštas (normalizuotas) arba telefonas (normalizuotas). */
-  private searchConditions(q: string): FilterQuery<Order>[] {
-    const contains = (s: string) => new RegExp(escapeRegex(s), 'i');
-    const conditions: FilterQuery<Order>[] = [
-      { orderNumber: contains(q) },
-      { 'customer.name': contains(q) },
-      { 'customer.emailNormalized': contains(normalizeEmail(q)) },
-    ];
-    const digits = q.replace(/\D/g, '');
-    if (digits.length >= 3) {
-      conditions.push(
-        { 'customer.phoneNormalized': contains(normalizePhone(q)) },
-        { 'customer.phoneNormalized': contains(digits) },
-      );
-      // Lietuviškas numeris dalimis: "8612" ar "+370612" randa "+37061234567" (be 8 / 370).
-      const local = localPhonePrefix(q);
-      if (local) {
-        conditions.push({ 'customer.phoneNormalized': new RegExp(`^\\+370${local}`) });
-      }
-    }
-    return conditions;
   }
 
   private async windowTitles(orders: Order[]): Promise<WindowTitles> {

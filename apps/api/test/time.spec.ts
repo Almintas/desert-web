@@ -1,4 +1,12 @@
-import { getShopYear, utcToVilniusLocal, vilniusLocalToUtc } from '@desert-web/shared';
+import {
+  addCalendarDays,
+  formatCalendarDate,
+  getShopYear,
+  isCalendarDate,
+  shopToday,
+  utcToVilniusLocal,
+  vilniusLocalToUtc,
+} from '@desert-web/shared';
 
 describe('getShopYear (Europe/Vilnius)', () => {
   it('gruodžio 31 d. 23:30 Vilniuje dar senieji metai', () => {
@@ -82,5 +90,51 @@ describe('vilniusLocalToUtc / utcToVilniusLocal', () => {
     '2026-12-20',
   ])('netinkama įvestis %j -> null', (local) => {
     expect(vilniusLocalToUtc(local)).toBeNull();
+  });
+});
+
+describe('kalendorinės datos („YYYY-MM-DD“)', () => {
+  it('isCalendarDate: tik egzistuojančios datos be laiko', () => {
+    expect(isCalendarDate('2026-12-20')).toBe(true);
+    expect(isCalendarDate('2028-02-29')).toBe(true);
+    for (const v of [
+      '2026-02-29',
+      '2026-13-01',
+      '2026-12-32',
+      '2026-1-5',
+      '2026-12-20T00:00',
+      '',
+    ]) {
+      expect(isCalendarDate(v)).toBe(false);
+    }
+  });
+
+  it.each([
+    ['2026-12-31T21:59:00Z', '2026-12-31'], // 23:59 Vilniuje
+    ['2026-12-31T22:00:00Z', '2027-01-01'], // 00:00 Vilniuje, UTC dar senieji metai
+    ['2026-07-15T20:59:00Z', '2026-07-15'], // vasara: 23:59 EEST
+    ['2026-07-15T21:00:00Z', '2026-07-16'], // 00:00 EEST
+    ['2026-03-29T00:59:00Z', '2026-03-29'], // 02:59 EET, prieš persukimą
+    ['2026-10-25T00:30:00Z', '2026-10-25'], // kartojama valanda (EEST)
+    ['2026-10-25T01:30:00Z', '2026-10-25'], // kartojama valanda (EET)
+  ])('shopToday(%s) = %s', (now, expected) => {
+    expect(shopToday(new Date(now))).toBe(expected);
+  });
+
+  it('addCalendarDays: mėnesių, metų ir DST ribos nesvarbios', () => {
+    expect(addCalendarDays('2026-03-28', 1)).toBe('2026-03-29');
+    expect(addCalendarDays('2026-03-28', 2)).toBe('2026-03-30');
+    expect(addCalendarDays('2026-10-24', 7)).toBe('2026-10-31');
+    expect(addCalendarDays('2026-12-31', 1)).toBe('2027-01-01');
+    expect(addCalendarDays('2028-02-28', 1)).toBe('2028-02-29');
+    expect(addCalendarDays('2026-03-01', -1)).toBe('2026-02-28');
+    expect(addCalendarDays('2026-01-01', 365)).toBe('2027-01-01');
+    expect(() => addCalendarDays('20.12.2026', 1)).toThrow();
+  });
+
+  it('formatCalendarDate: lietuviškai, be poslinkio per dieną', () => {
+    expect(formatCalendarDate('2026-12-20')).toBe('gruodžio 20\u00a0d., sekmadienis');
+    expect(formatCalendarDate('2026-03-29')).toBe('kovo 29\u00a0d., sekmadienis');
+    expect(formatCalendarDate('2027-01-01')).toBe('sausio 1\u00a0d., penktadienis');
   });
 });

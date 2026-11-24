@@ -96,7 +96,7 @@ Ką daro `e2e/scripts/run.mjs`:
 2. Paleidžia laikiną MongoDB replica set (`mongodb-memory-server`, kaip API Jest testai; pirmą kartą atsisiunčia mongod).
 3. Sukuria indeksus (`db:indexes`) ir adminą (`admin:create`).
 4. Paleidžia API, web ir admin (`NODE_ENV=production`) laisvuose portuose.
-5. Testai: prisijungimas, produktas su nuotraukomis, lango skelbimas su atsiėmimo informacija ir be jos, krepšelis po perkrovimo, užsakymas ir patvirtinimo puslapis, užsakymo būsenos admin panelėje (įvykdžius pažymima „Apmokėtas“), kiekių lenktynės, dvigubas paspaudimas, lango uždarymas, užsakymo atšaukimas (kiekiai grąžinami), lango su užsakymu atšaukimas, horizontalus slinkimas 390 px pločiu visuose puslapiuose.
+5. Testai: prisijungimas, produktas su nuotraukomis, specialūs užsakymai (įjungimas nustatymuose, užklausa, patvirtinimas, įvykdymas), lango skelbimas su atsiėmimo informacija ir be jos, krepšelis po perkrovimo, užsakymas ir patvirtinimo puslapis, užsakymo būsenos admin panelėje (įvykdžius pažymima „Apmokėtas“), kiekių lenktynės, dvigubas paspaudimas, lango uždarymas, užsakymo atšaukimas (kiekiai grąžinami), lango su užsakymu atšaukimas, horizontalus slinkimas 390 px pločiu visuose puslapiuose.
 6. API perleidžiamas su Turnstile „visada atmeta“ secret ir paleidžiamas `turnstile-fail` testas (pranešimas pirkėjui).
 7. Viską sustabdo, net jei testai nepavyko ar paspaudėte Ctrl+C. Serverių logai: `e2e/.logs/`.
 
@@ -241,6 +241,7 @@ Vystant be `RESEND_API_KEY` kiekvienas laiškas tik išvedamas į API logą (kam
 
 API Railway pasiekiamas viešai, todėl visos apsaugos taikomos API (ne tik web):
 
+- **Tie patys principai specialiems užsakymams** (`POST /special-orders`): paslaptis, ribojimas (tos pačios ribos, atskiri skaitikliai), Turnstile ir `clientRequestId` idempotencija; `GET /special-orders/access/:token` ribojamas kaip `/orders/access`. `GET /special-orders/config` viešas (kaip `/sale-windows/current`).
 - **Tik mūsų web serveris.** Produkcijoje `POST /orders` priimamas tik su teisinga `X-Internal-Secret` (`INTERNAL_API_SECRET`), kitaip 403 `FORBIDDEN_CLIENT`. Todėl `INTERNAL_API_SECRET` privalomas ir web projekte (Vercel): be jo svetainė veikia, bet užsakymai nepateikiami (pirkėjui „Užsakymo pateikti nepavyko. Bandykite vėliau.“, Vercel loguose aiški klaida). Kitaip API visus pirkėjus ribotų kaip vieną Vercel IP.
 - **Ribojimas pagal pirkėjo IP** (atmintyje, viena API instancija): `POST /orders` 5 per 10 min. ir 20 per parą, `GET /orders/access/:token` 60 per min., admin prisijungimas `ADMIN_LOGIN_RATE_LIMIT` per `ADMIN_LOGIN_RATE_WINDOW_SECONDS`. Skaičiuojamas kiekvienas bandymas; viršijus 429 `TOO_MANY_REQUESTS` su `Retry-After`. Visos ribos `apps/api/src/rate-limit/rate-limits.ts`.
 - **Pirkėjo IP.** Web ir admin serveriai perduoda naršyklės IP (`X-Client-IP`, priimamas tik su paslaptimi). Tiesioginėms užklausoms Railway produkcijoje naudojamas `X-Real-IP`, kurį Railway edge nustato pats ([Railway: Public Networking specs](https://docs.railway.com/networking/public-networking/specs-and-limits)); `X-Forwarded-For` paskutinis šuolis gali būti vidinis Railway proxy. Kitur (vystant) `req.ip`.
@@ -250,7 +251,7 @@ Turnstile nustatymas: Cloudflare → Turnstile → Add widget, **Widget Mode: Ma
 
 #### DB indeksai
 
-Produkcijoje (`NODE_ENV=production`) Mongoose indeksų automatiškai nekuria, o unikalūs indeksai (`orders.orderNumber`, `orders.accessToken`, `products.slug` ir kt.) yra būtini. Juos sukuria `db:indexes`:
+Produkcijoje (`NODE_ENV=production`) Mongoose indeksų automatiškai nekuria, o unikalūs indeksai (`orders.orderNumber`, `orders.accessToken`, `specialOrders.requestNumber`, `specialOrders.accessToken`, `products.slug` ir kt.) yra būtini. Juos sukuria `db:indexes`:
 
 ```bash
 pnpm turbo run build --filter=@desert-web/api
@@ -286,6 +287,17 @@ Pardavėjo duomenys (vardas ar įmonės pavadinimas, IV pažymos Nr. ar įmonės
 
 Duomenų modelis ir sprendimai aprašyti Claude projekte „Desert Web“ (`duomenu-modelis.md`, `sprendimai-stekas.md`).
 
+## Specialūs užsakymai
+
+Užklausa dideliam kiekiui bet kuriuo metu (be pardavimo lango), kai ji įjungta nustatymuose. Adminas patvirtina su galutine kaina ir atsiėmimu arba atmeta. Pardavimo langų kiekių neliečia. Tik atsiėmimas, apmokama atsiimant.
+
+- **Nustatymai** (admin „Nustatymai“, `GET/PUT /admin/settings`, keisti gali tik `owner`): `specialOrders.enabled` (numatyta išjungta), `leadTimeDays` (0–60, numatyta 7), `maxDaysAhead` (1–365, numatyta 90). Vienas dokumentas `settings` `_id: 'global'`, sukuriamas tingiai.
+- **Produktai:** produkto formoje „Specialūs užsakymai“ ir mažiausias kiekis. Užsakyti galima tik aktyvius produktus; minimumas tikrinamas kiekvienai eilutei atskirai. Kaina užklausoje: bazinės varianto kainos kopija (`estimatedUnitPriceCents`).
+- **Pageidaujama data** yra kalendorinė diena `YYYY-MM-DD` (Vilniaus kalendorius), saugoma kaip eilutė, todėl nepasislenka dėl laiko zonos ar vasaros laiko. Leidžiama `šiandien + leadTimeDays` … `šiandien + maxDaysAhead` (imtinai, „šiandien“ Vilniaus laiku).
+- **Būsenos:** `requested` → `confirmed` → `completed`; `requested` → `rejected`; `requested | confirmed` → `cancelled`. Galutinės: `completed`, `rejected`, `cancelled`. Netinkamas perėjimas: 409 `INVALID_STATUS_TRANSITION`. Visi pakeitimai vienu sąlyginiu atnaujinimu (du adminai vienu metu: laimi vienas). `completed` pažymi `payment.status = 'paid'`.
+- **API:** viešai `GET /special-orders/config`, `POST /special-orders`, `GET /special-orders/access/:token`; admin `GET /admin/special-orders` (filtrai `status`, `desiredFrom`, `desiredTo`, `q`), `GET /admin/special-orders/stats`, `GET /admin/special-orders/:id`, `POST /admin/special-orders/:id/{confirm,reject,cancel,complete}`. Klaidų kodai: `SPECIAL_ORDER_ERROR_CODES` (`packages/shared`).
+- Pirkėjo forma ir laiškai: 2 dalis (laiškų vieta pažymėta `TODO(special-orders, 2 dalis)` API servisuose).
+
 ## Kas toliau
 
 - [x] Admin prisijungimas (API + admin app)
@@ -299,6 +311,7 @@ Duomenų modelis ir sprendimai aprašyti Claude projekte „Desert Web“ (`duom
 - [x] Užsakymų apsauga: tik per web serverį, ribojimas pagal pirkėjo IP, Cloudflare Turnstile
 - [x] E2E testai (`pnpm e2e`)
 - [ ] Patvirtinti domeną Resend ir įjungti laiškus pirkėjams
-- [ ] Specialūs užsakymai
+- [x] Specialūs užsakymai: API ir admin (nustatymai, užklausos, patvirtinimas su kaina ir atsiėmimu, atmetimas, atšaukimas, įvykdymas)
+- [ ] Specialūs užsakymai: pirkėjo forma `apps/web` ir laiškai
 - [ ] Mokėjimai (tiekėjas dar nepasirinktas)
 - [x] ESLint, CI

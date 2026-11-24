@@ -8,7 +8,10 @@ import { RATE_LIMIT_NAMES, rateLimitsFromConfig } from './rate-limits';
 
 /**
  * Visi API ribojimai (atmintyje: API veikia viena instancija Railway). Taikomi tik ten, kur
- * yra @RateLimit(...): login, POST /orders ir GET /orders/access/:token.
+ * yra @RateLimit(...): login, POST /orders ir /special-orders, GET /orders/access/:token ir
+ * /special-orders/access/:token. Skaitiklio raktas apima maršrutą (ThrottlerGuard.generateKey:
+ * controller + handler), todėl specialūs užsakymai naudoja tas pačias ribas kaip užsakymai, bet
+ * savo skaitiklius.
  */
 @Global()
 @Module({
