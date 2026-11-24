@@ -6,12 +6,15 @@
   "type": "module",
   "scripts": {
     "e2e": "node scripts/run.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0"
   },
   "devDependencies": {
+    "@desert-web/eslint-config": "workspace:*",
     "@desert-web/shared": "workspace:*",
     "@playwright/test": "1.63.0",
     "@types/node": "^22.0.0",
+    "eslint": "^9.39.5",
     "mongodb-memory-server": "^11.3.0",
     "typescript": "^5.9.0"
   }

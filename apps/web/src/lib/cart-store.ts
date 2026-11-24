@@ -168,6 +168,7 @@ export function useCart(saleWindow: PublicSaleWindowDto): UseCart {
       adjusted.lines.length !== current.length ||
       adjusted.lines.some((l, i) => !sameLine(l, current[i]));
     if (changed) save(windowId, adjusted.lines);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- krepšelis (localStorage) suderinamas su langu tik po hidratacijos
     if (adjusted.changes.length > 0) setLoadChanges(adjusted.changes);
   }, [windowId, saleWindow]);
 

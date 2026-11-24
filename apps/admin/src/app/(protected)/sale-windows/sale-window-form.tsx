@@ -80,6 +80,7 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
     sold: 0,
     ordersCount: 0,
   });
+  // eslint-disable-next-line react-hooks/refs -- eilučių raktų skaitiklis; lazy initializer vykdomas tik pirmo render metu
   const [items, setItems] = useState<ItemRow[]>(() =>
     initial
       ? initial.items.map((i) => ({

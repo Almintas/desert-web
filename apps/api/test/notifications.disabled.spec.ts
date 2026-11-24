@@ -5,7 +5,6 @@ import {
   clearDatabase,
   createProduct,
   createSaleWindow,
-  createTestContext,
   orderBody,
   type TestContext,
 } from './helpers';
@@ -24,8 +23,10 @@ async function contextWith(
   let logSpy!: jest.SpyInstance;
   jest.isolateModules(() => {
     // Izoliuotas registras turi savo @nestjs/common kopiją: Logger sekam būtent ją.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- isolateModules veikia tik su sinchronišku require
     const { Logger } = require('@nestjs/common') as typeof import('@nestjs/common');
     logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- kaip ir aukščiau
     const helpers = require('./helpers') as typeof import('./helpers');
     ctx = helpers.createTestContext();
   });

@@ -1,7 +1,6 @@
 import 'server-only';
 import type { CurrentSaleWindowResponse, PublicSaleWindowDto } from '@desert-web/shared';
 import { apiFetch } from './api';
-import { WINDOW_PARAM } from './links';
 
 export { WINDOW_PARAM, windowHref } from './links';
 

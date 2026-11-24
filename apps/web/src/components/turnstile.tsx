@@ -80,6 +80,7 @@ export const Turnstile = forwardRef<TurnstileHandle, TurnstileProps>(function Tu
   const container = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
   const onTokenRef = useRef(onToken);
+  // eslint-disable-next-line react-hooks/refs -- „latest ref“: naujausias onToken iškvietimams iš valdiklio callback'ų
   onTokenRef.current = onToken;
   const [status, setStatus] = useState<TurnstileStatus>('loading');
   /** Padidinus valdiklis kuriamas iš naujo (kai nepavyko įkelti api.js). */
@@ -93,6 +94,7 @@ export const Turnstile = forwardRef<TurnstileHandle, TurnstileProps>(function Tu
     else setAttempt((a) => a + 1);
   }
   const restartRef = useRef(restart);
+  // eslint-disable-next-line react-hooks/refs -- „latest ref“: naujausia funkcija iškvietimams iš valdiklio callback'ų
   restartRef.current = restart;
 
   useImperativeHandle(ref, () => ({ reset: () => restartRef.current() }), []);

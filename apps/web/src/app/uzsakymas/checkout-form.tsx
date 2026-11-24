@@ -70,6 +70,7 @@ export function CheckoutForm({
 
   // Vienas ID visam pateikimo bandymui (ir pakartojimams), žr. request-id.ts.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sessionStorage pasiekiamas tik po hidratacijos
     setRequestId(getRequestId(saleWindow.id));
   }, [saleWindow.id]);
 
@@ -91,6 +92,7 @@ export function CheckoutForm({
       case 'stock': {
         const adjusted = adjustCart(cart.lines, state.window, state.problems);
         cart.replace(adjusted.lines);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- reakcija į naują Server Action rezultatą (apdorojama vieną kartą)
         setSaleWindow(state.window);
         setCartChanges(adjusted.changes.length > 0 ? adjusted.changes : [state.message]);
         break;

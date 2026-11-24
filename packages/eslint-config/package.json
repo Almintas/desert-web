@@ -1,0 +1,31 @@
+{
+  "name": "@desert-web/eslint-config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bendra ESLint (flat config) konfigūracija: base (TS), nest, next.",
+  "type": "module",
+  "exports": {
+    "./base": "./base.js",
+    "./nest": "./nest.js",
+    "./next": "./next.js"
+  },
+  "files": [
+    "*.js"
+  ],
+  "scripts": {
+    "lint": "eslint . --max-warnings=0"
+  },
+  "peerDependencies": {
+    "eslint": "^9.39.0"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint-config-next": "^16.4.6",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.5.0",
+    "typescript-eslint": "^8.74.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5"
+  }
+}

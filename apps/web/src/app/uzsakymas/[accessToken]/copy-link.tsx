@@ -9,6 +9,7 @@ export function CopyLink() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- window.location pasiekiamas tik po hidratacijos
     setUrl(window.location.href.split('#')[0]!);
   }, []);
 

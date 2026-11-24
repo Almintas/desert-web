@@ -1,4 +1,4 @@
-import { formatEur } from '@desert-web/shared';
+import { type AdminSaleWindowDto, formatEur } from '@desert-web/shared';
 import {
   addToCart,
   adminApi,
@@ -224,7 +224,7 @@ test.describe('Dovanų pakavimas', () => {
     await expect(submitButton(page)).toHaveText(/44,00/);
 
     // Adminas tuo metu išjungia pakavimą (puslapis dar rodo seną lango vaizdą).
-    const current = await adminApi('GET', `/admin/sale-windows/${w.id}`);
+    const current = await adminApi<AdminSaleWindowDto>('GET', `/admin/sale-windows/${w.id}`);
     await adminApi('PUT', `/admin/sale-windows/${w.id}`, {
       title: current.title,
       opensAt: current.opensAt,
@@ -237,7 +237,7 @@ test.describe('Dovanų pakavimas', () => {
         deliveryAvailable: current.fulfillment.deliveryAvailable,
       },
       giftWrap: { enabled: false, priceCents: 200 },
-      items: current.items.map((i: Record<string, unknown>) => ({
+      items: current.items.map((i) => ({
         productId: i.productId,
         variantId: i.variantId,
         priceCents: i.priceCents,

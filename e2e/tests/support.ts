@@ -140,7 +140,7 @@ async function apiRaw(
   method: string,
   path: string,
   options: { body?: unknown; token?: string; headers?: Record<string, string> } = {},
-): Promise<{ status: number; body: any }> {
+): Promise<{ status: number; body: unknown }> {
   const headers: Record<string, string> = { Accept: 'application/json', ...options.headers };
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
@@ -159,11 +159,15 @@ async function adminToken(): Promise<string> {
     body: { email: env.adminEmail, password: env.adminPassword },
   });
   if (res.status !== 200) throw new Error(`API login: ${res.status} ${JSON.stringify(res.body)}`);
-  cachedToken = res.body.token as string;
+  cachedToken = (res.body as { token: string }).token;
   return cachedToken;
 }
 
-export async function adminApi<T = any>(method: string, path: string, body?: unknown): Promise<T> {
+export async function adminApi<T = unknown>(
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<T> {
   const res = await apiRaw(method, path, { body, token: await adminToken() });
   if (res.status >= 400) {
     throw new Error(`${method} ${path}: ${res.status} ${JSON.stringify(res.body)}`);
@@ -295,7 +299,7 @@ export async function placeOrder(
   });
   if (res.status !== 201)
     throw new Error(`POST /orders: ${res.status} ${JSON.stringify(res.body)}`);
-  return res.body;
+  return res.body as { order: { id: string; orderNumber: string }; accessToken: string };
 }
 
 export async function findOrders(

@@ -78,6 +78,7 @@ export function ProductForm({ productId, initial, categories }: Props) {
   const [category, setCategory] = useState(initial?.category ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [allergens, setAllergens] = useState(initial?.allergens.join(', ') ?? '');
+  // eslint-disable-next-line react-hooks/refs -- eilučių raktų skaitiklis; lazy initializer vykdomas tik pirmo render metu
   const [variants, setVariants] = useState<VariantRow[]>(() =>
     initial
       ? initial.variants.map((v) => ({
@@ -104,6 +105,7 @@ export function ProductForm({ productId, initial, categories }: Props) {
 
   // blob: URL'ai atlaisvinami, kai komponentas dingsta (pašalinus nuotrauką, iškart).
   const imagesRef = useRef(images);
+  // eslint-disable-next-line react-hooks/refs -- „latest ref“: naujausi blob URL'ai atlaisvinimui unmount metu
   imagesRef.current = images;
   useEffect(
     () => () => {

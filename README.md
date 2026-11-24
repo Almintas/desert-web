@@ -1,5 +1,7 @@
 # Desert Web
 
+[![CI](https://github.com/Almintas/desert-web/actions/workflows/ci.yml/badge.svg?branch=dev)](https://github.com/Almintas/desert-web/actions/workflows/ci.yml)
+
 Parduotuvė makaronams ir kitiems desertams. Užsakyti galima **tik per atidarytą pardavimo langą**, kurį atidaro adminas. Didesniems kiekiams yra **specialūs užsakymai** (užklausa, kurią adminas patvirtina).
 
 ## Struktūra
@@ -11,6 +13,8 @@ apps/
   api/      NestJS + MongoDB: backendas               → Railway
 packages/
   shared/   bendri TS tipai, Zod schemos, pagalbinės funkcijos
+  eslint-config/  bendra ESLint konfigūracija (base, nest, next)
+e2e/        Playwright e2e testai
 ```
 
 Monorepo valdomas su **pnpm workspaces** ir **Turborepo**. `shared` sukompiliuojamas prieš kitas aplikacijas automatiškai.
@@ -72,7 +76,7 @@ pnpm --filter @desert-web/api products:add
 
 Po pirmo `pnpm install` **užcommitink `pnpm-lock.yaml`**: Railway ir Vercel jo reikia.
 
-Naudingos komandos: `pnpm dev:web`, `pnpm dev:admin`, `pnpm dev:api`, `pnpm build`, `pnpm typecheck`, `pnpm test` (API Jest ir web Vitest), `pnpm e2e` (žr. [E2E testai](#e2e-testai)), `pnpm format`.
+Naudingos komandos: `pnpm dev:web`, `pnpm dev:admin`, `pnpm dev:api`, `pnpm build`, `pnpm typecheck`, `pnpm lint`, `pnpm test` (API Jest ir web Vitest), `pnpm e2e` (žr. [E2E testai](#e2e-testai)), `pnpm format`.
 
 ## E2E testai
 
@@ -101,6 +105,27 @@ Trukmė: apie 30–40 s su buildu (kai turbo talpykloje jo nėra) ir apie 25 s s
 - Cloudinary įkėlimai ir nuotraukos perimami naršyklėje (atsakymas pasirašomas e2e Cloudinary paslaptimi, API jį tikrina kaip produkcijoje).
 - Turnstile: naudojami [Cloudflare testiniai raktai](https://developers.cloudflare.com/turnstile/troubleshooting/testing/) (`1x00000000000000000000AA` / `1x0000000000000000000000000000000AA`, nesėkmei `2x0000000000000000000000000000000AA`). Jei `challenges.cloudflare.com` nepasiekiamas (uždara CI aplinka), naudojamas vietinis pakaitalas, kuris elgiasi kaip šie raktai. Priverstinai: `E2E_TURNSTILE=real` arba `E2E_TURNSTILE=fake`.
 - `E2E_SKIP_BUILD=1`: nekompiliuoti (naudoti esamus `dist/` ir `.next/`). `E2E_HEADED=1`: matoma naršyklė.
+
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) paleidžiamas kiekvienam push į `dev` ir `main` bei kiekvienam PR į juos. Naujas push į tą pačią šaką atšaukia dar vykstantį paleidimą. Vienas job'as, žingsniai iš eilės:
+
+1. `pnpm format:check`: Prettier.
+2. `pnpm lint`: ESLint 9 (flat config) visuose workspace'uose. Bendra konfigūracija `packages/eslint-config`: `base` (typescript-eslint recommended, eslint-config-prettier), `nest` (api), `next` (web, admin: eslint-config-next su react-hooks, jsx-a11y). Įspėjimai irgi laikomi klaida (`--max-warnings=0`).
+3. `pnpm typecheck`.
+4. `pnpm test`: API Jest (su `mongodb-memory-server`, mongod talpinamas `~/.cache/mongodb-binaries`) ir web Vitest.
+5. `pnpm build`: visos aplikacijos, be jokių paslapčių (`VERCEL_ENV` nenustatomas, todėl SELLER patikra nevykdoma).
+
+E2E (`pnpm e2e`) į CI kol kas neįeina. Lint į Vercel ir Railway buildus neįeina (jie leidžia tik `turbo run build`).
+
+Tas pačias patikras vietoje:
+
+```bash
+pnpm install --frozen-lockfile
+pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
+```
+
+Vienam workspace: `pnpm turbo run lint --filter=@desert-web/web`. Lint klaidas, kurias galima pataisyti automatiškai: `pnpm --filter @desert-web/web exec eslint . --fix`.
 
 ## Diegimas
 
@@ -254,4 +279,4 @@ Duomenų modelis ir sprendimai aprašyti Claude projekte „Desert Web“ (`duom
 - [ ] Patvirtinti domeną Resend ir įjungti laiškus pirkėjams
 - [ ] Specialūs užsakymai
 - [ ] Mokėjimai (tiekėjas dar nepasirinktas)
-- [ ] ESLint, CI
+- [x] ESLint, CI
