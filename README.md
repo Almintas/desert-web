@@ -176,6 +176,28 @@ Railway → api service → Variables (reikšmės iš Cloudinary Console → Set
 - Naujas unikalus indeksas `products.images.publicId`: po šio pakeitimo paleisk `db:indexes` (Railway Pre-deploy Command tai padaro pats).
 - Naujas dalinis unikalus indeksas `orders.clientRequestId` (užsakymų idempotencija): taip pat sukuria `db:indexes`.
 
+##### Nenaudojamų nuotraukų valymas (`images:cleanup`)
+
+Jei įkėlimas nutrūksta arba forma uždaroma neprisegus nuotraukos, failas lieka Cloudinary. `images:cleanup` suranda failus produktų kataloge (`CLOUDINARY_FOLDER`, tik jo prefiksas; katalogas turi būti po `desert-web/`), kurių nenaudoja joks produktas (**ir archyvuotų produktų nuotraukos laikomos naudojamomis**) ir kurie senesni nei 24 h (`--older-than-hours=N`, mažiausiai 1: apsauga dabar vykstantiems įkėlimams). Numatyta **dry run**: išvardija failus (publicId, sukūrimo laikas, dydis) ir sumas, nieko netrina. Trina tik su `--apply`, partijomis po 100; nepavykusias partijas užrašo ir tęsia, o pabaigoje grąžina exit code 1. Automatiškai nepaleidžiamas.
+
+Vietoje (`.env` su tais pačiais `MONGODB_URI` ir `CLOUDINARY_*`, kaip valoma aplinka):
+
+```bash
+pnpm turbo run build --filter=@desert-web/api
+pnpm --filter @desert-web/api images:cleanup            # dry run: peržiūrėk sąrašą
+pnpm --filter @desert-web/api images:cleanup --apply    # tada ištrink
+pnpm --filter @desert-web/api images:cleanup --older-than-hours=72 --apply
+```
+
+Railway (vienkartinė komanda veikiančiame api service konteineryje: `dist` jau sukompiliuotas, kintamieji nustatyti), iš repo katalogo, susietą su projektu (`railway link`, pasirink api service):
+
+```bash
+railway ssh -- pnpm --filter @desert-web/api images:cleanup            # dry run
+railway ssh -- pnpm --filter @desert-web/api images:cleanup --apply    # peržiūrėjus sąrašą
+```
+
+Saugikliai: skriptas nutraukiamas, jei katalogas tuščias ar ne po `desert-web/`, arba jei DB grąžino nulį naudojamų nuotraukų, nors produktų su nuotraukomis yra (sugedusi užklausa ar ryšys). Prieš kiekvieną partiją DB tikrinama dar kartą, kad nebūtų ištrinta ką tik prisegta nuotrauka. Cloudinary Admin API riba (nemokamame plane ~500 kvietimų per valandą) šiam mastui netrukdo: sąrašas imamas po 500 failų vienu kvietimu, trinama po 100.
+
 #### Užsakymų laiškai (Resend)
 
 API siunčia laiškus per [Resend](https://resend.com) (`apps/api/src/notifications/`):

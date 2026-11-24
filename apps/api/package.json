@@ -12,6 +12,7 @@
     "db:indexes": "node --env-file-if-exists=.env dist/scripts/sync-indexes.js",
     "admin:create": "node --env-file-if-exists=.env dist/scripts/create-admin.js",
     "products:add": "node --env-file-if-exists=.env dist/scripts/add-products.js",
+    "images:cleanup": "node --env-file-if-exists=.env dist/scripts/cleanup-images.js",
     "email:preview": "turbo run build --filter=@desert-web/api --output-logs=errors-only && node dist/scripts/email-preview.js",
     "lint": "eslint . --max-warnings=0"
   },

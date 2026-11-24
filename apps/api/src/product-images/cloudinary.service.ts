@@ -8,6 +8,11 @@ import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
 import type { Env } from '../config/env';
 import { verifyCloudinaryResponseSignature } from './cloudinary-signature';
+import type {
+  CloudinaryAdminClient,
+  CloudinaryDeleteResult,
+  CloudinaryImagePage,
+} from './image-cleanup';
 
 export interface CloudinarySettings {
   cloudName: string;
@@ -26,7 +31,7 @@ export const UPLOAD_TRANSFORMATION = `c_limit,h_${PRODUCT_IMAGE_MAX_DIMENSION},w
  * niekada nerašomi į logus.
  */
 @Injectable()
-export class CloudinaryService {
+export class CloudinaryService implements CloudinaryAdminClient {
   private readonly logger = new Logger(CloudinaryService.name);
   private readonly settings: CloudinarySettings | null;
 
@@ -91,14 +96,7 @@ export class CloudinaryService {
     const s = this.settings;
     if (!s) return;
     try {
-      // SDK tipai neaprašo prisijungimo duomenų kvietimo parinktyse, bet SDK juos priima.
-      const options = {
-        resource_type: 'image' as const,
-        invalidate: true,
-        cloud_name: s.cloudName,
-        api_key: s.apiKey,
-        api_secret: s.apiSecret,
-      };
+      const options = { resource_type: 'image' as const, invalidate: true, ...credentials(s) };
       const result = (await cloudinary.uploader.destroy(publicId, options)) as
         { result?: string } | undefined;
       if (result?.result !== 'ok' && result?.result !== 'not found') {
@@ -109,4 +107,43 @@ export class CloudinaryService {
       this.logger.warn(`Cloudinary destroy ${publicId} failed: ${message}`);
     }
   }
+
+  /** Admin API `resources`: vienas įkeltų nuotraukų puslapis (iki 500) su nurodytu prefiksu. */
+  async listImages(prefix: string, nextCursor?: string): Promise<CloudinaryImagePage> {
+    const response = (await cloudinary.api.resources({
+      resource_type: 'image',
+      type: 'upload',
+      prefix,
+      max_results: 500,
+      ...(nextCursor ? { next_cursor: nextCursor } : {}),
+      ...credentials(this.require()),
+    })) as {
+      resources?: { public_id: string; created_at: string; bytes: number }[];
+      next_cursor?: string;
+    };
+    return {
+      images: (response.resources ?? []).map((r) => ({
+        publicId: r.public_id,
+        createdAt: r.created_at,
+        bytes: r.bytes,
+      })),
+      nextCursor: response.next_cursor || undefined,
+    };
+  }
+
+  /** Admin API `delete_resources` (iki 100 publicId vienu kvietimu). */
+  async deleteImages(publicIds: string[]): Promise<CloudinaryDeleteResult> {
+    const response = (await cloudinary.api.delete_resources(publicIds, {
+      resource_type: 'image',
+      type: 'upload',
+      invalidate: true,
+      ...credentials(this.require()),
+    })) as { deleted?: CloudinaryDeleteResult };
+    return response.deleted ?? {};
+  }
+}
+
+/** SDK tipai neaprašo prisijungimo duomenų kvietimo parinktyse, bet SDK juos priima. */
+function credentials(s: CloudinarySettings) {
+  return { cloud_name: s.cloudName, api_key: s.apiKey, api_secret: s.apiSecret };
 }
