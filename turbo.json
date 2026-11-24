@@ -4,7 +4,7 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"],
-      "env": ["NEXT_PUBLIC_*", "VERCEL_ENV"]
+      "env": ["NEXT_PUBLIC_*", "VERCEL_ENV", "SITE_URL", "VERCEL_PROJECT_PRODUCTION_URL"]
     },
     "dev": {
       "dependsOn": ["^build"],
