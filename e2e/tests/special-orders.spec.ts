@@ -75,8 +75,8 @@ test.describe('Specialūs užsakymai (admin)', () => {
     await expect(page.getByText('Įvesk atsiėmimo vietą')).toBeVisible();
 
     await page.getByLabel('Galutinė suma, €').fill('225,50');
-    await page.getByLabel('Nuo', { exact: true }).fill('10:00');
-    await page.getByLabel('Iki', { exact: true }).fill('12:30');
+    await page.getByLabel(/^Nuo/).fill('10:00');
+    await page.getByLabel(/^Iki/).fill('12:30');
     await page.getByLabel('Atsiėmimo vieta').fill('Gedimino pr. 1, Vilnius');
     await page.getByLabel('Žinutė pirkėjui (neprivaloma)').fill('Kaina su dėžutėmis.');
     await page.getByRole('button', { name: 'Patvirtinti užklausą' }).click();
