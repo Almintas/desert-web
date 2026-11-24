@@ -15,9 +15,9 @@ export type SellerDetails = Readonly<Record<SellerField, string>>;
  * Pardavėjo duomenys: rodomi poraštėje, privatumo puslapyje, užsakymo formoje ir laiškuose
  * (Reply-To pirkėjui).
  *
- * Tuščia eilutė reiškia TODO (dar neužpildyta): toks laukas niekur nerodomas, o produkcinis
- * web build (VERCEL_ENV=production) nepraeina, kol yra bent vienas TODO laukas
- * (žr. sellerTodoFields ir apps/web/next.config.ts). Preview ir vietiniai buildai veikia.
+ * Tuščia eilutė reiškia TODO (dar neužpildyta): toks laukas niekur nerodomas. Produkcinis web
+ * build (VERCEL_ENV=production) su TODO laukais laikinai praeina su įspėjimu; užpildžius
+ * įjunkite BLOCK_PRODUCTION_WITHOUT_SELLER (apps/web/src/lib/seller-check.ts).
  */
 export const SELLER: SellerDetails = {
   /** Vardas ir pavardė (individuali veikla) arba įmonės pavadinimas. TODO */
