@@ -1,4 +1,8 @@
-import type { AdminSaleWindowDto, AdminSaleWindowItemDto } from '@desert-web/shared';
+import {
+  type AdminSaleWindowDto,
+  type AdminSaleWindowItemDto,
+  shopToday,
+} from '@desert-web/shared';
 
 const time = (iso: string) => new Date(iso).getTime();
 
@@ -25,4 +29,21 @@ export function stockLevel(
   if (item.quantityAvailable <= 0) return 'sold-out';
   const threshold = Math.max(3, Math.ceil(item.quantityTotal * 0.2));
   return item.quantityAvailable <= threshold ? 'low' : 'ok';
+}
+
+/**
+ * Paskelbti langai, kurių atsiėmimas vyksta šiandien (Vilniaus laiku diena tarp pickupFrom ir
+ * pickupTo imtinai). Gali būti ir ne apžvalgos langas (pvz., vakar uždarytas, kai jau
+ * paskelbtas kitas).
+ */
+export function windowsWithPickupToday(
+  windows: AdminSaleWindowDto[],
+  now: Date = new Date(),
+): AdminSaleWindowDto[] {
+  const today = shopToday(now);
+  return windows.filter((w) => {
+    const { pickupFrom, pickupTo } = w.fulfillment;
+    if (w.status !== 'published' || !pickupFrom || !pickupTo) return false;
+    return shopToday(pickupFrom) <= today && today <= shopToday(pickupTo);
+  });
 }

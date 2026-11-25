@@ -7,6 +7,9 @@ import {
   adminOrderListQuerySchema,
   type AdminOrderListResponse,
   type AdminOrderStatusInput,
+  type AdminPickupListQuery,
+  adminPickupListQuerySchema,
+  type AdminPickupOrderDto,
   adminOrderStatusInputSchema,
   type OrderErrorCode,
 } from '@desert-web/shared';
@@ -38,6 +41,14 @@ export class AdminOrdersController {
     @Query(new ZodValidationPipe(adminOrderListQuerySchema)) query: AdminOrderListQuery,
   ): Promise<AdminOrderListResponse> {
     return this.orders.list(query);
+  }
+
+  /** Atsiėmimo sąrašas (prieš `:id`, kad „pickup-list“ nebūtų laikomas ID). */
+  @Get('pickup-list')
+  pickupList(
+    @Query(new ZodValidationPipe(adminPickupListQuerySchema)) query: AdminPickupListQuery,
+  ): Promise<AdminPickupOrderDto[]> {
+    return this.orders.pickupList(query.saleWindowId);
   }
 
   @Get(':id')

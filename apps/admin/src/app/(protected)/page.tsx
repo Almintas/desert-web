@@ -7,7 +7,7 @@ import { getSessionToken } from '@/lib/session';
 import { CreateAdminForm } from './_admins/create-admin-form';
 import { ROLE_LABELS } from './_admins/form-state';
 import { DashboardWindowCard } from './_dashboard/window-card';
-import { pickDashboardWindow } from './_dashboard/window-pick';
+import { pickDashboardWindow, windowsWithPickupToday } from './_dashboard/window-pick';
 import { fetchOrders } from './orders/data';
 import { fetchSaleWindows } from './sale-windows/data';
 import { fetchRequestedCount } from './special-orders/data';
@@ -61,6 +61,15 @@ export default async function DashboardPage({
   ]);
   const now = new Date();
   const current = pickDashboardWindow(windows);
+  // Atsiėmimas šiandien: mygtukas į sąrašą, jei lange yra patvirtintų ar paruoštų užsakymų.
+  const pickups = (
+    await Promise.all(
+      windowsWithPickupToday(windows, now).map(async (w) => {
+        const { counts } = await fetchOrders({ saleWindowId: w.id, pageSize: '1' });
+        return { window: w, waiting: counts.confirmed + counts.ready };
+      }),
+    )
+  ).filter((p) => p.waiting > 0);
   const doneMessage = done ? DONE_MESSAGES[done] : undefined;
 
   return (
@@ -74,6 +83,15 @@ export default async function DashboardPage({
           {doneMessage}
         </p>
       ) : null}
+
+      {pickups.map(({ window: w, waiting }) => (
+        <Link key={w.id} href={`/sale-windows/${w.id}/pickup`} className="pickup-cta">
+          <span className="pickup-cta-title">Atsiėmimo sąrašas</span>
+          <span className="pickup-cta-text">
+            Šiandien atsiėmimas: {w.title} · laukia {waiting} užs.
+          </span>
+        </Link>
+      ))}
 
       <ul className="counters" aria-label="Laukia veiksmų">
         <Counter

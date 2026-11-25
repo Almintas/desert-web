@@ -1,4 +1,4 @@
-import type { AdminOrderDto, AdminOrderListItemDto } from '@desert-web/shared';
+import type { AdminOrderDto, AdminOrderListItemDto, AdminPickupOrderDto } from '@desert-web/shared';
 import type { Types } from 'mongoose';
 import type { Order } from '../orders/order.schema';
 import { toOrderDto } from '../orders/orders.mapper';
@@ -24,6 +24,25 @@ export function toAdminOrderListItemDto(o: Order, titles: WindowTitles): AdminOr
     fulfillmentMethod: o.fulfillment.method,
     status: o.status,
     saleWindow: windowRef(o, titles),
+  };
+}
+
+export function toAdminPickupOrderDto(o: Order): AdminPickupOrderDto {
+  return {
+    id: o._id.toString(),
+    orderNumber: o.orderNumber,
+    customer: { name: o.customer.name, phone: o.customer.phone },
+    items: o.items.map((i) => ({
+      productName: i.productName,
+      variantName: i.variantName,
+      quantity: i.quantity,
+      giftWrapQuantity: i.giftWrapQuantity ?? 0,
+    })),
+    totalCents: o.totalCents,
+    status: o.status,
+    // Seni užsakymai be payment: įvykdytas reiškia apmokėtas (apmokama atsiimant).
+    paymentStatus: o.payment?.status ?? (o.status === 'completed' ? 'paid' : 'unpaid'),
+    notes: o.fulfillment.notes?.trim() || null,
   };
 }
 

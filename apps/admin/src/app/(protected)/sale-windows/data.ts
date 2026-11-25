@@ -1,5 +1,5 @@
 import 'server-only';
-import type { AdminSaleWindowDto, AdminProductDto } from '@desert-web/shared';
+import type { AdminPickupOrderDto, AdminProductDto, AdminSaleWindowDto } from '@desert-web/shared';
 import { notFound } from 'next/navigation';
 import { ApiError, apiFetch } from '@/lib/api';
 import { requireAdmin } from '@/lib/dal';
@@ -43,5 +43,13 @@ export function quantitySummary(w: AdminSaleWindowDto): { sold: number; total: n
   return w.items.reduce(
     (acc, i) => ({ sold: acc.sold + i.sold, total: acc.total + i.quantityTotal }),
     { sold: 0, total: 0 },
+  );
+}
+
+/** Atsiėmimo sąrašas: neatšaukti lango užsakymai pagal pirkėjo vardą. */
+export async function fetchPickupList(windowId: string): Promise<AdminPickupOrderDto[]> {
+  return apiFetch<AdminPickupOrderDto[]>(
+    `/admin/orders/pickup-list?saleWindowId=${encodeURIComponent(windowId)}`,
+    { token: await token() },
   );
 }

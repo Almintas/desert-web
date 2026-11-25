@@ -1496,3 +1496,375 @@ details.group > summary {
     font-size: 0.9rem;
   }
 }
+
+/* Atsiėmimo sąrašas */
+
+.print-only {
+  display: none;
+}
+
+.pickup-header {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.pickup-header .muted {
+  margin: 0;
+}
+
+.pickup {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 900px;
+}
+
+.pickup-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.9rem 1.1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.pickup-progress p {
+  margin: 0;
+}
+
+.pickup-count {
+  font-size: 1.25rem;
+}
+
+.stock-bar.big {
+  height: 10px;
+}
+
+.pickup-progress .stock-bar > span {
+  background: #12b76a;
+}
+
+.pickup-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  /* Paieška lieka matoma slenkant ilgą sąrašą telefone. */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.5rem 0;
+  background: var(--bg);
+}
+
+.pickup-search {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.pickup-search input {
+  font: inherit;
+  font-size: 1.05rem;
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.pickup-search input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.pickup-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.checkbox-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.checkbox-inline input {
+  width: 1.15rem;
+  height: 1.15rem;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.link-button {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.pickup-orders {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 0.75rem;
+}
+
+.pickup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: 0.9rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.pickup-card.status-completed {
+  background: #f6fef9;
+  border-color: #abefc6;
+}
+
+.pickup-card p {
+  margin: 0;
+}
+
+.pickup-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+}
+
+.pickup-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin-right: auto;
+  overflow-wrap: anywhere;
+}
+
+.pickup-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+.pickup-phone {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.pickup-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pickup-items .badge {
+  margin-left: 0.4rem;
+}
+
+.pickup-notes {
+  font-size: 0.9rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--bg);
+  border-radius: 6px;
+}
+
+.pickup-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.pickup-total {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.done-mark {
+  color: #067647;
+  font-weight: 600;
+}
+
+.badge.payment-paid {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.badge.payment-unpaid {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.badge.payment-refunded {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.pickup-action {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pickup-action .alert {
+  margin: 0;
+}
+
+.pickup-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.75rem;
+  background: #fffaeb;
+  border: 1px solid #fedf89;
+  border-radius: 8px;
+}
+
+.pickup-confirm .panel-actions > .button {
+  flex: 1 1 0;
+}
+
+.button.big {
+  min-height: 3rem;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.button.wide {
+  width: 100%;
+}
+
+@media (max-width: 480px) {
+  .pickup-orders {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Spausdinimas: tik kompaktiška lentelė (A4 stačias), be navigacijos ir mygtukų. */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+  body {
+    background: #fff;
+    font-size: 10pt;
+  }
+  .sidebar,
+  .screen-only,
+  nextjs-portal {
+    display: none !important;
+  }
+  .shell {
+    display: block;
+    min-height: 0;
+  }
+  .content {
+    padding: 0;
+  }
+  .print-only {
+    display: table;
+  }
+  .pickup {
+    max-width: none;
+  }
+  .pickup-header {
+    margin-bottom: 0.5rem;
+  }
+  .pickup-header h1 {
+    font-size: 14pt;
+  }
+  .pickup-header .muted {
+    color: #000;
+  }
+  .pickup-print {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .pickup-print th,
+  .pickup-print td {
+    padding: 4px 6px;
+    border: 1px solid #999;
+    text-align: left;
+    vertical-align: top;
+  }
+  .pickup-print thead {
+    display: table-header-group;
+  }
+  .pickup-print tr {
+    break-inside: avoid;
+  }
+  .pickup-print .num {
+    text-align: right;
+  }
+  .pickup-print .check-col {
+    width: 9mm;
+    text-align: center;
+  }
+  .print-box {
+    display: inline-block;
+    width: 4.5mm;
+    height: 4.5mm;
+    border: 1px solid #000;
+    line-height: 4.5mm;
+    font-size: 9pt;
+  }
+  .print-nr,
+  .print-item {
+    display: block;
+  }
+  .print-nr {
+    color: #555;
+    font-size: 8pt;
+  }
+  .pickup-print tfoot td {
+    font-weight: 600;
+  }
+}
+
+.pickup-cta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-bottom: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: var(--radius);
+}
+
+.pickup-cta:hover {
+  filter: brightness(1.05);
+}
+
+.pickup-cta-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.pickup-cta-title::after {
+  content: ' →';
+}
+
+.pickup-cta-text {
+  opacity: 0.95;
+}

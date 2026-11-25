@@ -3,6 +3,7 @@ import {
   type AdminOrderDto,
   type AdminOrderListQuery,
   type AdminOrderListResponse,
+  type AdminPickupOrderDto,
   isFinalOrderStatus,
   objectIdSchema,
   ORDER_STATUSES,
@@ -22,6 +23,7 @@ import {
   adminIdsOf,
   toAdminOrderDto,
   toAdminOrderListItemDto,
+  toAdminPickupOrderDto,
   type WindowTitles,
 } from './admin-orders.mapper';
 
@@ -94,6 +96,26 @@ export class AdminOrdersService {
       pageSize: query.pageSize,
       counts: { ...counts, all: byStatus.reduce((sum, s) => sum + s.n, 0) },
     };
+  }
+
+  /** Atsiėmimo sąrašui: visi neatšaukti lango užsakymai, surikiuoti pagal pirkėjo vardą. */
+  async pickupList(saleWindowId: string): Promise<AdminPickupOrderDto[]> {
+    const window = await this.saleWindowModel.exists({ _id: saleWindowId }).exec();
+    if (!window) {
+      throw orderError(NotFoundException, 'SALE_WINDOW_NOT_FOUND', 'Pardavimo langas nerastas');
+    }
+    const orders = await this.orderModel
+      .find({ saleWindowId: new Types.ObjectId(saleWindowId), status: { $ne: 'cancelled' } })
+      .lean<Order[]>()
+      .exec();
+    const collator = new Intl.Collator('lt', { sensitivity: 'base', numeric: true });
+    return orders
+      .map(toAdminPickupOrderDto)
+      .sort(
+        (a, b) =>
+          collator.compare(a.customer.name, b.customer.name) ||
+          a.orderNumber.localeCompare(b.orderNumber),
+      );
   }
 
   async findById(id: string): Promise<AdminOrderDto> {

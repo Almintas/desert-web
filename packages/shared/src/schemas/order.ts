@@ -249,3 +249,28 @@ export interface AdminOrderDto extends OrderDto {
   statusHistory: OrderStatusHistoryEntryDto[];
   cancellation: { reason: string | null; cancelledAt: string; cancelledBy: string | null } | null;
 }
+
+// --- Admin: atsiėmimo sąrašas (GET /admin/orders/pickup-list) ---
+
+export const adminPickupListQuerySchema = z.object({
+  saleWindowId: objectIdSchema,
+});
+export type AdminPickupListQuery = z.infer<typeof adminPickupListQuerySchema>;
+
+/** Viena atsiėmimo sąrašo eilutė: tik tai, ko reikia prie durų. */
+export interface AdminPickupOrderDto {
+  id: string;
+  orderNumber: string;
+  customer: { name: string; phone: string };
+  items: {
+    productName: string;
+    variantName: string;
+    quantity: number;
+    giftWrapQuantity: number;
+  }[];
+  totalCents: number;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  /** Pirkėjo pastabos (null, jei nėra). */
+  notes: string | null;
+}

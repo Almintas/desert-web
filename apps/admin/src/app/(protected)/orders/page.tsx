@@ -69,6 +69,11 @@ export default async function OrdersPage({
     <>
       <div className="page-header">
         <h1>Užsakymai</h1>
+        {windowId ? (
+          <Link href={`/sale-windows/${windowId}/pickup`} className="button secondary">
+            Atsiėmimo sąrašas
+          </Link>
+        ) : null}
       </div>
 
       <form method="get" className="filters" role="search">

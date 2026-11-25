@@ -72,6 +72,9 @@ export default async function SaleWindowPage({
           <dt>Užsakymai</dt>
           <dd>
             <Link href={`/orders?window=${w.id}`}>Užsakymai ({w.ordersCount}) →</Link>
+            {w.ordersCount > 0 ? (
+              <Link href={`/sale-windows/${w.id}/pickup`}>Atsiėmimo sąrašas →</Link>
+            ) : null}
           </dd>
         </div>
         <div>
