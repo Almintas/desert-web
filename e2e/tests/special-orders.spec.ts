@@ -29,7 +29,7 @@ test.describe('Specialūs užsakymai (admin)', () => {
     await enabled.check();
     await page.getByLabel('Mažiausiai dienų iš anksto').fill('2');
     await page.getByLabel('Daugiausiai dienų į priekį').fill('60');
-    await page.getByRole('button', { name: 'Išsaugoti' }).click();
+    await page.getByRole('button', { name: 'Išsaugoti', exact: true }).click();
     await expect(page.getByRole('status')).toHaveText('Nustatymai išsaugoti.');
     await expect(page.getByLabel('Priimti specialius užsakymus')).toBeChecked();
     const config = await (await fetch(`${env.apiUrl}/special-orders/config`)).json();
