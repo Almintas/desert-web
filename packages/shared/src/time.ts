@@ -220,3 +220,72 @@ export function formatCalendarDate(date: string): string {
   const day = calendarDayFormatter.format(noon).replace(/(\d+) d\./, '$1 d.');
   return `${day}, ${calendarWeekdayFormatter.format(noon)}`;
 }
+
+// --- Santykinis laikas adminui („po 2 val. 15 min.“, „rytoj 10:00“) ---
+
+/** Galininkas: „atsidaro penktadienį 10:00“. Indeksas = Date.getUTCDay() kalendorinei datai. */
+const WEEKDAY_ACCUSATIVE = [
+  'sekmadienį',
+  'pirmadienį',
+  'antradienį',
+  'trečiadienį',
+  'ketvirtadienį',
+  'penktadienį',
+  'šeštadienį',
+] as const;
+
+const RELATIVE_DURATION_MAX_MS = 12 * 3_600_000;
+
+/** Trukmė minutėmis -> „2 val. 15 min.“, „45 min.“, „3 val.“. */
+function formatDurationMinutes(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m} min.`;
+  return m === 0 ? `${h} val.` : `${h} val. ${m} min.`;
+}
+
+/** Kiek kalendorinių dienų (Vilniaus laiku) nuo `from` iki `to` (gali būti neigiamas). */
+function calendarDayDiff(from: string, to: string): number {
+  const ms = (d: string) => calendarNoon(d).getTime();
+  return Math.round((ms(to) - ms(from)) / DAY_MS);
+}
+
+/**
+ * Paprastas santykinis laikas parduotuvės laiku, tinkamas po veiksmažodžio („uždaroma …“,
+ * „atsidaro …“, „uždarytas …“):
+ * - per 12 val. į priekį: „po 2 val. 15 min.“ (mažiau nei minutė: „po 1 min.“);
+ * - per 12 val. atgal: „prieš 40 min.“ (mažiau nei minutė: „ką tik“);
+ * - kitaip pagal dieną: „šiandien 18:00“, „rytoj 10:00“, „vakar 18:00“,
+ *   „penktadienį 10:00“ (iki 6 d. į priekį), „gruodžio 20 d. 10:00“.
+ */
+export function formatRelativeShopTime(
+  target: Date | string,
+  now: Date | string = new Date(),
+): string {
+  const targetDate = new Date(target);
+  const nowDate = new Date(now);
+  const diff = targetDate.getTime() - nowDate.getTime();
+
+  if (diff >= 0 && diff < RELATIVE_DURATION_MAX_MS) {
+    return `po ${formatDurationMinutes(Math.max(1, Math.ceil(diff / 60_000)))}`;
+  }
+  if (diff < 0 && -diff < RELATIVE_DURATION_MAX_MS) {
+    const minutes = Math.floor(-diff / 60_000);
+    return minutes < 1 ? 'ką tik' : `prieš ${formatDurationMinutes(minutes)}`;
+  }
+
+  const days = calendarDayDiff(shopToday(nowDate), shopToday(targetDate));
+  const time = formatTime(targetDate);
+  if (days === 0) return `šiandien ${time}`;
+  if (days === 1) return `rytoj ${time}`;
+  if (days === -1) return `vakar ${time}`;
+  if (days > 1 && days < 7) {
+    return `${WEEKDAY_ACCUSATIVE[calendarNoon(shopToday(targetDate)).getUTCDay()]} ${time}`;
+  }
+  return formatDateTime(targetDate);
+}
+
+/** Ar momentas `value` yra šiandien parduotuvės laiku. */
+export function isShopToday(value: Date | string, now: Date | string = new Date()): boolean {
+  return shopToday(value) === shopToday(now);
+}

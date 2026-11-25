@@ -180,9 +180,8 @@ export async function saleWindowCommandAction(
     return { error: 'Nepavyko susisiekti su serveriu. Bandyk vėliau.' };
   }
 
-  redirect(
-    command === 'delete'
-      ? '/sale-windows?done=deleted'
-      : `/sale-windows/${windowId}?done=${command}`,
-  );
+  if (command === 'delete') redirect('/sale-windows?done=deleted');
+  // Veiksmas iš apžvalgos (atidaryti / uždaryti dabar): grįžtama ten pat.
+  if (formData.get('returnTo') === 'dashboard') redirect(`/?done=${command}`);
+  redirect(`/sale-windows/${windowId}?done=${command}`);
 }

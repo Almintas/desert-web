@@ -75,21 +75,36 @@ function availableCommands(w: AdminSaleWindowDto): WindowCommand[] {
   }
 }
 
-export function WindowActions({ saleWindow }: { saleWindow: AdminSaleWindowDto }) {
+/** Apžvalgoje rodomi tik greiti veiksmai: atidaryti arba uždaryti dabar. */
+const DASHBOARD_COMMANDS: readonly WindowCommand[] = ['open-now', 'close-now'];
+
+export function WindowActions({
+  saleWindow,
+  variant = 'full',
+}: {
+  saleWindow: AdminSaleWindowDto;
+  /** `dashboard`: tik „Atidaryti dabar“ / „Uždaryti dabar“, po veiksmo grįžtama į apžvalgą. */
+  variant?: 'full' | 'dashboard';
+}) {
   const action = saleWindowCommandAction.bind(null, saleWindow.id);
   const [state, dispatch, pending] = useActionState<SaleWindowFormState, FormData>(action, {});
   const [selected, setSelected] = useState<WindowCommand | null>(null);
-  const commands = availableCommands(saleWindow);
-  if (saleWindow.phase === 'cancelled') return null;
+  const dashboard = variant === 'dashboard';
+  const commands = availableCommands(saleWindow).filter(
+    (c) => !dashboard || DASHBOARD_COMMANDS.includes(c),
+  );
+  if (saleWindow.phase === 'cancelled' || (dashboard && commands.length === 0)) return null;
 
   const info = selected ? COMMANDS[selected] : null;
 
   return (
-    <section className="panel" aria-label="Veiksmai">
+    <section className={dashboard ? 'quick-actions' : 'panel'} aria-label="Veiksmai">
       <div className="panel-actions">
-        <Link href={`/sale-windows/${saleWindow.id}/edit`} className="button">
-          Redaguoti
-        </Link>
+        {dashboard ? null : (
+          <Link href={`/sale-windows/${saleWindow.id}/edit`} className="button">
+            Redaguoti
+          </Link>
+        )}
         {commands.map((c) => (
           <button
             key={c}
@@ -104,7 +119,7 @@ export function WindowActions({ saleWindow }: { saleWindow: AdminSaleWindowDto }
         ))}
       </div>
 
-      {saleWindow.ordersCount > 0 ? (
+      {!dashboard && saleWindow.ordersCount > 0 ? (
         <p className="hint">
           Lange yra užsakymų ({saleWindow.ordersCount}), todėl grąžinti į juodraštį ar atšaukti jo
           negalima, kol jie neatšaukti.{' '}
@@ -115,6 +130,7 @@ export function WindowActions({ saleWindow }: { saleWindow: AdminSaleWindowDto }
       {info && selected ? (
         <form action={dispatch} className={`confirm${info.danger ? ' danger' : ''}`}>
           <input type="hidden" name="command" value={selected} />
+          {dashboard ? <input type="hidden" name="returnTo" value="dashboard" /> : null}
           <p>
             <strong>{info.label}?</strong> {info.confirm}
           </p>

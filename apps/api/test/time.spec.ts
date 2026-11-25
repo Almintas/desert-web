@@ -1,6 +1,8 @@
 import {
   addCalendarDays,
   formatCalendarDate,
+  formatRelativeShopTime,
+  isShopToday,
   getShopYear,
   isCalendarDate,
   shopToday,
@@ -136,5 +138,38 @@ describe('kalendorinės datos („YYYY-MM-DD“)', () => {
     expect(formatCalendarDate('2026-12-20')).toBe('gruodžio 20\u00a0d., sekmadienis');
     expect(formatCalendarDate('2026-03-29')).toBe('kovo 29\u00a0d., sekmadienis');
     expect(formatCalendarDate('2027-01-01')).toBe('sausio 1\u00a0d., penktadienis');
+  });
+});
+
+describe('formatRelativeShopTime (Europe/Vilnius)', () => {
+  // 2026-12-18 (penktadienis) 10:00 Vilniuje = 08:00 UTC.
+  const now = '2026-12-18T08:00:00Z';
+
+  it.each([
+    ['2026-12-18T10:15:00Z', 'po 2 val. 15 min.'],
+    ['2026-12-18T08:45:00Z', 'po 45 min.'],
+    ['2026-12-18T11:00:00Z', 'po 3 val.'],
+    ['2026-12-18T08:00:20Z', 'po 1 min.'],
+    ['2026-12-18T07:20:00Z', 'prieš 40 min.'],
+    ['2026-12-18T07:59:40Z', 'ką tik'],
+    ['2026-12-18T20:30:00Z', 'šiandien 22:30'],
+    ['2026-12-19T08:00:00Z', 'rytoj 10:00'],
+    ['2026-12-17T16:00:00Z', 'vakar 18:00'],
+    ['2026-12-22T08:00:00Z', 'antradienį 10:00'],
+    ['2026-12-28T08:00:00Z', 'gruodžio 28\u00a0d. 10:00'],
+  ])('%s -> %s', (target, expected) => {
+    expect(formatRelativeShopTime(target, now)).toBe(expected);
+  });
+
+  it('„rytoj“ skaičiuojamas Vilniaus, ne UTC dienomis', () => {
+    // 23:30 Vilniuje (21:30 UTC); po 13 val. jau kita Vilniaus diena.
+    expect(formatRelativeShopTime('2026-12-19T10:30:00Z', '2026-12-18T21:30:00Z')).toBe(
+      'rytoj 12:30',
+    );
+  });
+
+  it('isShopToday pagal Vilniaus dieną', () => {
+    expect(isShopToday('2026-12-18T21:59:00Z', now)).toBe(true);
+    expect(isShopToday('2026-12-18T22:01:00Z', now)).toBe(false);
   });
 });
