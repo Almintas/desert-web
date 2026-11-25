@@ -1,7 +1,13 @@
 import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { SELLER, SHOP_NAME, sellerDisplayName, telHref } from '@desert-web/shared';
+import {
+  SELLER,
+  SELLER_BUSINESS_ID_LABEL,
+  SHOP_NAME,
+  sellerDisplayName,
+  telHref,
+} from '@desert-web/shared';
 import { Wordmark } from '@/components/wordmark';
 import { SHOP_DESCRIPTION } from '@/lib/shop';
 import { bodyFont, displayFont } from './fonts';
@@ -54,8 +60,21 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <footer className="site-footer">
           <div className="site-footer-inner">
             <p className="footer-shop">{SHOP_NAME}</p>
+            {/* Kiekvienas laukas atskiroje eilutėje; neužpildyti (TODO) praleidžiami. */}
             <p>
               Parduoda: {sellerDisplayName()}
+              {SELLER.businessId ? (
+                <>
+                  <br />
+                  {SELLER_BUSINESS_ID_LABEL} {SELLER.businessId}
+                </>
+              ) : null}
+              {SELLER.address ? (
+                <>
+                  <br />
+                  {SELLER.address}
+                </>
+              ) : null}
               {SELLER.email || SELLER.phone ? <br /> : null}
               {SELLER.email ? <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a> : null}
               {SELLER.email && SELLER.phone ? ' · ' : null}

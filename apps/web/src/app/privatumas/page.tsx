@@ -1,6 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SELLER, SHOP_NAME, sellerDisplayName, telHref } from '@desert-web/shared';
+import {
+  SELLER,
+  SELLER_BUSINESS_ID_LABEL,
+  SHOP_NAME,
+  sellerDisplayName,
+  telHref,
+} from '@desert-web/shared';
 
 export const metadata: Metadata = {
   title: 'Privatumas',
@@ -64,7 +70,7 @@ export default function PrivacyPage() {
         {SELLER.businessId ? (
           <>
             <br />
-            {SELLER.businessId}
+            {SELLER_BUSINESS_ID_LABEL} {SELLER.businessId}
           </>
         ) : null}
         {SELLER.address ? (

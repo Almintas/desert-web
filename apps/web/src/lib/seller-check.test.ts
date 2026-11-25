@@ -4,7 +4,7 @@ import { BLOCK_PRODUCTION_WITHOUT_SELLER, sellerBuildCheck } from './seller-chec
 
 const FILLED: SellerDetails = {
   name: 'Vardenis Pavardenis',
-  businessId: 'IV pažyma Nr. 123456',
+  businessId: '123456',
   address: 'Gedimino pr. 1, Vilnius',
   email: 'info@example.lt',
   phone: '+370 600 12345',

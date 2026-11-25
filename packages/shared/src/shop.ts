@@ -20,14 +20,17 @@ export type SellerDetails = Readonly<Record<SellerField, string>>;
  * įjunkite BLOCK_PRODUCTION_WITHOUT_SELLER (apps/web/src/lib/seller-check.ts).
  */
 export const SELLER: SellerDetails = {
-  /** Vardas ir pavardė (individuali veikla) arba įmonės pavadinimas. TODO */
-  name: '',
-  /** Individualios veiklos pažymos Nr. arba įmonės kodas. TODO */
+  /** Vardas ir pavardė (individuali veikla) arba įmonės pavadinimas. */
+  name: 'Ieva Speciūtė',
+  /**
+   * Individualios veiklos pažymos Nr. arba įmonės kodas: tik numeris, be „IV pažymos Nr.“
+   * (etiketę prideda rodymas, žr. SELLER_BUSINESS_ID_LABEL). TODO
+   */
   businessId: '',
-  /** Adresas. TODO */
-  address: '',
-  /** El. paštas pirkėjams (ir Reply-To laiškuose). TODO */
-  email: '',
+  /** Adresas. */
+  address: 'Kovo 11-osios g. 33, Kaunas',
+  /** El. paštas pirkėjams (ir Reply-To laiškuose). */
+  email: 'ieva@vincentomacarons.lt',
   /** Telefonas, pvz., +370 600 12345. TODO */
   phone: '',
 };
@@ -39,6 +42,9 @@ export const SELLER_FIELD_LABELS: Record<SellerField, string> = {
   email: 'El. paštas',
   phone: 'Telefonas',
 };
+
+/** Trumpa businessId etiketė prieš numerį (poraštė, privatumo puslapis). */
+export const SELLER_BUSINESS_ID_LABEL = 'IV pažymos Nr.';
 
 /** Dar neužpildyti (TODO) pardavėjo laukai. */
 export function sellerTodoFields(seller: SellerDetails = SELLER): SellerField[] {
