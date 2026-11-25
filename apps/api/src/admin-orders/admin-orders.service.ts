@@ -1,5 +1,8 @@
 import {
   type AdminDto,
+  type AdminOrderBulkResultDto,
+  type AdminOrderBulkStatusResponse,
+  type BulkOrderStatus,
   type AdminOrderDto,
   type AdminOrderListQuery,
   type AdminOrderListResponse,
@@ -11,7 +14,13 @@ import {
   type OrderStatus,
   orderStatusesAllowingTransitionTo,
 } from '@desert-web/shared';
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  HttpException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { type ClientSession, type Connection, type Model, type FilterQuery, Types } from 'mongoose';
 import { customerSearchConditions } from '../common/customer-search';
@@ -49,6 +58,8 @@ function transitionMessage(from: OrderStatus, to: OrderStatus): string {
 
 @Injectable()
 export class AdminOrdersService {
+  private readonly logger = new Logger(AdminOrdersService.name);
+
   constructor(
     @InjectConnection() private readonly connection: Connection,
     @InjectModel(Order.name) private readonly orderModel: Model<Order>,
@@ -210,6 +221,85 @@ export class AdminOrdersService {
     // Tik po commit'o ir fone: laiško klaida perėjimo neatšaukia ir atsakymo nelaiko.
     this.notifications.orderStatusChanged(updated, to);
     return this.toDto(updated);
+  }
+
+  /**
+   * Masinis būsenos keitimas: kiekvienas užsakymas paeiliui per changeStatus (todėl istorija,
+   * apmokėjimas ir laiškai lygiai tokie patys kaip keičiant po vieną). Ne „viskas arba nieko“:
+   * vieno klaida kitų nestabdo. Jau esantis tos būsenos užsakymas laikomas sėkme (`unchanged`)
+   * ir laiško antrą kartą negauna (changeStatus jį atmeta prieš siunčiant).
+   */
+  async bulkChangeStatus(
+    ids: string[],
+    to: BulkOrderStatus,
+    admin: AdminDto,
+  ): Promise<AdminOrderBulkStatusResponse> {
+    const results: AdminOrderBulkResultDto[] = [];
+    for (const id of ids) results.push(await this.bulkOne(id, to, admin));
+    const count = (outcome: AdminOrderBulkResultDto['outcome']) =>
+      results.filter((r) => r.outcome === outcome).length;
+    return {
+      results,
+      summary: { updated: count('updated'), unchanged: count('unchanged'), failed: count('error') },
+    };
+  }
+
+  private async bulkOne(
+    id: string,
+    to: BulkOrderStatus,
+    admin: AdminDto,
+  ): Promise<AdminOrderBulkResultDto> {
+    try {
+      const order = await this.changeStatus(id, to, admin);
+      return { id, outcome: 'updated', orderNumber: order.orderNumber, status: order.status };
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        this.logger.error(`Bulk status ${id} -> ${to} failed`, error as Error);
+        const current = await this.orderModel
+          .findById(id, { orderNumber: 1, status: 1 })
+          .lean<Order>()
+          .exec()
+          .catch(() => null);
+        return {
+          id,
+          outcome: 'error',
+          orderNumber: current?.orderNumber ?? null,
+          status: current?.status ?? null,
+          code: 'UNKNOWN',
+          message: 'Nepavyko pakeisti būsenos. Bandyk dar kartą.',
+        };
+      }
+      const body = error.getResponse() as {
+        code?: OrderErrorCode;
+        message?: string;
+        status?: OrderStatus;
+      };
+      if (body.code === 'ORDER_NOT_FOUND') {
+        return {
+          id,
+          outcome: 'error',
+          orderNumber: null,
+          status: null,
+          code: 'ORDER_NOT_FOUND',
+          message: body.message ?? 'Užsakymas nerastas',
+        };
+      }
+      const current = await this.orderModel
+        .findById(id, { orderNumber: 1, status: 1 })
+        .lean<Pick<Order, 'orderNumber' | 'status'>>()
+        .exec();
+      if (body.code === 'INVALID_STATUS_TRANSITION' && body.status === to) {
+        return { id, outcome: 'unchanged', orderNumber: current?.orderNumber ?? '', status: to };
+      }
+      return {
+        id,
+        outcome: 'error',
+        orderNumber: current?.orderNumber ?? null,
+        status: current?.status ?? body.status ?? null,
+        code: body.code ?? 'UNKNOWN',
+        message: body.message ?? error.message,
+      };
+    }
   }
 
   /** Grąžina atšaukto užsakymo kiekius į langą (vienas atominis $inc su arrayFilters). */

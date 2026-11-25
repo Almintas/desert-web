@@ -1,14 +1,9 @@
-import {
-  formatEur,
-  formatShopDateTime,
-  ORDER_STATUSES,
-  type OrderStatus,
-} from '@desert-web/shared';
+import { formatShopDateTime, ORDER_STATUSES, type OrderStatus } from '@desert-web/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { fetchOrders, fetchWindowsForFilter } from './data';
-import { FULFILLMENT_LABELS, ORDER_STATUS_TABS } from './labels';
-import { OrderStatusBadge } from './status-badge';
+import { ORDER_STATUS_TABS } from './labels';
+import { OrdersTable } from './orders-table';
 
 export const metadata: Metadata = { title: 'Užsakymai' };
 
@@ -119,62 +114,12 @@ export default async function OrdersPage({
         })}
       </nav>
 
-      {result.items.length === 0 ? (
-        <p className="muted">{q ? 'Pagal paiešką užsakymų nerasta.' : 'Užsakymų nėra.'}</p>
-      ) : (
-        <div className="table-wrap">
-          <table className="table">
-            <thead>
-              <tr>
-                <th scope="col">Nr.</th>
-                <th scope="col">Būsena</th>
-                <th scope="col">Pirkėjas</th>
-                <th scope="col">Suma</th>
-                <th scope="col">Vnt.</th>
-                <th scope="col">Būdas</th>
-                {windowId ? null : <th scope="col">Langas</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {result.items.map((o) => (
-                <tr key={o.id}>
-                  <td className="nowrap">
-                    <Link href={`/orders/${o.id}`} className="strong">
-                      {o.orderNumber}
-                    </Link>
-                    <span className="muted small">{formatShopDateTime(o.createdAt)}</span>
-                  </td>
-                  <td>
-                    <OrderStatusBadge status={o.status} />
-                  </td>
-                  <td>
-                    {o.customer.name}
-                    <span className="muted small nowrap">{o.customer.phone}</span>
-                  </td>
-                  <td className="nowrap">{formatEur(o.totalCents)}</td>
-                  <td className="nowrap">
-                    {o.itemCount}
-                    {o.giftWrapQuantity > 0 ? (
-                      <span
-                        className="badge gift"
-                        title={`Supakuoti kaip dovaną: ${o.giftWrapQuantity} vnt.`}
-                      >
-                        Dovana
-                      </span>
-                    ) : null}
-                  </td>
-                  <td>{FULFILLMENT_LABELS[o.fulfillmentMethod]}</td>
-                  {windowId ? null : (
-                    <td>
-                      <Link href={`/sale-windows/${o.saleWindow.id}`}>{o.saleWindow.title}</Link>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* Visada rodoma (ir tuščia), kad po masinio veiksmo santrauka liktų matoma. */}
+      <OrdersTable
+        items={result.items}
+        showWindow={!windowId}
+        emptyText={q ? 'Pagal paiešką užsakymų nerasta.' : 'Užsakymų nėra.'}
+      />
 
       {pages > 1 ? (
         <nav className="pagination" aria-label="Puslapiai">

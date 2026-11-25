@@ -274,3 +274,46 @@ export interface AdminPickupOrderDto {
   /** Pirkėjo pastabos (null, jei nėra). */
   notes: string | null;
 }
+
+// --- Admin: masinis būsenos keitimas (POST /admin/orders/bulk-status) ---
+
+/** Masiškai leidžiamos tik šios būsenos (atšaukimui reikia priežasties, jis lieka po vieną). */
+export const BULK_ORDER_STATUSES = ['confirmed', 'ready'] as const;
+export type BulkOrderStatus = (typeof BULK_ORDER_STATUSES)[number];
+export const BULK_ORDER_MAX_IDS = 100;
+
+export const adminOrderBulkStatusInputSchema = z.object({
+  ids: z
+    .array(objectIdSchema)
+    .min(1, 'Pasirink bent vieną užsakymą')
+    .max(BULK_ORDER_MAX_IDS, `Vienu kartu galima ne daugiau kaip ${BULK_ORDER_MAX_IDS} užsakymų`)
+    .refine((ids) => new Set(ids.map((id) => id.toLowerCase())).size === ids.length, {
+      message: 'Užsakymai kartojasi',
+    }),
+  status: z.enum(BULK_ORDER_STATUSES, { error: 'Masiškai galima tik patvirtinti arba paruošti' }),
+});
+export type AdminOrderBulkStatusInput = z.infer<typeof adminOrderBulkStatusInputSchema>;
+
+/**
+ * Vieno užsakymo rezultatas: `updated` (būsena pakeista, laiškas išsiųstas kaip įprastai),
+ * `unchanged` (jau buvo šios būsenos: sėkmė, antro laiško nėra), `error` (`code`, `message`).
+ */
+export type AdminOrderBulkResultDto =
+  | { id: string; outcome: 'updated'; orderNumber: string; status: OrderStatus }
+  | { id: string; outcome: 'unchanged'; orderNumber: string; status: OrderStatus }
+  | {
+      id: string;
+      outcome: 'error';
+      /** null, kai užsakymas nerastas. */
+      orderNumber: string | null;
+      /** Dabartinė būsena (null, kai nerastas). */
+      status: OrderStatus | null;
+      code: OrderErrorCode | 'UNKNOWN';
+      message: string;
+    };
+
+export interface AdminOrderBulkStatusResponse {
+  /** Ta pačia tvarka kaip `ids` užklausoje. */
+  results: AdminOrderBulkResultDto[];
+  summary: { updated: number; unchanged: number; failed: number };
+}

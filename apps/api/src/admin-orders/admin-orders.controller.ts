@@ -6,6 +6,9 @@ import {
   type AdminOrderListQuery,
   adminOrderListQuerySchema,
   type AdminOrderListResponse,
+  type AdminOrderBulkStatusInput,
+  adminOrderBulkStatusInputSchema,
+  type AdminOrderBulkStatusResponse,
   type AdminOrderStatusInput,
   type AdminPickupListQuery,
   adminPickupListQuerySchema,
@@ -71,6 +74,19 @@ export class AdminOrdersController {
       });
     }
     return this.orders.changeStatus(id, body.status, admin);
+  }
+
+  /**
+   * Masinis patvirtinimas / paruošimas. Kiekvienas užsakymas atskirai per changeStatus (istorija
+   * ir laiškai kaip po vieną), ne „viskas arba nieko“. Teisės tokios pat kaip `:id/status`.
+   */
+  @Post('bulk-status')
+  @HttpCode(HttpStatus.OK)
+  bulkStatus(
+    @Body(new ZodValidationPipe(adminOrderBulkStatusInputSchema)) body: AdminOrderBulkStatusInput,
+    @CurrentAdmin() admin: AdminDto,
+  ): Promise<AdminOrderBulkStatusResponse> {
+    return this.orders.bulkChangeStatus(body.ids, body.status, admin);
   }
 
   @Post(':id/cancel')

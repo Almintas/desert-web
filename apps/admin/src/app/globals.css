@@ -1868,3 +1868,61 @@ details.group > summary {
 .pickup-cta-text {
   opacity: 0.95;
 }
+
+/* Užsakymų sąrašas: pasirinkimas ir masiniai veiksmai */
+
+.orders-table .select-col {
+  width: 1%;
+  padding-right: 0.25rem;
+}
+
+.orders-table input[type='checkbox'] {
+  width: 1.2rem;
+  height: 1.2rem;
+  margin: 0.1rem 0 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.orders-table input[type='checkbox']:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+
+.orders-table tr.selected td {
+  background: #fdf2f6;
+}
+
+.bulk-bar {
+  position: sticky;
+  bottom: 0.75rem;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem 1rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.12);
+}
+
+.bulk-bar p {
+  margin: 0;
+}
+
+.table-wrap[hidden] {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .bulk-bar .panel-actions {
+    width: 100%;
+  }
+  .bulk-bar .panel-actions > .button {
+    flex: 1 1 0;
+  }
+}
