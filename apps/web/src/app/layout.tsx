@@ -11,7 +11,7 @@ import {
 import { SocialLinks } from '@/components/social-links';
 import { Wordmark } from '@/components/wordmark';
 import { SHOP_DESCRIPTION } from '@/lib/shop';
-import { bodyFont, displayFont } from './fonts';
+import { bodyFont, displayFont, headingFont } from './fonts';
 import './globals.css';
 
 /**
@@ -45,7 +45,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="lt" className={`${displayFont.variable} ${bodyFont.variable}`}>
+    <html
+      lang="lt"
+      className={`${displayFont.variable} ${headingFont.variable} ${bodyFont.variable}`}
+    >
       <body>
         <a href="#turinys" className="skip-link">
           Pereiti prie turinio

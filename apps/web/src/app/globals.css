@@ -19,12 +19,16 @@
   --radius: 16px;
   --radius-sm: 10px;
   --shadow: 0 1px 2px rgb(58 42 36 / 6%), 0 4px 16px rgb(58 42 36 / 6%);
-  /* --font-manrope / --font-bodoni: next/font (žr. src/app/fonts.ts). */
+  /*
+   * --font-manrope / --font-fraunces / --font-bodoni: next/font (žr. src/app/fonts.ts).
+   * Bodoni (--font-display) tik logotipui; antraštės ir prekių pavadinimai – Fraunces.
+   */
   --font-body:
     var(--font-manrope), system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     sans-serif;
   --font-display: var(--font-bodoni), Didot, 'Bodoni 72', 'Bodoni MT', Georgia, serif;
-  --font-heading: var(--font-display);
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-heading: var(--font-serif);
   --container: 1160px;
   --gutter: 16px;
   color-scheme: light;
@@ -54,14 +58,16 @@ body {
 }
 
 /*
- * Bodoni Moda kaip logotipas: optinį dydį (opsz) naršyklė parenka pagal šrifto dydį, storis 500
- * (400 smulkesnėse antraštėse per plonos plaukinės linijos, 600 per sunkus šalia logotipo).
+ * Fraunces: optinį dydį (opsz) naršyklė parenka pagal šrifto dydį, SOFT 50 suapvalina kampus
+ * (šilčiau, dera prie Manrope). Storis 500: 400 smulkiose h3 telefone per šviesus, 600 per
+ * sunkus šalia plono Bodoni logotipo.
  */
 h1,
 h2,
 h3 {
   font-family: var(--font-heading);
   font-weight: 500;
+  font-variation-settings: 'SOFT' 50;
   line-height: 1.15;
   /* Skaitmenys visada vienodo aukščio („2026“ nešokinėja). */
   font-variant-numeric: lining-nums;
@@ -228,8 +234,9 @@ img {
 }
 
 .footer-shop {
-  font-family: var(--font-display);
-  font-weight: 400;
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-variation-settings: 'SOFT' 50;
   line-height: 1.1;
   color: var(--ink);
 }
@@ -435,8 +442,6 @@ img {
 
 .hero-title {
   font-size: clamp(2rem, 7.4vw, 3.25rem);
-  /* Didelis šūkis lengvesnis, kaip logotipas. */
-  font-weight: 400;
   line-height: 1.05;
   margin: 0 0 0.4rem;
   text-wrap: balance;
