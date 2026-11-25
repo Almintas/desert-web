@@ -5,7 +5,7 @@ import {
   formatEur,
   PAYMENT_TEXT,
   type PublicSaleWindowDto,
-  SELLER,
+  type SellerDetails,
   telHref,
 } from '@desert-web/shared';
 import Link from 'next/link';
@@ -41,6 +41,7 @@ export function CheckoutForm({
   backHref,
   selectedVariantId,
   turnstileSiteKey,
+  seller,
 }: {
   saleWindow: PublicSaleWindowDto;
   /** Šio lango prekių puslapis. */
@@ -49,6 +50,8 @@ export function CheckoutForm({
   selectedVariantId: string | null;
   /** Cloudflare Turnstile site key (NEXT_TURNSTILE_SITE_KEY, žr. lib/env.ts). */
   turnstileSiteKey: string;
+  /** Pardavėjo kontaktai (iš admin nustatymų). */
+  seller: Pick<SellerDetails, 'email' | 'phone'>;
 }) {
   const router = useRouter();
   const [saleWindow, setSaleWindow] = useState(initialWindow);
@@ -292,13 +295,13 @@ export function CheckoutForm({
           <CheckoutFacts saleWindow={saleWindow} />
           {empty && !selected ? null : (
             <p className="allergy-note">
-              {/* Pastaba rodoma visada; kontaktai tik užpildyti (TODO laukai praleidžiami). */}
-              {SELLER.email || SELLER.phone ? (
+              {/* Pastaba rodoma visada; kontaktai tik užpildyti (tušti laukai praleidžiami). */}
+              {seller.email || seller.phone ? (
                 <>
                   Jei turite alergijų ar klausimų dėl sudėties, prieš užsakydami susisiekite:{' '}
-                  {SELLER.email ? <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a> : null}
-                  {SELLER.email && SELLER.phone ? ' · ' : null}
-                  {SELLER.phone ? <a href={telHref(SELLER.phone)}>{SELLER.phone}</a> : null}
+                  {seller.email ? <a href={`mailto:${seller.email}`}>{seller.email}</a> : null}
+                  {seller.email && seller.phone ? ' · ' : null}
+                  {seller.phone ? <a href={telHref(seller.phone)}>{seller.phone}</a> : null}
                 </>
               ) : (
                 'Jei turite alergijų ar klausimų dėl sudėties, prieš užsakydami susisiekite su mumis.'

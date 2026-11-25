@@ -3,7 +3,7 @@ import {
   formatEur,
   formatPickupRange,
   PAYMENT_TEXT,
-  SELLER,
+  type SellerDetails,
   sellerDisplayName,
   SHOP_NAME,
 } from '@desert-web/shared';
@@ -35,6 +35,8 @@ export interface OrderEmailData {
   orderUrl: string | null;
   /** `${ADMIN_URL}/orders/<id>`; null, jei ADMIN_URL nenustatytas. */
   adminOrderUrl: string | null;
+  /** Pardavėjo duomenys iš nustatymų (laiško poraštė; tušti laukai praleidžiami). */
+  seller: SellerDetails;
 }
 
 export interface RenderedEmail {
@@ -239,20 +241,20 @@ function boxHtml(colors: { bg: string; border: string }, html: string): string {
   return `<div style="margin:0 0 16px;padding:16px;background:${colors.bg};border-left:4px solid ${colors.border};border-radius:4px;">${html}</div>`;
 }
 
-/** Pardavėjo kontaktai laiško poraštėje (neužpildyti laukai praleidžiami, žr. SELLER). */
-function sellerContactsHtml(): string {
+/** Pardavėjo kontaktai laiško poraštėje (neužpildyti laukai praleidžiami). */
+function sellerContactsHtml(seller: SellerDetails): string {
   const parts = [
-    SELLER.email
-      ? `<a href="mailto:${escapeHtml(SELLER.email)}" style="color:${COLORS.muted};">${escapeHtml(SELLER.email)}</a>`
+    seller.email
+      ? `<a href="mailto:${escapeHtml(seller.email)}" style="color:${COLORS.muted};">${escapeHtml(seller.email)}</a>`
       : '',
-    SELLER.phone ? escapeHtml(SELLER.phone) : '',
+    seller.phone ? escapeHtml(seller.phone) : '',
   ].filter(Boolean);
   return parts.length > 0 ? `${parts.join(' · ')}<br>\n` : '';
 }
 
-function customerFooterHtml(): string {
-  return `${escapeHtml(sellerDisplayName())}<br>
-${sellerContactsHtml()}Šį laišką gavote, nes pateikėte užsakymą parduotuvėje ${escapeHtml(SHOP_NAME)}. Klausimų turite? Tiesiog atsakykite į šį laišką.`;
+function customerFooterHtml(seller: SellerDetails): string {
+  return `${escapeHtml(sellerDisplayName(seller))}<br>
+${sellerContactsHtml(seller)}Šį laišką gavote, nes pateikėte užsakymą parduotuvėje ${escapeHtml(SHOP_NAME)}. Klausimų turite? Tiesiog atsakykite į šį laišką.`;
 }
 
 // --- Tekstinės dalys ---
@@ -270,11 +272,11 @@ function itemsText(data: OrderEmailData): string {
 const rowsText = (rows: [string, string][]) =>
   rows.map(([label, value]) => `${label}: ${value}`).join('\n');
 
-function customerFooterText(): string {
+function customerFooterText(seller: SellerDetails): string {
   return [
     '--',
-    sellerDisplayName(),
-    [SELLER.email, SELLER.phone].filter(Boolean).join(' · '),
+    sellerDisplayName(seller),
+    [seller.email, seller.phone].filter(Boolean).join(' · '),
     `Šį laišką gavote, nes pateikėte užsakymą parduotuvėje ${SHOP_NAME}. Klausimų turite? Tiesiog atsakykite į šį laišką.`,
   ]
     .filter((line) => line.length > 0)
@@ -316,7 +318,7 @@ export function renderCustomerOrderReceived(data: OrderEmailData): RenderedEmail
       detailsHtml(plainRows(details)),
       data.orderUrl ? buttonHtml(data.orderUrl, 'Peržiūrėti užsakymą') : '',
     ].join('\n'),
-    footer: customerFooterHtml(),
+    footer: customerFooterHtml(data.seller),
     orderNumber: data.orderNumber,
   });
 
@@ -326,7 +328,7 @@ export function renderCustomerOrderReceived(data: OrderEmailData): RenderedEmail
     `Užsakymas:\n${itemsText(data)}`,
     rowsText(details),
     data.orderUrl && `${linkIntro}\n${data.orderUrl}`,
-    customerFooterText(),
+    customerFooterText(data.seller),
   ]);
   return { subject, html, text };
 }
@@ -366,7 +368,7 @@ function renderConfirmed(data: OrderEmailData): RenderedEmail {
       detailsHtml(plainRows(details)),
       data.orderUrl ? buttonHtml(data.orderUrl, 'Peržiūrėti užsakymą') : '',
     ].join('\n'),
-    footer: customerFooterHtml(),
+    footer: customerFooterHtml(data.seller),
     orderNumber: data.orderNumber,
   });
 
@@ -376,7 +378,7 @@ function renderConfirmed(data: OrderEmailData): RenderedEmail {
     `Užsakymas:\n${itemsText(data)}`,
     rowsText(details),
     data.orderUrl && `Užsakymas internete:\n${data.orderUrl}`,
-    customerFooterText(),
+    customerFooterText(data.seller),
   ]);
   return { subject, html, text };
 }
@@ -407,7 +409,7 @@ ${detailsHtml(rows.map(([label, value]) => [label, `<strong>${multiline(value)}<
       itemsTableHtml(data),
       data.orderUrl ? buttonHtml(data.orderUrl, 'Peržiūrėti užsakymą') : '',
     ].join('\n'),
-    footer: customerFooterHtml(),
+    footer: customerFooterHtml(data.seller),
     orderNumber: data.orderNumber,
   });
 
@@ -418,7 +420,7 @@ ${detailsHtml(rows.map(([label, value]) => [label, `<strong>${multiline(value)}<
     pay,
     `Užsakymas:\n${itemsText(data)}`,
     data.orderUrl && `Užsakymas internete:\n${data.orderUrl}`,
-    customerFooterText(),
+    customerFooterText(data.seller),
   ]);
   return { subject, html, text };
 }
@@ -449,7 +451,7 @@ function renderCancelled(data: OrderEmailData): RenderedEmail {
       itemsTableHtml(data),
       data.orderUrl ? buttonHtml(data.orderUrl, 'Peržiūrėti užsakymą') : '',
     ].join('\n'),
-    footer: customerFooterHtml(),
+    footer: customerFooterHtml(data.seller),
     orderNumber: data.orderNumber,
   });
 
@@ -460,7 +462,7 @@ function renderCancelled(data: OrderEmailData): RenderedEmail {
     contact,
     `Atšauktas užsakymas:\n${itemsText(data)}`,
     data.orderUrl && `Užsakymas internete:\n${data.orderUrl}`,
-    customerFooterText(),
+    customerFooterText(data.seller),
   ]);
   return { subject, html, text };
 }

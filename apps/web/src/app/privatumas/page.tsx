@@ -1,19 +1,20 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-  SELLER,
   SELLER_BUSINESS_ID_LABEL,
   SHOP_NAME,
   sellerDisplayName,
   telHref,
 } from '@desert-web/shared';
+import { getShopInfo } from '@/lib/shop-info';
 
 export const metadata: Metadata = {
   title: 'Privatumas',
   description: `Kokius duomenis renka ${SHOP_NAME} ir kam jie naudojami.`,
 };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const { seller } = await getShopInfo();
   return (
     <article className="prose">
       <h1>Privatumas</h1>
@@ -66,29 +67,29 @@ export default function PrivacyPage() {
         arba paskambinkite:
       </p>
       <p>
-        {sellerDisplayName()}
-        {SELLER.businessId ? (
+        {sellerDisplayName(seller)}
+        {seller.businessId ? (
           <>
             <br />
-            {SELLER_BUSINESS_ID_LABEL} {SELLER.businessId}
+            {SELLER_BUSINESS_ID_LABEL} {seller.businessId}
           </>
         ) : null}
-        {SELLER.address ? (
+        {seller.address ? (
           <>
             <br />
-            {SELLER.address}
+            {seller.address}
           </>
         ) : null}
-        {SELLER.email ? (
+        {seller.email ? (
           <>
             <br />
-            <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a>
+            <a href={`mailto:${seller.email}`}>{seller.email}</a>
           </>
         ) : null}
-        {SELLER.phone ? (
+        {seller.phone ? (
           <>
             <br />
-            <a href={telHref(SELLER.phone)}>{SELLER.phone}</a>
+            <a href={telHref(seller.phone)}>{seller.phone}</a>
           </>
         ) : null}
       </p>

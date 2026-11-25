@@ -20,6 +20,46 @@ export const SpecialOrderSettingsFieldsSchema = SchemaFactory.createForClass(
 );
 
 /**
+ * Parduotuvės informacija. Laukai be numatytųjų reikšmių: kol jų nėra (dokumentas dar
+ * neišsaugotas), skaitant naudojamos DEFAULT_SHOP_INFO (žr. SettingsService). Tuščia eilutė
+ * yra tikra reikšmė („nerodoma“).
+ */
+@Schema({ _id: false })
+export class ShopSellerFields {
+  @Prop() name?: string;
+  @Prop() businessId?: string;
+  @Prop() address?: string;
+  @Prop() email?: string;
+  @Prop() phone?: string;
+}
+
+@Schema({ _id: false })
+export class ShopSocialFields {
+  @Prop() facebook?: string;
+  @Prop() instagram?: string;
+  @Prop() tiktok?: string;
+}
+
+@Schema({ _id: false })
+export class ShopTextsFields {
+  @Prop() tagline?: string;
+  @Prop() subtagline?: string;
+}
+
+@Schema({ _id: false })
+export class ShopFields {
+  @Prop({ type: SchemaFactory.createForClass(ShopSellerFields) })
+  seller?: ShopSellerFields;
+
+  @Prop({ type: SchemaFactory.createForClass(ShopSocialFields) })
+  social?: ShopSocialFields;
+
+  @Prop({ type: SchemaFactory.createForClass(ShopTextsFields) })
+  texts?: ShopTextsFields;
+}
+export const ShopFieldsSchema = SchemaFactory.createForClass(ShopFields);
+
+/**
  * Parduotuvės nustatymai: vienas dokumentas `_id: 'global'`. Kuriamas tingiai (pirmą kartą
  * adminui atidarius ar išsaugojus nustatymus); kol jo nėra, galioja numatytosios reikšmės.
  */
@@ -30,6 +70,10 @@ export class Settings {
 
   @Prop({ type: SpecialOrderSettingsFieldsSchema, default: () => ({}) })
   specialOrders!: SpecialOrderSettingsFields;
+
+  /** Nėra, kol owner parduotuvės informacijos neišsaugojo (galioja DEFAULT_SHOP_INFO). */
+  @Prop({ type: ShopFieldsSchema })
+  shop?: ShopFields;
 
   createdAt!: Date;
   updatedAt!: Date;

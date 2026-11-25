@@ -1,4 +1,10 @@
-import { type AdminDto, formatShopDate } from '@desert-web/shared';
+import {
+  type AdminDto,
+  formatShopDate,
+  SELLER_FIELD_LABELS,
+  sellerTodoFields,
+  type SettingsDto,
+} from '@desert-web/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { apiFetch } from '@/lib/api';
@@ -51,14 +57,17 @@ export default async function DashboardPage({
   const admin = await requireAdmin();
   const isOwner = admin.role === 'owner';
   const token = await getSessionToken();
-  const [{ done }, windows, orders, requested, admins] = await Promise.all([
+  const [{ done }, windows, orders, requested, admins, settings] = await Promise.all([
     searchParams,
     fetchSaleWindows(),
     // Tik skaičiai pagal būseną (visuose languose).
     fetchOrders({ pageSize: '1' }),
     fetchRequestedCount(),
     isOwner ? apiFetch<AdminDto[]>('/admin/admins', { token }) : Promise.resolve([]),
+    // Įspėjimui apie neužpildytus pardavėjo duomenis (klaida neturi sugadinti apžvalgos).
+    apiFetch<SettingsDto>('/admin/settings', { token }).catch(() => null),
   ]);
+  const missingSeller = settings ? sellerTodoFields(settings.shop.seller) : [];
   const now = new Date();
   const current = pickDashboardWindow(windows);
   // Atsiėmimas šiandien: mygtukas į sąrašą, jei lange yra patvirtintų ar paruoštų užsakymų.
@@ -82,6 +91,21 @@ export default async function DashboardPage({
         <p className="alert success" role="status">
           {doneMessage}
         </p>
+      ) : null}
+
+      {missingSeller.length > 0 ? (
+        <div className="alert warning" role="status">
+          <p>
+            <strong>Neužpildyti pardavėjo duomenys:</strong>{' '}
+            {missingSeller.map((f) => SELLER_FIELD_LABELS[f]).join(', ')}. Pirkėjai turi matyti, kas
+            parduoda.
+          </p>
+          <p>
+            <Link href="/settings#shop" className="strong">
+              {isOwner ? 'Užpildyti nustatymuose →' : 'Peržiūrėti nustatymus →'}
+            </Link>
+          </p>
+        </div>
       ) : null}
 
       {pickups.map(({ window: w, waiting }) => (

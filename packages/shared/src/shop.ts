@@ -11,28 +11,59 @@ export const SELLER_FIELDS = ['name', 'businessId', 'address', 'email', 'phone']
 export type SellerField = (typeof SELLER_FIELDS)[number];
 export type SellerDetails = Readonly<Record<SellerField, string>>;
 
+/** Socialiniai tinklai, kurių ikonas moka rodyti poraštė (ši tvarka = rodymo tvarka). */
+export const SOCIAL_NETWORKS = ['facebook', 'instagram', 'tiktok'] as const;
+export type SocialNetwork = (typeof SOCIAL_NETWORKS)[number];
+/** Kiekvieno tinklo profilio URL; tuščia eilutė tą ikoną paslepia. */
+export type SocialLinks = Readonly<Record<SocialNetwork, string>>;
+
+export const SOCIAL_LABELS: Record<SocialNetwork, string> = {
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  tiktok: 'TikTok',
+};
+
+/** Kokio domeno adresą galima įvesti kiekvienam tinklui (su www arba be). */
+export const SOCIAL_DOMAINS: Record<SocialNetwork, string> = {
+  facebook: 'facebook.com',
+  instagram: 'instagram.com',
+  tiktok: 'tiktok.com',
+};
+
 /**
- * Pardavėjo duomenys: rodomi poraštėje, privatumo puslapyje, užsakymo formoje ir laiškuose
- * (Reply-To pirkėjui).
- *
- * Tuščia eilutė reiškia TODO (dar neužpildyta): toks laukas niekur nerodomas. Produkcinis web
- * build (VERCEL_ENV=production) su TODO laukais laikinai praeina su įspėjimu; užpildžius
- * įjunkite BLOCK_PRODUCTION_WITHOUT_SELLER (apps/web/src/lib/seller-check.ts).
+ * Parduotuvės informacija, kurią adminas keičia nustatymuose (be deploy): pardavėjo duomenys,
+ * socialiniai tinklai ir pagrindinio puslapio tekstai. Tuščia eilutė reiškia „nerodoma“.
  */
-export const SELLER: SellerDetails = {
-  /** Vardas ir pavardė (individuali veikla) arba įmonės pavadinimas. */
-  name: 'Ieva Speciūtė',
-  /**
-   * Individualios veiklos pažymos Nr. arba įmonės kodas: tik numeris, be „IV pažymos Nr.“
-   * (etiketę prideda rodymas, žr. SELLER_BUSINESS_ID_LABEL). TODO
-   */
-  businessId: '',
-  /** Adresas. */
-  address: 'Kovo 11-osios g. 33, Kaunas',
-  /** El. paštas pirkėjams (ir Reply-To laiškuose). */
-  email: 'ieva@vincentomacarons.lt',
-  /** Telefonas, pvz., +370 600 12345. TODO */
-  phone: '',
+export interface ShopInfo {
+  seller: SellerDetails;
+  social: SocialLinks;
+  texts: Readonly<{ tagline: string; subtagline: string }>;
+}
+
+/**
+ * Numatytosios reikšmės: galioja, kol nustatymuose parduotuvės informacija dar neišsaugota
+ * (ir web, kai API nepasiekiamas). Pačios reikšmės keičiamos admin nustatymuose, ne čia.
+ */
+export const DEFAULT_SHOP_INFO: ShopInfo = {
+  seller: {
+    /** Vardas ir pavardė (individuali veikla) arba įmonės pavadinimas. */
+    name: 'Ieva Speciūtė',
+    /** IV pažymos Nr. arba įmonės kodas: tik numeris (etiketę prideda rodymas). */
+    businessId: '',
+    address: 'Kovo 11-osios g. 33, Kaunas',
+    /** El. paštas pirkėjams (ir Reply-To laiškuose). */
+    email: 'ieva@vincentomacarons.lt',
+    phone: '',
+  },
+  social: {
+    facebook: 'https://www.facebook.com/',
+    instagram: 'https://www.instagram.com/',
+    tiktok: '',
+  },
+  texts: {
+    tagline: 'Tokių macarons niekur kitur nerasite.',
+    subtagline: 'Rankų darbo, kepami mažais kiekiais – tik pardavimo dienomis.',
+  },
 };
 
 export const SELLER_FIELD_LABELS: Record<SellerField, string> = {
@@ -46,13 +77,13 @@ export const SELLER_FIELD_LABELS: Record<SellerField, string> = {
 /** Trumpa businessId etiketė prieš numerį (poraštė, privatumo puslapis). */
 export const SELLER_BUSINESS_ID_LABEL = 'IV pažymos Nr.';
 
-/** Dar neužpildyti (TODO) pardavėjo laukai. */
-export function sellerTodoFields(seller: SellerDetails = SELLER): SellerField[] {
+/** Dar neužpildyti pardavėjo laukai (apžvalgos įspėjimui). */
+export function sellerTodoFields(seller: SellerDetails): SellerField[] {
   return SELLER_FIELDS.filter((field) => seller[field].trim().length === 0);
 }
 
-/** Pardavėjo vardas rodymui: kol jis TODO, rodomas parduotuvės pavadinimas. */
-export function sellerDisplayName(seller: SellerDetails = SELLER): string {
+/** Pardavėjo vardas rodymui: kol jis neužpildytas, rodomas parduotuvės pavadinimas. */
+export function sellerDisplayName(seller: SellerDetails): string {
   return seller.name.trim() || SHOP_NAME;
 }
 

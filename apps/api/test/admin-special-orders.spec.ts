@@ -1,4 +1,5 @@
 import {
+  DEFAULT_SHOP_INFO,
   addCalendarDays,
   type AdminSpecialOrderDto,
   type AdminSpecialOrderListResponse,
@@ -384,6 +385,7 @@ describe('Admin nustatymai (/admin/settings)', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       specialOrders: { enabled: false, leadTimeDays: 7, maxDaysAhead: 90 },
+      shop: DEFAULT_SHOP_INFO,
       updatedAt: expect.any(String),
     });
     const stored = await ctx.connection

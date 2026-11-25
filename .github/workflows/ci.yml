@@ -14,8 +14,8 @@ permissions:
   contents: read
 
 # Buildui jokių paslapčių nereikia: web instrumentation.ts env netikrina build metu, admin
-# API_URL turi numatytą reikšmę, o SELLER patikra (next.config.ts) veikia tik su
-# VERCEL_ENV=production, kurio čia nenustatom.
+# API_URL turi numatytą reikšmę, o parduotuvės informacija (GET /shop-info) be API
+# pakeičiama numatytosiomis reikšmėmis.
 
 jobs:
   ci:

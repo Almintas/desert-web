@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { preconnect } from 'react-dom';
 import { webEnv } from '@/lib/env';
 import { PRODUCT_PARAM } from '@/lib/links';
+import { getShopInfo } from '@/lib/shop-info';
 import { loadCurrentWindows, pickOpenWindow, WINDOW_PARAM, windowHref } from '@/lib/window';
 import { CheckoutForm } from './checkout-form';
 
@@ -19,7 +20,11 @@ export default async function CheckoutPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [current, params] = await Promise.all([loadCurrentWindows(), searchParams]);
+  const [current, params, shopInfo] = await Promise.all([
+    loadCurrentWindows(),
+    searchParams,
+    getShopInfo(),
+  ]);
 
   if (!current) {
     return (
@@ -68,6 +73,7 @@ export default async function CheckoutPage({
         backHref={backHref}
         selectedVariantId={selectedVariantId}
         turnstileSiteKey={webEnv().turnstileSiteKey}
+        seller={{ email: shopInfo.seller.email, phone: shopInfo.seller.phone }}
       />
     </div>
   );

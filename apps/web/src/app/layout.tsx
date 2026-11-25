@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import {
-  SELLER,
   SELLER_BUSINESS_ID_LABEL,
   SHOP_NAME,
   sellerDisplayName,
@@ -11,6 +10,7 @@ import {
 import { SocialLinks } from '@/components/social-links';
 import { Wordmark } from '@/components/wordmark';
 import { SHOP_DESCRIPTION } from '@/lib/shop';
+import { getShopInfo } from '@/lib/shop-info';
 import { bodyFont, displayFont, headingFont } from './fonts';
 import './globals.css';
 
@@ -43,7 +43,9 @@ export const viewport: Viewport = {
   colorScheme: 'light',
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Pardavėjo duomenys ir socialiniai tinklai iš admin nustatymų (API klaida: numatytieji).
+  const { seller, social } = await getShopInfo();
   return (
     <html
       lang="lt"
@@ -64,27 +66,27 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <footer className="site-footer">
           <div className="site-footer-inner">
             <p className="footer-shop">{SHOP_NAME}</p>
-            {/* Kiekvienas laukas atskiroje eilutėje; neužpildyti (TODO) praleidžiami. */}
+            {/* Kiekvienas laukas atskiroje eilutėje; neužpildyti praleidžiami. */}
             <p>
-              Parduoda: {sellerDisplayName()}
-              {SELLER.businessId ? (
+              Parduoda: {sellerDisplayName(seller)}
+              {seller.businessId ? (
                 <>
                   <br />
-                  {SELLER_BUSINESS_ID_LABEL} {SELLER.businessId}
+                  {SELLER_BUSINESS_ID_LABEL} {seller.businessId}
                 </>
               ) : null}
-              {SELLER.address ? (
+              {seller.address ? (
                 <>
                   <br />
-                  {SELLER.address}
+                  {seller.address}
                 </>
               ) : null}
-              {SELLER.email || SELLER.phone ? <br /> : null}
-              {SELLER.email ? <a href={`mailto:${SELLER.email}`}>{SELLER.email}</a> : null}
-              {SELLER.email && SELLER.phone ? ' · ' : null}
-              {SELLER.phone ? <a href={telHref(SELLER.phone)}>{SELLER.phone}</a> : null}
+              {seller.email || seller.phone ? <br /> : null}
+              {seller.email ? <a href={`mailto:${seller.email}`}>{seller.email}</a> : null}
+              {seller.email && seller.phone ? ' · ' : null}
+              {seller.phone ? <a href={telHref(seller.phone)}>{seller.phone}</a> : null}
             </p>
-            <SocialLinks />
+            <SocialLinks links={social} />
             <p>
               <Link href="/privatumas">Privatumas</Link>
             </p>

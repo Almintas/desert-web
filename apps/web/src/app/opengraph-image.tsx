@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ImageResponse } from 'next/og';
-import { SHOP_LOGO_SUBLINE, SHOP_NAME, SHOP_TAGLINE } from '@/lib/shop';
+import { SHOP_LOGO_SUBLINE, SHOP_NAME } from '@/lib/shop';
+import { getShopInfo } from '@/lib/shop-info';
 import {
   MACARON_COLORS,
   MACARON_DOT,
@@ -13,7 +14,8 @@ import {
   splitAtFirstI,
 } from '@/lib/wordmark';
 
-// Dalinimosi paveikslėlis (Facebook, Messenger, X ir kt.). Sugeneruojamas kompiliuojant.
+// Dalinimosi paveikslėlis (Facebook, Messenger, X ir kt.). Šūkis iš admin nustatymų: paveikslėlis
+// perkuriamas ne dažniau kaip kas minutę (API nepasiekiamas: numatytasis šūkis).
 
 export const alt = `${SHOP_NAME} – rankų darbo macarons`;
 export const size = { width: 1200, height: 630 };
@@ -122,6 +124,7 @@ function Wordmark() {
 }
 
 export default async function OpengraphImage() {
+  const { texts } = await getShopInfo();
   return new ImageResponse(
     <div
       style={{
@@ -169,7 +172,7 @@ export default async function OpengraphImage() {
             maxWidth: 640,
           }}
         >
-          {SHOP_TAGLINE}
+          {texts.tagline}
         </div>
       </div>
       <div

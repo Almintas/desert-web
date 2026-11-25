@@ -6,6 +6,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { DEFAULT_SHOP_INFO } from '@desert-web/shared';
 import {
   CUSTOMER_STATUS_EMAILS,
   type OrderEmailData,
@@ -19,6 +20,7 @@ import {
 const OUT_DIR = resolve(__dirname, '..', '..', 'tmp', 'email-preview');
 
 const sample: OrderEmailData = {
+  seller: { ...DEFAULT_SHOP_INFO.seller, phone: '+370 600 12345' },
   orderId: '665f1c2e8b3a4d0012345678',
   orderNumber: 'DW-2026-0042',
   customer: { name: 'Ona Onaitė', email: 'ona@example.com', phone: '+370 612 34567' },

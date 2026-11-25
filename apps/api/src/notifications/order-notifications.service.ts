@@ -1,4 +1,4 @@
-import { SELLER, type OrderStatus } from '@desert-web/shared';
+import type { OrderStatus, SellerDetails } from '@desert-web/shared';
 import { Inject, Injectable, Logger, type OnApplicationShutdown, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
@@ -7,6 +7,7 @@ import type { Env } from '../config/env';
 import type { Order } from '../orders/order.schema';
 import { orderTotals } from '../orders/orders.mapper';
 import { SaleWindow } from '../sale-windows/sale-window.schema';
+import { SettingsService } from '../settings/settings.service';
 import { EMAIL_SENDER, type EmailMessage, type EmailSender } from './email-sender';
 import {
   CUSTOMER_STATUS_EMAILS,
@@ -54,6 +55,7 @@ export class OrderNotificationsService implements OnApplicationShutdown {
   constructor(
     config: ConfigService<Env, true>,
     @InjectModel(SaleWindow.name) private readonly saleWindowModel: Model<SaleWindow>,
+    private readonly settings: SettingsService,
     @Optional() @Inject(EMAIL_SENDER) private readonly sender: EmailSender | null,
   ) {
     this.nodeEnv = config.get('NODE_ENV', { infer: true });
@@ -164,8 +166,9 @@ export class OrderNotificationsService implements OnApplicationShutdown {
       const message: EmailMessage = {
         from: this.from,
         to: email.audience === 'customer' ? order.customer.email : this.sellerEmail!,
-        // Kol pardavėjo el. paštas TODO (tuščias), pirkėjui Reply-To nenustatomas.
-        replyTo: email.audience === 'customer' ? SELLER.email || undefined : order.customer.email,
+        // Pardavėjo el. paštas iš nustatymų; kol jis tuščias, pirkėjui Reply-To nenustatomas.
+        replyTo:
+          email.audience === 'customer' ? data.seller.email || undefined : order.customer.email,
         subject: rendered.subject,
         html: rendered.html,
         text: rendered.text,
@@ -199,11 +202,19 @@ export class OrderNotificationsService implements OnApplicationShutdown {
     }
   }
 
+  /** Pardavėjo duomenys iš nustatymų (kol neišsaugoti, numatytieji). */
+  private async sellerDetails(): Promise<SellerDetails> {
+    return (await this.settings.shopInfo()).seller;
+  }
+
   private async loadData(order: Order): Promise<OrderEmailData> {
-    const saleWindow = await this.saleWindowModel
-      .findById(order.saleWindowId, { fulfillment: 1 })
-      .lean<Pick<SaleWindow, 'fulfillment'>>()
-      .exec();
+    const [saleWindow, seller] = await Promise.all([
+      this.saleWindowModel
+        .findById(order.saleWindowId, { fulfillment: 1 })
+        .lean<Pick<SaleWindow, 'fulfillment'>>()
+        .exec(),
+      this.sellerDetails(),
+    ]);
     const f = saleWindow?.fulfillment;
     const id = order._id.toString();
     return {
@@ -235,6 +246,7 @@ export class OrderNotificationsService implements OnApplicationShutdown {
       cancellationReason: order.cancellation?.reason || null,
       orderUrl: this.webUrl ? `${this.webUrl}/uzsakymas/${order.accessToken}` : null,
       adminOrderUrl: this.adminUrl ? `${this.adminUrl}/orders/${id}` : null,
+      seller,
     };
   }
 }

@@ -1,5 +1,4 @@
-import { visibleSocialLinks, type SocialNetwork } from '@/lib/social';
-import { SOCIAL_LINKS } from '@/lib/shop';
+import { type SocialLinks as Links, type SocialNetwork, visibleSocialLinks } from '@/lib/social';
 
 /**
  * Vienspalviai prekių ženklų glifai iš Simple Icons (CC0-1.0, simple-icons 16.38.1), 24×24.
@@ -15,8 +14,8 @@ const ICON_PATHS: Record<SocialNetwork, string> = {
 };
 
 /** Ikonų eilutė poraštėje; kai visos nuorodos tuščios, nerodo nieko. */
-export function SocialLinks() {
-  const links = visibleSocialLinks(SOCIAL_LINKS);
+export function SocialLinks({ links: all }: { links: Links }) {
+  const links = visibleSocialLinks(all);
   if (links.length === 0) return null;
   return (
     <ul className="footer-social">

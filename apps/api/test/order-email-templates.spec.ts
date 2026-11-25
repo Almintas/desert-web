@@ -1,4 +1,4 @@
-import { formatEur, SELLER, sellerDisplayName } from '@desert-web/shared';
+import { formatEur } from '@desert-web/shared';
 import {
   escapeHtml,
   type OrderEmailData,
@@ -38,6 +38,13 @@ const data = (overrides: Partial<OrderEmailData> = {}): OrderEmailData => ({
     to: '2026-12-20T12:00:00.000Z',
   },
   cancellationReason: null,
+  seller: {
+    name: 'Ieva Pardavėja',
+    businessId: '123456',
+    address: 'Kaunas',
+    email: 'ieva@pardave.example',
+    phone: '',
+  },
   orderUrl: 'https://desertai.lt/uzsakymas/AbCdEfGhIjKlMnOpQrStUvWxYz012345',
   adminOrderUrl: 'https://admin.desertai.lt/orders/665f1c2e8b3a4d0012345678',
   ...overrides,
@@ -109,12 +116,11 @@ describe('Užsakymų laiškų šablonai', () => {
     expect(subject).toBe('Gavome jūsų užsakymą DW-2026-0042');
     expect(text).toContain('Apmokėjimas: atsiimant');
     expect(text).toContain('Jūsų pastabos: Be riešutų');
-    expect(html).toContain(sellerDisplayName());
-    // Neužpildyti (TODO) pardavėjo kontaktai praleidžiami, užpildyti rodomi.
-    for (const value of [SELLER.email, SELLER.phone].filter(Boolean)) {
-      expect(html).toContain(value);
-      expect(text).toContain(value);
-    }
+    expect(html).toContain('Ieva Pardavėja');
+    // Neužpildyti pardavėjo kontaktai (telefonas) praleidžiami, užpildyti rodomi.
+    expect(html).toContain('ieva@pardave.example');
+    expect(text).toContain('ieva@pardave.example');
+    expect(text).not.toContain('ieva@pardave.example ·');
     expect(text).not.toMatch(/^\s*$\n^Šį laišką/m);
     expect(html).toMatch(/^<!doctype html>/);
     expect(html).toContain('name="viewport"');

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SOCIAL_DOMAINS, type ShopInfo, type SocialNetwork } from '../shop';
 
 /** Ribos, kurias tikrina ir API, ir admin forma. */
 export const SPECIAL_ORDER_LEAD_TIME_DAYS = { min: 0, max: 60 } as const;
@@ -36,15 +37,105 @@ export const DEFAULT_SPECIAL_ORDER_SETTINGS: SpecialOrderSettings = {
   maxDaysAhead: 90,
 };
 
-/** PUT /admin/settings (tik owner). Visas dokumentas pakeičiamas. */
-export const adminSettingsInputSchema = z.object({
-  specialOrders: specialOrderSettingsInputSchema,
+// --- Parduotuvės informacija ---
+
+/** Ilgiausios reikšmės (ir admin formos maxLength). */
+export const SHOP_INFO_MAX_LENGTHS = {
+  name: 120,
+  businessId: 40,
+  address: 200,
+  email: 120,
+  phone: 30,
+  url: 300,
+  tagline: 120,
+  subtagline: 200,
+} as const;
+
+const text = (max: number, label: string) =>
+  z.string({ error: 'Įvesk tekstą' }).trim().max(max, `${label}: ne daugiau kaip ${max} simbolių`);
+
+const emailSchema = text(SHOP_INFO_MAX_LENGTHS.email, 'El. paštas').refine(
+  (v) => v === '' || z.email().safeParse(v).success,
+  'Netinkamas el. pašto adresas',
+);
+
+/** Telefonas laisvai: tik skaitmenys, tarpai ir „+“ pradžioje, 6–15 skaitmenų. */
+const phoneSchema = text(SHOP_INFO_MAX_LENGTHS.phone, 'Telefonas').refine(
+  (v) => v === '' || (/^\+?[\d ]+$/.test(v) && /^\d{6,15}$/.test(v.replace(/\D/g, ''))),
+  'Telefonas: tik skaitmenys, tarpai ir „+“ (pvz., +370 600 12345)',
+);
+
+/** Ar `value` yra https adresas tinklo domene (su www arba be). */
+export function isSocialUrl(network: SocialNetwork, value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  const domain = SOCIAL_DOMAINS[network];
+  const host = url.hostname.toLowerCase();
+  return (
+    url.protocol === 'https:' &&
+    !url.username &&
+    !url.password &&
+    (host === domain || host === `www.${domain}`)
+  );
+}
+
+const socialUrl = (network: SocialNetwork) =>
+  text(SHOP_INFO_MAX_LENGTHS.url, 'Adresas').refine(
+    (v) => v === '' || isSocialUrl(network, v),
+    `Įvesk https://${SOCIAL_DOMAINS[network]}/… adresą arba palik tuščią`,
+  );
+
+/** Parduotuvės informacija (admin įvestis ir vieša reikšmė). Tuščia eilutė: nerodoma. */
+export const shopInfoInputSchema = z.object({
+  seller: z.object({
+    name: text(SHOP_INFO_MAX_LENGTHS.name, 'Pardavėjas'),
+    businessId: text(SHOP_INFO_MAX_LENGTHS.businessId, 'Pažymos Nr. / kodas'),
+    address: text(SHOP_INFO_MAX_LENGTHS.address, 'Adresas'),
+    email: emailSchema,
+    phone: phoneSchema,
+  }),
+  social: z.object({
+    facebook: socialUrl('facebook'),
+    instagram: socialUrl('instagram'),
+    tiktok: socialUrl('tiktok'),
+  }),
+  texts: z.object({
+    tagline: text(SHOP_INFO_MAX_LENGTHS.tagline, 'Šūkis'),
+    subtagline: text(SHOP_INFO_MAX_LENGTHS.subtagline, 'Antra eilutė'),
+  }),
 });
+export type ShopInfoInput = z.infer<typeof shopInfoInputSchema>;
+
+/**
+ * GET /shop-info (viešas, be autentifikacijos): tik tai, kas rodoma svetainėje. Kol
+ * nustatymai neišsaugoti, numatytosios reikšmės (DEFAULT_SHOP_INFO).
+ */
+export type ShopInfoDto = ShopInfo;
+
+// --- Visas nustatymų dokumentas ---
+
+/**
+ * PUT /admin/settings (tik owner). Atnaujinamos tik atsiųstos dalys (specialOrders, shop),
+ * kiekviena visa; bent viena privaloma.
+ */
+export const adminSettingsInputSchema = z
+  .object({
+    specialOrders: specialOrderSettingsInputSchema.optional(),
+    shop: shopInfoInputSchema.optional(),
+  })
+  .refine((s) => s.specialOrders !== undefined || s.shop !== undefined, {
+    message: 'Nėra ką išsaugoti',
+  });
 export type AdminSettingsInput = z.infer<typeof adminSettingsInputSchema>;
 
 /** GET / PUT /admin/settings atsakymas. */
 export interface SettingsDto {
   specialOrders: SpecialOrderSettings;
+  shop: ShopInfo;
   /** null: nustatymai dar niekada nekeisti (numatytosios reikšmės). */
   updatedAt: string | null;
 }

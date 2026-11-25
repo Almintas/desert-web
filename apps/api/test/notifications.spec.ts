@@ -1,5 +1,5 @@
 import './env/emails';
-import { formatEur, SELLER, SHOP_NAME } from '@desert-web/shared';
+import { DEFAULT_SHOP_INFO, formatEur, SHOP_NAME } from '@desert-web/shared';
 import { Logger } from '@nestjs/common';
 import request from 'supertest';
 import type { Order } from '../src/orders/order.schema';
@@ -89,6 +89,48 @@ describe('Užsakymų laiškai (visi įjungti)', () => {
     await ctx?.app.close();
   });
 
+  describe('pardavėjo duomenys iš nustatymų', () => {
+    const saveShop = (seller: Partial<typeof DEFAULT_SHOP_INFO.seller>) =>
+      request(ctx.app.getHttpServer())
+        .put('/admin/settings')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          shop: { ...DEFAULT_SHOP_INFO, seller: { ...DEFAULT_SHOP_INFO.seller, ...seller } },
+        });
+
+    afterEach(async () => {
+      await ctx.connection.db!.collection('settings').deleteMany({});
+    });
+
+    it('Reply-To ir laiško poraštė: išsaugotas el. paštas, vardas ir telefonas', async () => {
+      const saved = await saveShop({
+        name: 'UAB Saldainis',
+        email: 'kontaktai@saldainis.example',
+        phone: '+370 611 22222',
+      });
+      expect(saved.status).toBe(200);
+      const customer = uniqueCustomer();
+      await placeOrder({ customer });
+      const toCustomer = (await settled()).find((m) => m.to === customer.email)!;
+      expect(toCustomer.replyTo).toBe('kontaktai@saldainis.example');
+      for (const body of [toCustomer.html, toCustomer.text]) {
+        expect(body).toContain('UAB Saldainis');
+        expect(body).toContain('kontaktai@saldainis.example');
+        expect(body).toContain('+370 611 22222');
+        expect(body).not.toContain(DEFAULT_SHOP_INFO.seller.email);
+      }
+    });
+
+    it('išsaugotas tuščias el. paštas: be Reply-To, vardo vietoje parduotuvės pavadinimas', async () => {
+      expect((await saveShop({ name: '', email: '' })).status).toBe(200);
+      const customer = uniqueCustomer();
+      await placeOrder({ customer });
+      const toCustomer = (await settled()).find((m) => m.to === customer.email)!;
+      expect(toCustomer.replyTo).toBeUndefined();
+      expect(toCustomer.text).toContain(`--\n${SHOP_NAME}\n`);
+    });
+  });
+
   describe('naujas užsakymas', () => {
     it('vienas laiškas pirkėjui ir vienas pardavėjui su teisingais duomenimis', async () => {
       const customer = uniqueCustomer();
@@ -102,8 +144,8 @@ describe('Užsakymų laiškai (visi įjungti)', () => {
       const toCustomer = sent.find((m) => m.to === customer.email)!;
       expect(toCustomer).toMatchObject({
         from: FROM,
-        // Kol pardavėjo el. paštas TODO (tuščias), Reply-To nenustatomas.
-        replyTo: SELLER.email || undefined,
+        // Nustatymai dar neišsaugoti: numatytasis pardavėjo el. paštas.
+        replyTo: DEFAULT_SHOP_INFO.seller.email,
         idempotencyKey: `order-created/${order.id}`,
       });
       expect(toCustomer.subject).toContain(order.orderNumber);

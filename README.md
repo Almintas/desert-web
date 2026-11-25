@@ -114,7 +114,7 @@ GitHub Actions (`.github/workflows/ci.yml`) paleidžiamas kiekvienam push į `de
 2. `pnpm lint`: ESLint 9 (flat config) visuose workspace'uose. Bendra konfigūracija `packages/eslint-config`: `base` (typescript-eslint recommended, eslint-config-prettier), `nest` (api), `next` (web, admin: eslint-config-next su react-hooks, jsx-a11y). Įspėjimai irgi laikomi klaida (`--max-warnings=0`).
 3. `pnpm typecheck`.
 4. `pnpm test`: API Jest (su `mongodb-memory-server`, mongod talpinamas `~/.cache/mongodb-binaries`) ir web Vitest.
-5. `pnpm build`: visos aplikacijos, be jokių paslapčių (`VERCEL_ENV` nenustatomas, todėl SELLER patikra nevykdoma).
+5. `pnpm build`: visos aplikacijos, be jokių paslapčių (web build metu API nepasiekiamas, todėl naudojama numatytoji parduotuvės informacija).
 
 E2E (`pnpm e2e`) į CI kol kas neįeina. Lint į Vercel ir Railway buildus neįeina (jie leidžia tik `turbo run build`).
 
@@ -203,7 +203,7 @@ Saugikliai: skriptas nutraukiamas, jei katalogas tuščias ar ne po `desert-web/
 API siunčia laiškus per [Resend](https://resend.com) (`apps/api/src/notifications/`):
 
 - **Pardavėjui** (`ORDER_NOTIFY_EMAIL`): naujas užsakymas su pirkėjo vardu, telefonu, el. paštu, pastabomis ir nuoroda į admin panelę. Atsakius į laišką, atsakymas nueina pirkėjui.
-- **Pirkėjui** (kol kas išjungta): užsakymas gautas; būsena pasikeitė į patvirtintas, paruoštas atsiimti, atšauktas (su priežastimi). Atsakymai nueina pardavėjui (`SELLER.email`).
+- **Pirkėjui** (kol kas išjungta): užsakymas gautas; būsena pasikeitė į patvirtintas, paruoštas atsiimti, atšauktas (su priežastimi). Atsakymai nueina pardavėjui (el. paštas iš admin „Nustatymai“ → „Parduotuvės informacija“).
 
 Laiškai siunčiami tik po sėkmingos DB transakcijos ir fone: nepavykęs laiškas užsakymo ar būsenos pakeitimo neatšaukia, tik užrašomas į API logą (`Email failed (order …, template …)`). Pakartotas tas pats užsakymas (`clientRequestId`) ir atmestas būsenos pakeitimas (pvz., antras atšaukimas) laiškų nesiunčia.
 
@@ -275,7 +275,15 @@ Du atskiri Vercel projektai iš to paties repo:
 
 Web naršyklė į API nesikreipia: puslapius ir užsakymo pateikimą (Server Action) atlieka web Next.js serveris. `NEXT_PUBLIC_API_URL` nebenaudojamas (jei liko Vercel, ištrink). Produkcijoje web be `API_URL` **nepasileidžia** (aiški klaida Vercel runtime loguose, `src/instrumentation.ts`). Be `INTERNAL_API_SECRET` ar `NEXT_TURNSTILE_SITE_KEY` svetainė veikia, bet užsakymo forma grąžina „Užsakymo pateikti nepavyko. Bandykite vėliau.“, o Vercel loguose kiekvieną kartą klaida su trūkstamų kintamųjų sąrašu (kaip admin prisijungimas be paslapties). Su `INTERNAL_API_SECRET` web serveris API perduoda tikrą pirkėjo IP (`X-Client-IP`), o API produkcijoje užsakymus priima tik su ja. `SITE_URL` (pvz., `https://desertai.lt`) naudojamas absoliutiems OG adresams.
 
-Pardavėjo duomenys (vardas ar įmonės pavadinimas, IV pažymos Nr. ar įmonės kodas, adresas, el. paštas, telefonas) yra `packages/shared/src/shop.ts` (`SELLER`) ir rodomi poraštėje, `/privatumas`, užsakymo formoje ir laiškuose pirkėjams (el. paštas ir kaip Reply-To). Tuščias laukas reiškia TODO: jis niekur nerodomas (vietoje pardavėjo vardo rodomas parduotuvės pavadinimas). **Laikinai** Vercel production build (`VERCEL_ENV=production`) su tuščiais laukais praeina, tik build loge rodomas įspėjimas. Užpildžius `SELLER`, `apps/web/src/lib/seller-check.ts` nustatykite `BLOCK_PRODUCTION_WITHOUT_SELLER = true`: tada tušti laukai vėl stabdys produkcinį build'ą. API (Railway) šios patikros neturi: kol el. paštas tuščias, laiškai pirkėjams siunčiami be Reply-To.
+### Parduotuvės informacija
+
+Pardavėjo duomenys (vardas ar įmonės pavadinimas, IV pažymos Nr. ar įmonės kodas, adresas, el. paštas, telefonas), socialinių tinklų nuorodos (Facebook, Instagram, TikTok) ir pagrindinio puslapio tekstai (šūkis ir antra eilutė) keičiami **admin „Nustatymai“ → „Parduotuvės informacija“** (keisti gali tik `owner`, `staff` mato), be deploy. Saugoma nustatymų dokumente (`settings.shop`).
+
+- Tuščias laukas reiškia „nerodoma“ (vietoje tuščio pardavėjo vardo rodomas parduotuvės pavadinimas). Kol informacija dar neišsaugota, galioja numatytosios reikšmės (`DEFAULT_SHOP_INFO`, `packages/shared/src/shop.ts`): jos keičiamos nustatymuose, ne kode.
+- Validacija: el. pašto formatas, telefonas (skaitmenys, tarpai, „+“), socialinės nuorodos tik `https://` atitinkamame domene (`facebook.com`, `instagram.com`, `tiktok.com`, su `www` ar be).
+- Web skaito `GET /shop-info` (viešas, tik vieši laukai) su `revalidate: 60`, todėl pakeitimai svetainėje matomi maždaug per minutę. API nepasiekiamas (taip pat build metu): numatytosios reikšmės, poraštė ir pagrindinis puslapis nelūžta.
+- Laiškai pirkėjams (Reply-To ir poraštė) pardavėjo duomenis ima iš nustatymų; kol el. paštas tuščias, Reply-To nenustatomas.
+- Neužpildyti pardavėjo laukai rodomi įspėjimu admin apžvalgoje (build'o ir langų skelbimo jie nestabdo).
 
 ## Pagrindinės taisyklės
 
@@ -304,7 +312,9 @@ Užklausa dideliam kiekiui bet kuriuo metu (be pardavimo lango), kai ji įjungta
 - [x] Admin produktų valdymas (`/admin/products`; archyvuojama `isActive: false`, trynimo nėra)
 - [x] Produktų nuotraukos (Cloudinary: tiesioginis pasirašytas įkėlimas, iki 8, rikiavimas, šalinimas)
 - [x] Admin pardavimo langų valdymas (`/admin/sale-windows`: kūrimas, kiekiai, skelbimas, atidaryti / uždaryti dabar, atšaukimas)
-- [x] Užsakymų valdymas (`/admin/orders`: sąrašas su filtrais, būsenos pirmyn, atšaukimas su kiekių grąžinimu)
+- [x] Užsakymų valdymas (`/admin/orders`: sąrašas su filtrais, būsenos pirmyn, atšaukimas su kiekių grąžinimu, masinis „Patvirtinti“ / „Paruošta“ per `POST /admin/orders/bulk-status`)
+- [x] Admin apžvalga (dabartinis langas, likučiai, skaitikliai) ir atsiėmimo sąrašas (`/sale-windows/[id]/pickup`, `GET /admin/orders/pickup-list`, spausdinimas A4)
+- [x] Parduotuvės informacija admin nustatymuose (`GET /shop-info`)
 - [x] Laiškai per Resend: pardavėjui apie naują užsakymą; pirkėjui (gautas, būsenos) paruošta, bet išjungta iki domeno patvirtinimo
 - [x] Užsakymo kūrimas su atomine kiekio rezervacija ir limitu vienam pirkėjui (idempotentiškas pagal `clientRequestId`)
 - [x] Pirkėjų parduotuvė: krepšelis, užsakymas (tik atsiėmimas, apmokama atsiimant), užsakymo puslapis, `/privatumas`

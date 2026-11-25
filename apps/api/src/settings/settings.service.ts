@@ -1,6 +1,10 @@
 import {
   type AdminSettingsInput,
+  DEFAULT_SHOP_INFO,
   DEFAULT_SPECIAL_ORDER_SETTINGS,
+  SELLER_FIELDS,
+  type ShopInfo,
+  SOCIAL_NETWORKS,
   type SettingsDto,
   type SpecialOrderSettings,
 } from '@desert-web/shared';
@@ -19,9 +23,25 @@ function specialOrdersOf(settings: Pick<Settings, 'specialOrders'> | null): Spec
   };
 }
 
+/** Saugoma parduotuvės informacija; kiekvienas trūkstamas laukas pakeičiamas numatytuoju. */
+export function shopInfoOf(settings: Pick<Settings, 'shop'> | null): ShopInfo {
+  const stored = settings?.shop;
+  const pick = <K extends string>(
+    keys: readonly K[],
+    values: Partial<Record<K, string>> | undefined,
+    defaults: Readonly<Record<K, string>>,
+  ) => Object.fromEntries(keys.map((k) => [k, values?.[k] ?? defaults[k]])) as Record<K, string>;
+  return {
+    seller: pick(SELLER_FIELDS, stored?.seller, DEFAULT_SHOP_INFO.seller),
+    social: pick(SOCIAL_NETWORKS, stored?.social, DEFAULT_SHOP_INFO.social),
+    texts: pick(['tagline', 'subtagline'] as const, stored?.texts, DEFAULT_SHOP_INFO.texts),
+  };
+}
+
 function toSettingsDto(settings: Settings | null): SettingsDto {
   return {
     specialOrders: specialOrdersOf(settings),
+    shop: shopInfoOf(settings),
     updatedAt: settings?.updatedAt?.toISOString() ?? null,
   };
 }
@@ -40,6 +60,18 @@ export class SettingsService {
     return specialOrdersOf(await query.lean<Settings>().exec());
   }
 
+  /**
+   * Parduotuvės informacija (viešas GET /shop-info ir laiškai). Tik skaito: kol dokumento
+   * ar laukų nėra, numatytosios reikšmės.
+   */
+  async shopInfo(): Promise<ShopInfo> {
+    const settings = await this.settingsModel
+      .findById(GLOBAL_SETTINGS_ID, { shop: 1 })
+      .lean<Settings>()
+      .exec();
+    return shopInfoOf(settings);
+  }
+
   /** Admin GET: sukuria dokumentą su numatytosiomis reikšmėmis, jei jo dar nėra. */
   async getOrCreate(): Promise<SettingsDto> {
     const settings = await this.settingsModel
@@ -52,12 +84,21 @@ export class SettingsService {
     return toSettingsDto(settings as Settings | null);
   }
 
-  /** Admin PUT (tik owner): visos reikšmės pakeičiamos (upsert). */
+  /** Admin PUT (tik owner): atsiųstos dalys pakeičiamos visos (upsert). */
   async update(input: AdminSettingsInput): Promise<SettingsDto> {
+    const $set: Partial<Pick<Settings, 'specialOrders' | 'shop'>> = {};
+    if (input.specialOrders) $set.specialOrders = input.specialOrders;
+    if (input.shop) $set.shop = input.shop;
     const settings = await this.settingsModel
       .findOneAndUpdate(
         { _id: GLOBAL_SETTINGS_ID },
-        { $set: { specialOrders: input.specialOrders } },
+        {
+          $set,
+          // Pirmą kartą išsaugant tik parduotuvės informaciją: specialūs užsakymai numatytieji.
+          ...(input.specialOrders
+            ? {}
+            : { $setOnInsert: { specialOrders: { ...DEFAULT_SPECIAL_ORDER_SETTINGS } } }),
+        },
         { upsert: true, new: true, lean: true, runValidators: true },
       )
       .exec();
