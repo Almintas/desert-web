@@ -1,3 +1,5 @@
+import type { SocialLinks } from './social';
+
 // Pavadinimas, pardavėjo duomenys ir apmokėjimo tekstas (PAYMENT_TEXT) bendri su API laiškais:
 // žr. packages/shared/src/shop.ts.
 export { SHOP_NAME } from '@desert-web/shared';
@@ -17,3 +19,14 @@ export const SHOP_DESCRIPTION =
 
 /** „Liko N“ rodom tik tada, kai likutis ne didesnis už šį skaičių. */
 export const LOW_STOCK_THRESHOLD = 10;
+
+/**
+ * Socialinių tinklų ikonos poraštėje. Kol kas tai laikini adresai, vedantys į tinklų pagrindinius
+ * puslapius: pakeisk juos parduotuvės profilių URL. Tuščia eilutė tą ikoną paslepia (visos
+ * tuščios → ikonų eilutės nėra).
+ */
+export const SOCIAL_LINKS: SocialLinks = {
+  facebook: 'https://www.facebook.com/',
+  instagram: 'https://www.instagram.com/',
+  tiktok: '',
+};

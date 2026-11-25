@@ -8,6 +8,7 @@ import {
   sellerDisplayName,
   telHref,
 } from '@desert-web/shared';
+import { SocialLinks } from '@/components/social-links';
 import { Wordmark } from '@/components/wordmark';
 import { SHOP_DESCRIPTION } from '@/lib/shop';
 import { bodyFont, displayFont } from './fonts';
@@ -80,6 +81,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               {SELLER.email && SELLER.phone ? ' · ' : null}
               {SELLER.phone ? <a href={telHref(SELLER.phone)}>{SELLER.phone}</a> : null}
             </p>
+            <SocialLinks />
             <p>
               <Link href="/privatumas">Privatumas</Link>
             </p>

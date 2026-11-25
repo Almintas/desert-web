@@ -276,6 +276,37 @@ img {
   color: var(--text);
 }
 
+/* Socialinių tinklų ikonos: 44×44 px paspaudimo plotas, glifas lygiuojamas su tekstu kairėje. */
+.footer-social {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  list-style: none;
+  margin: -0.4rem 0 0.35rem -11px;
+  padding: 0;
+}
+
+.footer-social a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  transition: color 0.15s;
+}
+
+.footer-social a:hover,
+.footer-social a:focus-visible {
+  color: var(--ink);
+}
+
+.footer-social svg {
+  width: 22px;
+  height: 22px;
+}
+
 /* --- Mygtukai --- */
 
 .button {
