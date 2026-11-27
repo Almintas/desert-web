@@ -264,11 +264,9 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
               <tr>
                 <th scope="col">Prekė</th>
                 <th scope="col">Kaina, €</th>
-                <th scope="col">Kiekis</th>
+                <th scope="col">Kiekis pardavimui</th>
                 {giftWrapEnabled ? <th scope="col">Dovana</th> : null}
-                <th scope="col">
-                  <span className="visually-hidden">Veiksmai</span>
-                </th>
+                <th scope="col">Išimti</th>
               </tr>
             </thead>
             <tbody>
@@ -363,7 +361,8 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
                         onChange={(e) => updateItem(row.key, { quantityTotal: e.target.value })}
                         inputMode="numeric"
                         className="input-number"
-                        aria-label="Kiekis"
+                        aria-label="Kiekis pardavimui"
+                        aria-describedby="quantity-hint"
                         aria-invalid={Boolean(errors[`${prefix}.quantityTotal`] ?? belowSold)}
                       />
                       {row.existing ? (
@@ -410,6 +409,10 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
           </table>
         </div>
         <FieldError message={errors.items} />
+        <p className="hint" id="quantity-hint">
+          Kiekis pardavimui – kiek pasirinktų pakuočių (pvz. 12 vnt. dėžučių) parduosi šiame lange.
+          Kai jos baigiasi, prekė rodoma kaip išparduota.
+        </p>
         {items.some((r) => r.ordersCount > 0) ? (
           <p className="hint">
             Užsakytų prekių išimti negalima: vietoj to nustatyk jų kiekį lygų parduotam.

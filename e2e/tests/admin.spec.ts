@@ -101,7 +101,7 @@ test.describe('Admin', () => {
       .selectOption({ label: product.name });
     await page.getByRole('combobox', { name: 'Variantas', exact: true }).selectOption({ index: 1 });
     await page.getByLabel('Kaina').fill('25,00');
-    await page.getByLabel('Kiekis', { exact: true }).fill('12');
+    await page.getByLabel('Kiekis pardavimui', { exact: true }).fill('12');
     await page.getByRole('button', { name: 'Sukurti juodraštį' }).click();
     await expect(page).toHaveURL(/\/sale-windows\/[a-f0-9]{24}\?done=created/);
     await expect(page.locator('.summary')).toContainText(
@@ -157,6 +157,15 @@ test.describe('Admin', () => {
 
     await loginAdmin(page);
     await page.goto(`${env.adminUrl}/sale-windows/${w.id}/edit`);
+    // Lentelė: aiškūs stulpeliai be limitų, paaiškinimas ir parduotas kiekis prie esamos prekės.
+    await expect(page.locator('.items-table thead th')).toHaveText([
+      'Prekė',
+      'Kaina, €',
+      'Kiekis pardavimui',
+      'Išimti',
+    ]);
+    await expect(page.getByText(/^Kiekis pardavimui – kiek pasirinktų pakuočių/)).toBeVisible();
+    await expect(page.locator('.items-table tbody tr').first()).toContainText('Parduota: 1');
     await page.getByRole('button', { name: /Pridėti prekę/ }).click();
     const product = page.getByRole('combobox', { name: 'Produktas', exact: true });
     const variant = page.getByRole('combobox', { name: 'Variantas', exact: true });
@@ -169,7 +178,7 @@ test.describe('Admin', () => {
     // Nepasirinkus varianto rodoma klaida; pasirinkus ji dingsta dar prieš išsaugant.
     await product.selectOption({ label: pie.name });
     await page.getByLabel('Kaina').nth(1).fill('40,00');
-    await page.getByLabel('Kiekis', { exact: true }).nth(1).fill('5');
+    await page.getByLabel('Kiekis pardavimui', { exact: true }).nth(1).fill('5');
     await page.getByRole('button', { name: 'Išsaugoti' }).click();
     const rowError = page.locator('.item-cell .field-error');
     await expect(rowError).toHaveText('Pasirink produktą ir variantą');
