@@ -325,7 +325,7 @@ Užklausa dideliam kiekiui bet kuriuo metu (be pardavimo lango), kai ji įjungta
 - [x] Admin apžvalga (dabartinis langas, likučiai, skaitikliai) ir atsiėmimo sąrašas (`/sale-windows/[id]/pickup`, `GET /admin/orders/pickup-list`, spausdinimas A4)
 - [x] Parduotuvės informacija ir atsiėmimas admin nustatymuose (`GET /shop-info`)
 - [x] Laiškai per Resend: pardavėjui apie naują užsakymą; pirkėjui (gautas, būsenos) paruošta, bet išjungta iki domeno patvirtinimo
-- [x] Užsakymo kūrimas su atomine kiekio rezervacija ir limitu vienam pirkėjui (idempotentiškas pagal `clientRequestId`)
+- [x] Užsakymo kūrimas su atomine kiekio rezervacija (idempotentiškas pagal `clientRequestId`; limitų pirkėjui nėra, riboja tik lango kiekis)
 - [x] Pirkėjų parduotuvė: krepšelis, užsakymas (tik atsiėmimas, apmokama atsiimant), užsakymo puslapis, `/privatumas`
 - [x] Užsakymų apsauga: tik per web serverį, ribojimas pagal pirkėjo IP, Cloudflare Turnstile
 - [x] E2E testai (`pnpm e2e`)

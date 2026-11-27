@@ -23,8 +23,6 @@ interface ItemRow {
   variantLabel: string;
   price: string;
   quantityTotal: string;
-  maxPerOrder: string;
-  maxPerCustomer: string;
   /** Galima supakuoti kaip dovaną (rodoma tik kai pakavimas lange įjungtas). */
   giftWrapAllowed: boolean;
   sold: number;
@@ -68,8 +66,6 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
     variantLabel: '',
     price: '',
     quantityTotal: '',
-    maxPerOrder: '',
-    maxPerCustomer: '',
     giftWrapAllowed: true,
     sold: 0,
     ordersCount: 0,
@@ -86,8 +82,6 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
           variantLabel: i.variantName,
           price: centsToInput(i.priceCents),
           quantityTotal: String(i.quantityTotal),
-          maxPerOrder: i.maxPerOrder ? String(i.maxPerOrder) : '',
-          maxPerCustomer: i.maxPerCustomer ? String(i.maxPerCustomer) : '',
           giftWrapAllowed: i.giftWrapAllowed,
           sold: i.sold,
           ordersCount: i.ordersCount,
@@ -271,8 +265,6 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
                 <th scope="col">Prekė</th>
                 <th scope="col">Kaina, €</th>
                 <th scope="col">Kiekis</th>
-                <th scope="col">Maks. užsakymui</th>
-                <th scope="col">Maks. pirkėjui</th>
                 {giftWrapEnabled ? <th scope="col">Dovana</th> : null}
                 <th scope="col">
                   <span className="visually-hidden">Veiksmai</span>
@@ -381,32 +373,6 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
                         </span>
                       ) : null}
                       <FieldError message={errors[`${prefix}.quantityTotal`] ?? belowSold} />
-                    </td>
-                    <td>
-                      <input
-                        name={`${prefix}.maxPerOrder`}
-                        value={row.maxPerOrder}
-                        onChange={(e) => updateItem(row.key, { maxPerOrder: e.target.value })}
-                        inputMode="numeric"
-                        className="input-number"
-                        placeholder="—"
-                        aria-label="Maks. vienam užsakymui"
-                        aria-invalid={Boolean(errors[`${prefix}.maxPerOrder`])}
-                      />
-                      <FieldError message={errors[`${prefix}.maxPerOrder`]} />
-                    </td>
-                    <td>
-                      <input
-                        name={`${prefix}.maxPerCustomer`}
-                        value={row.maxPerCustomer}
-                        onChange={(e) => updateItem(row.key, { maxPerCustomer: e.target.value })}
-                        inputMode="numeric"
-                        className="input-number"
-                        placeholder="—"
-                        aria-label="Maks. vienam pirkėjui"
-                        aria-invalid={Boolean(errors[`${prefix}.maxPerCustomer`])}
-                      />
-                      <FieldError message={errors[`${prefix}.maxPerCustomer`]} />
                     </td>
                     {giftWrapEnabled ? (
                       <td>

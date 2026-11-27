@@ -9,40 +9,27 @@ const isoDateSchema = z.iso
   .datetime({ offset: true, error: 'Netinkama data' })
   .transform((v) => new Date(v));
 
-const optionalLimitSchema = z
-  .number({ error: 'Įvesk skaičių' })
-  .int('Turi būti sveikasis skaičius')
-  .positive('Turi būti bent 1')
-  .optional();
-
 /**
  * Lango prekė. Tapatybė yra `variantId` (kaip užsakymuose): PUT metu esama prekė
  * randama pagal jį, todėl kiekis ir kaina keičiami vietoje.
  */
-export const adminSaleWindowItemInputSchema = z
-  .object({
-    productId: objectIdSchema,
-    variantId: objectIdSchema,
-    /** Lango kaina (gali skirtis nuo bazinės varianto kainos). Keičia tik naujus užsakymus. */
-    priceCents: z
-      .number({ error: 'Įvesk kainą' })
-      .int('Kaina turi būti nurodyta centais')
-      .nonnegative('Kaina negali būti neigiama'),
-    /** Visas kiekis. Parduota = quantityTotal - quantityAvailable; mažiau nei parduota negalima. */
-    quantityTotal: z
-      .number({ error: 'Įvesk kiekį' })
-      .int('Turi būti sveikasis skaičius')
-      .nonnegative('Kiekis negali būti neigiamas')
-      .max(100_000, 'Per didelis kiekis'),
-    maxPerOrder: optionalLimitSchema,
-    maxPerCustomer: optionalLimitSchema,
-    /** Ar šią prekę galima supakuoti kaip dovaną (kai pakavimas įjungtas lange). */
-    giftWrapAllowed: z.boolean().default(true),
-  })
-  .refine((i) => !i.maxPerOrder || !i.maxPerCustomer || i.maxPerOrder <= i.maxPerCustomer, {
-    message: 'Negali būti didesnis už limitą vienam pirkėjui',
-    path: ['maxPerOrder'],
-  });
+export const adminSaleWindowItemInputSchema = z.object({
+  productId: objectIdSchema,
+  variantId: objectIdSchema,
+  /** Lango kaina (gali skirtis nuo bazinės varianto kainos). Keičia tik naujus užsakymus. */
+  priceCents: z
+    .number({ error: 'Įvesk kainą' })
+    .int('Kaina turi būti nurodyta centais')
+    .nonnegative('Kaina negali būti neigiama'),
+  /** Visas kiekis. Parduota = quantityTotal - quantityAvailable; mažiau nei parduota negalima. */
+  quantityTotal: z
+    .number({ error: 'Įvesk kiekį' })
+    .int('Turi būti sveikasis skaičius')
+    .nonnegative('Kiekis negali būti neigiamas')
+    .max(100_000, 'Per didelis kiekis'),
+  /** Ar šią prekę galima supakuoti kaip dovaną (kai pakavimas įjungtas lange). */
+  giftWrapAllowed: z.boolean().default(true),
+});
 export type AdminSaleWindowItemInput = z.infer<typeof adminSaleWindowItemInputSchema>;
 
 /** Didžiausia dovanų pakavimo kaina už vienetą (100,00 €). */
@@ -140,8 +127,8 @@ export interface PublicSaleWindowItemDto {
   /** Produkto nuotraukos, pagrindinė pirmoji. */
   images: PublicProductImageDto[];
   priceCents: number;
+  /** Pirkėjas gali pirkti kiek nori: riboja tik šis likutis. */
   quantityAvailable: number;
-  maxPerOrder: number | null;
   /**
    * Ar prekę galima supakuoti kaip dovaną. Galioja tik kai lango `giftWrap` ne null
    * (žr. canGiftWrap).
@@ -187,7 +174,6 @@ export interface AdminSaleWindowItemDto extends PublicSaleWindowItemDto {
   quantityTotal: number;
   /** quantityTotal - quantityAvailable. Mažiausias leidžiamas naujas quantityTotal. */
   sold: number;
-  maxPerCustomer: number | null;
   /** Neatšauktų užsakymų su šia preke skaičius. Jei > 0, prekės išimti negalima. */
   ordersCount: number;
 }

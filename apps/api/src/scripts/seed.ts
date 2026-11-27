@@ -73,7 +73,6 @@ async function main() {
           priceCents: 1200,
           quantityTotal: 30,
           quantityAvailable: 30,
-          maxPerCustomer: 4,
         },
         {
           productId: macarons._id,
@@ -81,7 +80,6 @@ async function main() {
           priceCents: 2200,
           quantityTotal: 15,
           quantityAvailable: 15,
-          maxPerCustomer: 2,
         },
         {
           productId: tart._id,
@@ -89,7 +87,6 @@ async function main() {
           priceCents: 450,
           quantityTotal: 40,
           quantityAvailable: 40,
-          maxPerOrder: 6,
         },
       ],
     },
@@ -109,7 +106,6 @@ async function main() {
           priceCents: 2400,
           quantityTotal: 50,
           quantityAvailable: 50,
-          maxPerCustomer: 3,
         },
       ],
     },

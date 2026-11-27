@@ -36,14 +36,9 @@ export const sameLine = (a: CartLine, b: CartLine | undefined) =>
 export const itemLabel = (item: Pick<PublicSaleWindowItemDto, 'productName' | 'variantName'>) =>
   `${item.productName} ${item.variantName}`;
 
-/** Kiek šios prekės galima įdėti į krepšelį: min(likutis, limitas užsakymui). */
-export function maxQuantity(
-  item: Pick<PublicSaleWindowItemDto, 'quantityAvailable' | 'maxPerOrder'>,
-): number {
-  return Math.max(
-    0,
-    Math.min(item.quantityAvailable, item.maxPerOrder ?? Number.POSITIVE_INFINITY),
-  );
+/** Kiek šios prekės galima įdėti į krepšelį: tiek, kiek liko (limito pirkėjui nėra). */
+export function maxQuantity(item: Pick<PublicSaleWindowItemDto, 'quantityAvailable'>): number {
+  return Math.max(0, item.quantityAvailable);
 }
 
 export interface CartAdjustment {
@@ -54,8 +49,8 @@ export interface CartAdjustment {
 
 /**
  * Suderina krepšelį su langu: pašalina prekes, kurių lange nėra, ir sumažina kiekius iki
- * likučio ir limito užsakymui. `problems` (iš API klaidos `details.items`) papildomai
- * riboja kiekį: pvz., MAX_PER_CUSTOMER_EXCEEDED, kurio langas neparodo.
+ * likučio. `problems` (iš API klaidos `details.items`) papildomai riboja kiekį: serveris
+ * galėjo matyti naujesnį likutį nei langas puslapyje.
  *
  * Dovanų pakavimas tyliai apribojamas iki kiekio, o jei lange jis išjungtas ar prekė jo
  * neleidžia, išimamas (be pranešimo: kiekiai ir prekės nesikeičia).
@@ -78,9 +73,8 @@ export function adjustCart(
     }
     const label = itemLabel(item);
     const available = item.quantityAvailable;
-    const perOrder = item.maxPerOrder ?? Number.POSITIVE_INFINITY;
-    const perCustomer = allowedByProblem.get(line.variantId) ?? Number.POSITIVE_INFINITY;
-    const cap = Math.max(0, Math.min(available, perOrder, perCustomer));
+    const allowed = allowedByProblem.get(line.variantId) ?? Number.POSITIVE_INFINITY;
+    const cap = Math.max(0, Math.min(available, allowed));
 
     const giftWrap = (l: CartLine) =>
       withGiftWrap(l, canGiftWrap(window, item) ? giftWrapQuantityOf(l) : 0);
@@ -93,20 +87,11 @@ export function adjustCart(
       changes.push(
         available === 0
           ? `${label}: išparduota, pašalinta iš krepšelio`
-          : perCustomer === 0
-            ? `${label}: šios prekės jau užsakėte daugiausiai galimą kiekį, pašalinta iš krepšelio`
-            : `${label}: nebegalima užsakyti, pašalinta iš krepšelio`,
+          : `${label}: nebegalima užsakyti, pašalinta iš krepšelio`,
       );
       continue;
     }
-    // Kuris apribojimas lėmė kiekį (pirmas, lygus cap).
-    const reason =
-      cap === available
-        ? `liko tik ${available}`
-        : cap === perCustomer
-          ? `jums dar galima užsakyti tik ${perCustomer} vnt.`
-          : `vienu užsakymu galima ne daugiau kaip ${perOrder} vnt.`;
-    changes.push(`${label}: ${reason}, kiekis sumažintas`);
+    changes.push(`${label}: liko tik ${cap}, kiekis sumažintas`);
     result.push(giftWrap({ ...line, label, quantity: cap }));
   }
   return { lines: result, changes };

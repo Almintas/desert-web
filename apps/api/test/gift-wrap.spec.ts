@@ -140,25 +140,6 @@ describe('Dovanų pakavimas', () => {
       });
     });
 
-    it('pakavimas neįskaičiuojamas į maxPerOrder ir maxPerCustomer', async () => {
-      const w = await createSaleWindow(ctx, {
-        items: [
-          {
-            productId: cake.productId,
-            variantId: cake.variantIds[0]!,
-            maxPerOrder: 2,
-            maxPerCustomer: 2,
-          },
-        ],
-        giftWrap: { enabled: true, priceCents: 150 },
-      });
-      const res = await post(
-        orderBody(w._id, [{ variantId: cake.variantIds[0]!, quantity: 2, giftWrapQuantity: 2 }]),
-      );
-      expect(res.status).toBe(201);
-      expect(res.body.order.giftWrapTotalCents).toBe(300);
-    });
-
     it('kainos pakeitimas po užsakymo esamo užsakymo nekeičia; naujas gauna naują kainą', async () => {
       const created = await createWindow(
         windowBody([item(cake), item(macarons)], {

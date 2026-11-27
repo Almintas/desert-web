@@ -417,8 +417,6 @@ export class AdminSaleWindowsService {
       variantId: new Types.ObjectId(i.variantId),
       priceCents: i.priceCents,
       quantityTotal: i.quantityTotal,
-      maxPerOrder: i.maxPerOrder,
-      maxPerCustomer: i.maxPerCustomer,
       giftWrapAllowed: i.giftWrapAllowed,
     };
   }

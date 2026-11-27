@@ -56,31 +56,25 @@ describe('Užsakymai: lygiagretumas', () => {
     expect(numbers).toEqual([1, 2, 3, 4, 5].map((n) => `DW-${year}-000${n}`));
   });
 
-  it('tas pats pirkėjas, maxPerCustomer 2, 5 lygiagretūs užsakymai: iš viso ne daugiau 2', async () => {
+  it('tas pats pirkėjas, 5 lygiagretūs užsakymai: visi priimami (limito pirkėjui nėra)', async () => {
     const p = await createProduct(ctx);
     const variantId = p.variantIds[0]!;
     const window = await createSaleWindow(ctx, {
-      items: [{ productId: p.productId, variantId, quantity: 50, maxPerCustomer: 2 }],
+      items: [{ productId: p.productId, variantId, quantity: 50 }],
     });
     const customer = { name: 'Petras', email: 'petras@example.com', phone: '+37065555555' };
 
     const responses = await Promise.all(
       Array.from({ length: 5 }, () =>
-        post(orderBody(window._id, [{ variantId, quantity: 1 }], { customer })),
+        post(orderBody(window._id, [{ variantId, quantity: 2 }], { customer })),
       ),
     );
 
-    expect(responses.filter((r) => r.status >= 500)).toEqual([]);
-    const ok = responses.filter((r) => r.status === 201);
-    const rejected = responses.filter((r) => r.status === 409);
-    expect(ok).toHaveLength(2);
-    expect(rejected).toHaveLength(3);
-    for (const r of rejected) expect(r.body.code).toBe('MAX_PER_CUSTOMER_EXCEEDED');
-
+    expect(responses.map((r) => r.status)).toEqual([201, 201, 201, 201, 201]);
     const orders = await ctx.orderModel.find().lean().exec();
     const total = orders.flatMap((o) => o.items).reduce((sum, i) => sum + i.quantity, 0);
-    expect(total).toBe(2);
-    expect(await getQuantityAvailable(ctx, window._id, variantId)).toBe(48);
+    expect(total).toBe(10);
+    expect(await getQuantityAvailable(ctx, window._id, variantId)).toBe(40);
   });
 
   it('pirmi metų užsakymai skirtinguose languose vienu metu: skaitiklio upsert negrąžina 500', async () => {

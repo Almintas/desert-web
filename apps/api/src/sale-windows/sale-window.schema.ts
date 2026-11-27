@@ -34,12 +34,6 @@ export class SaleWindowItem {
   @Prop({ required: true, min: 0 })
   quantityAvailable!: number;
 
-  @Prop({ min: 1 })
-  maxPerOrder?: number;
-
-  @Prop({ min: 1 })
-  maxPerCustomer?: number;
-
   /** Seni langai šio lauko neturi: tada leidžiama (žr. giftWrapAllowedOf). */
   @Prop({ default: true })
   giftWrapAllowed?: boolean;

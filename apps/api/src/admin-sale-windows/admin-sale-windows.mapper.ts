@@ -39,8 +39,6 @@ export function toAdminSaleWindowDto(
       quantityTotal: item.quantityTotal,
       quantityAvailable: item.quantityAvailable,
       sold: item.quantityTotal - item.quantityAvailable,
-      maxPerOrder: item.maxPerOrder ?? null,
-      maxPerCustomer: item.maxPerCustomer ?? null,
       giftWrapAllowed: giftWrapAllowedOf(item),
       ordersCount: stats.ordersByVariant.get(variantId) ?? 0,
     };

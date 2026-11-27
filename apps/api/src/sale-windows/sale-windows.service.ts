@@ -67,7 +67,6 @@ export class SaleWindowsService {
         images: toPublicImages(product),
         priceCents: item.priceCents,
         quantityAvailable: item.quantityAvailable,
-        maxPerOrder: item.maxPerOrder ?? null,
         giftWrapAllowed: giftWrapAllowedOf(item),
       });
     }

@@ -140,8 +140,6 @@ export interface WindowItemFixture {
   variantId: Types.ObjectId;
   priceCents?: number;
   quantity?: number;
-  maxPerOrder?: number;
-  maxPerCustomer?: number;
   /** Numatyta: neįrašoma (kaip seni langai), t. y. leidžiama. */
   giftWrapAllowed?: boolean;
 }
@@ -180,8 +178,6 @@ export async function createSaleWindow(
       priceCents: i.priceCents ?? 2000,
       quantityTotal: i.quantity ?? 10,
       quantityAvailable: i.quantity ?? 10,
-      maxPerOrder: i.maxPerOrder,
-      maxPerCustomer: i.maxPerCustomer,
       ...(i.giftWrapAllowed === undefined ? {} : { giftWrapAllowed: i.giftWrapAllowed }),
     })),
   });
@@ -310,8 +306,6 @@ export function bodyFrom(
       variantId: i.variantId,
       priceCents: i.priceCents,
       quantityTotal: i.quantityTotal,
-      maxPerOrder: i.maxPerOrder ?? undefined,
-      maxPerCustomer: i.maxPerCustomer ?? undefined,
       giftWrapAllowed: i.giftWrapAllowed,
     })),
     ...overrides,

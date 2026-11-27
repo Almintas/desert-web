@@ -460,29 +460,6 @@ describe('Admin užsakymai (/admin/orders)', () => {
       await cancel(id).expect(200);
       await auth(http().post(`/admin/sale-windows/${saleWindow.id}/cancel`)).expect(200);
     });
-
-    it('atšaukimas atlaisvina limitą vienam pirkėjui (maxPerCustomer)', async () => {
-      await auth(http().post(`/admin/sale-windows/${saleWindow.id}/close-now`)).expect(200);
-      const limited = await openWindow([item(cake, 0, { maxPerCustomer: 2 })]);
-      const customer = { name: 'Ona', email: 'ona@example.com', phone: '+37061234567' };
-      const variantId = cake.variantIds[0]!;
-      const first = await placeOrder([{ variantId, quantity: 2 }], {
-        windowId: limited.id,
-        customer,
-      });
-
-      const refused = await http()
-        .post('/orders')
-        .send(orderBody(limited.id, [{ variantId, quantity: 1 }], { customer }));
-      expect(refused.body.code).toBe('MAX_PER_CUSTOMER_EXCEEDED');
-
-      await cancel(first.id).expect(200);
-      const again = await http()
-        .post('/orders')
-        .send(orderBody(limited.id, [{ variantId, quantity: 2 }], { customer }));
-      expect(again.status).toBe(201);
-      await expectStockConsistent(limited.id);
-    });
   });
 });
 

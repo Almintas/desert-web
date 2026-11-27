@@ -111,7 +111,7 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
   describe('POST (kūrimas)', () => {
     it('sukuria juodraštį: 201 su AdminSaleWindowDto', async () => {
       const body = windowBody([
-        item(cake, 0, { priceCents: 2300, quantityTotal: 5, maxPerOrder: 2, maxPerCustomer: 3 }),
+        item(cake, 0, { priceCents: 2300, quantityTotal: 5 }),
         item(macarons),
       ]);
       const res = await create(body);
@@ -145,8 +145,6 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
           quantityTotal: 5,
           quantityAvailable: 5,
           sold: 0,
-          maxPerOrder: 2,
-          maxPerCustomer: 3,
           giftWrapAllowed: true,
           ordersCount: 0,
         },

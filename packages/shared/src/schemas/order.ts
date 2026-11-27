@@ -111,8 +111,8 @@ export interface OrderItemProblemDto {
 }
 
 /**
- * Prekių klaidų (ITEM_NOT_IN_WINDOW, ITEM_UNAVAILABLE, MAX_PER_ORDER_EXCEEDED,
- * MAX_PER_CUSTOMER_EXCEEDED, INSUFFICIENT_STOCK, GIFT_WRAP_UNAVAILABLE) atsakymo body. `details.items` išvardija
+ * Prekių klaidų (ITEM_NOT_IN_WINDOW, ITEM_UNAVAILABLE, INSUFFICIENT_STOCK,
+ * GIFT_WRAP_UNAVAILABLE) atsakymo body. `details.items` išvardija
  * visas tos rūšies problemines eilutes.
  */
 export interface OrderItemErrorBody {
@@ -125,8 +125,6 @@ export interface OrderItemErrorBody {
 export const ORDER_ITEM_ERROR_CODES = [
   'ITEM_NOT_IN_WINDOW',
   'ITEM_UNAVAILABLE',
-  'MAX_PER_ORDER_EXCEEDED',
-  'MAX_PER_CUSTOMER_EXCEEDED',
   'INSUFFICIENT_STOCK',
 ] as const satisfies readonly OrderErrorCode[];
 
@@ -137,8 +135,6 @@ export const ORDER_ERROR_CODES = [
   'FULFILLMENT_NOT_AVAILABLE',
   'ITEM_NOT_IN_WINDOW',
   'ITEM_UNAVAILABLE',
-  'MAX_PER_ORDER_EXCEEDED',
-  'MAX_PER_CUSTOMER_EXCEEDED',
   'INSUFFICIENT_STOCK',
   /**
    * 409: prašoma supakuoti kaip dovaną, bet lange pakavimas išjungtas arba prekė jo neleidžia.

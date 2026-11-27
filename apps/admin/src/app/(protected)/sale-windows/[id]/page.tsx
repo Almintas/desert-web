@@ -120,7 +120,6 @@ export default async function SaleWindowPage({
               <th scope="col">Kaina</th>
               <th scope="col">Parduota</th>
               <th scope="col">Likutis</th>
-              <th scope="col">Limitai</th>
             </tr>
           </thead>
           <tbody>
@@ -140,20 +139,6 @@ export default async function SaleWindowPage({
                   <span className="muted small">užsakymų: {i.ordersCount}</span>
                 </td>
                 <td>{i.quantityAvailable}</td>
-                <td className="nowrap stack">
-                  {i.maxPerOrder || i.maxPerCustomer ? (
-                    <>
-                      {i.maxPerOrder ? (
-                        <span className="small">užsakymui: {i.maxPerOrder}</span>
-                      ) : null}
-                      {i.maxPerCustomer ? (
-                        <span className="small">pirkėjui: {i.maxPerCustomer}</span>
-                      ) : null}
-                    </>
-                  ) : (
-                    <span className="muted">—</span>
-                  )}
-                </td>
               </tr>
             ))}
           </tbody>

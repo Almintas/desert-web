@@ -50,7 +50,6 @@ function readSaleWindowForm(formData: FormData) {
   };
 
   const integer = (raw: string): number => (/^\d+$/.test(raw) ? Number(raw) : Number.NaN);
-  const optionalInteger = (raw: string): number | undefined => (raw ? integer(raw) : undefined);
 
   const indexes = [...new Set([...formData.keys()].flatMap((k) => ITEM_KEY.exec(k)?.[1] ?? []))]
     .map(Number)
@@ -73,8 +72,6 @@ function readSaleWindowForm(formData: FormData) {
       variantId,
       priceCents: priceCents ?? Number.NaN,
       quantityTotal: integer(text(formData, `${prefix}.quantityTotal`)),
-      maxPerOrder: optionalInteger(text(formData, `${prefix}.maxPerOrder`)),
-      maxPerCustomer: optionalInteger(text(formData, `${prefix}.maxPerCustomer`)),
       // Paslėptas laukas visada siunčiamas (ir išjungus pakavimą lange), kad reikšmė išliktų.
       giftWrapAllowed: text(formData, `${prefix}.giftWrapAllowed`) !== '0',
     };
