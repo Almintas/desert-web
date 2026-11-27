@@ -10,7 +10,7 @@ import {
   type TestContext,
 } from './helpers';
 
-/** Klaidų `details`, mokėjimas ir pirkėjo užsakymo vaizdas su atsiėmimo informacija. */
+/** Klaidų `details`, mokėjimas ir pirkėjo užsakymo vaizdas su lango pavadinimu. */
 describe('Užsakymai: klaidų details, mokėjimas, prieigos vaizdas', () => {
   let ctx: TestContext;
 
@@ -28,10 +28,7 @@ describe('Užsakymai: klaidų details, mokėjimas, prieigos vaizdas', () => {
     await clearDatabase(ctx.connection);
   });
 
-  async function twoItemWindow(
-    a: { quantity?: number; maxPerOrder?: number; maxPerCustomer?: number } = {},
-    b: { quantity?: number; maxPerOrder?: number; maxPerCustomer?: number } = {},
-  ) {
+  async function twoItemWindow(a: { quantity?: number } = {}, b: { quantity?: number } = {}) {
     const pa = await createProduct(ctx, { name: 'Makaronai' });
     const pb = await createProduct(ctx, { name: 'Pyragas' });
     const window = await createSaleWindow(ctx, {
@@ -58,37 +55,6 @@ describe('Užsakymai: klaidų details, mokėjimas, prieigos vaizdas', () => {
       { variantId: a.toString(), requested: 5, allowed: 2 },
       { variantId: b.toString(), requested: 1, allowed: 0 },
     ]);
-  });
-
-  it('MAX_PER_ORDER_EXCEEDED: details nurodo variantId ir leidžiamą kiekį', async () => {
-    const { window, a, b } = await twoItemWindow({ maxPerOrder: 3 }, { maxPerOrder: 1 });
-    const res = await post(
-      orderBody(window._id, [
-        { variantId: a, quantity: 4 },
-        { variantId: b, quantity: 2 },
-      ]),
-    );
-    expect(res.status).toBe(400);
-    const body = res.body as OrderItemErrorBody;
-    expect(body.code).toBe('MAX_PER_ORDER_EXCEEDED');
-    expect(body.details.items).toEqual([
-      { variantId: a.toString(), requested: 4, allowed: 3 },
-      { variantId: b.toString(), requested: 2, allowed: 1 },
-    ]);
-  });
-
-  it('MAX_PER_CUSTOMER_EXCEEDED: details.allowed yra likęs pirkėjo limitas', async () => {
-    const { window, a } = await twoItemWindow({ quantity: 20, maxPerCustomer: 3 });
-    const customer = { name: 'Ona', email: 'ona@example.com', phone: '+37061111111' };
-    expect(
-      (await post(orderBody(window._id, [{ variantId: a, quantity: 2 }], { customer }))).status,
-    ).toBe(201);
-
-    const res = await post(orderBody(window._id, [{ variantId: a, quantity: 2 }], { customer }));
-    expect(res.status).toBe(409);
-    const body = res.body as OrderItemErrorBody;
-    expect(body.code).toBe('MAX_PER_CUSTOMER_EXCEEDED');
-    expect(body.details.items).toEqual([{ variantId: a.toString(), requested: 2, allowed: 1 }]);
   });
 
   it('ITEM_UNAVAILABLE: produkto variantas pašalintas, details.allowed = 0', async () => {
@@ -136,11 +102,10 @@ describe('Užsakymai: klaidų details, mokėjimas, prieigos vaizdas', () => {
     ]);
   });
 
-  it('naujas užsakymas: payment unpaid, on_pickup; prieigos vaizdas su lango pavadinimu ir atsiėmimu', async () => {
+  it('naujas užsakymas: payment unpaid, on_pickup; prieigos vaizdas su lango pavadinimu', async () => {
     const p = await createProduct(ctx);
     const window = await createSaleWindow(ctx, {
       items: [{ productId: p.productId, variantId: p.variantIds[0]! }],
-      pickupLocation: 'Gedimino pr. 1, Vilnius',
     });
     const res = await post(orderBody(window._id, [{ variantId: p.variantIds[0]!, quantity: 1 }]));
     expect(res.status).toBe(201);
@@ -157,9 +122,6 @@ describe('Užsakymai: klaidų details, mokėjimas, prieigos vaizdas', () => {
     expect(dto.saleWindow).toEqual({
       id: window._id.toString(),
       title: 'Savaitgalio pardavimas',
-      pickupLocation: 'Gedimino pr. 1, Vilnius',
-      pickupFrom: window.fulfillment.pickupFrom!.toISOString(),
-      pickupTo: window.fulfillment.pickupTo!.toISOString(),
     });
     expect(dto.orderNumber).toBe(res.body.order.orderNumber);
   });

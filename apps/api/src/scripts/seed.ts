@@ -64,9 +64,6 @@ async function main() {
       closesAt: new Date(now + 2 * day),
       fulfillment: {
         pickupAvailable: true,
-        pickupLocation: 'Vilnius, Gedimino pr. 1',
-        pickupFrom: new Date(now + 3 * day),
-        pickupTo: new Date(now + 3 * day + 6 * hour),
         deliveryAvailable: false,
       },
       items: [
@@ -76,7 +73,6 @@ async function main() {
           priceCents: 1200,
           quantityTotal: 30,
           quantityAvailable: 30,
-          maxPerCustomer: 4,
         },
         {
           productId: macarons._id,
@@ -84,7 +80,6 @@ async function main() {
           priceCents: 2200,
           quantityTotal: 15,
           quantityAvailable: 15,
-          maxPerCustomer: 2,
         },
         {
           productId: tart._id,
@@ -92,7 +87,6 @@ async function main() {
           priceCents: 450,
           quantityTotal: 40,
           quantityAvailable: 40,
-          maxPerOrder: 6,
         },
       ],
     },
@@ -103,9 +97,6 @@ async function main() {
       closesAt: new Date(now + 13 * day),
       fulfillment: {
         pickupAvailable: true,
-        pickupLocation: 'Vilnius, Gedimino pr. 1',
-        pickupFrom: new Date(now + 14 * day),
-        pickupTo: new Date(now + 14 * day + 6 * hour),
         deliveryAvailable: false,
       },
       items: [
@@ -115,7 +106,6 @@ async function main() {
           priceCents: 2400,
           quantityTotal: 50,
           quantityAvailable: 50,
-          maxPerCustomer: 3,
         },
       ],
     },

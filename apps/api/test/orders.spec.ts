@@ -118,9 +118,6 @@ describe('Užsakymai (POST /orders, GET /orders/access/:token)', () => {
         saleWindow: {
           id: window._id.toString(),
           title: 'Savaitgalio pardavimas',
-          pickupLocation: null,
-          pickupFrom: null,
-          pickupTo: null,
         },
       });
 
@@ -229,7 +226,7 @@ describe('Užsakymai (POST /orders, GET /orders/access/:token)', () => {
     });
   });
 
-  describe('prekės ir limitai', () => {
+  describe('prekės ir kiekiai', () => {
     it('prekės nėra lange: 400 ITEM_NOT_IN_WINDOW', async () => {
       const inWindow = await createProduct(ctx);
       const other = await createProduct(ctx, { name: 'Kita' });
@@ -244,103 +241,52 @@ describe('Užsakymai (POST /orders, GET /orders/access/:token)', () => {
       expect(res.body.variantId).toBe(other.variantIds[0]!.toString());
     });
 
-    it('viršytas maxPerOrder: 400 MAX_PER_ORDER_EXCEEDED', async () => {
-      const p = await createProduct(ctx);
-      const window = await createSaleWindow(ctx, {
-        items: [
-          { productId: p.productId, variantId: p.variantIds[0]!, quantity: 10, maxPerOrder: 2 },
-        ],
-      });
-      const res = await post(orderBody(window._id, [{ variantId: p.variantIds[0]!, quantity: 3 }]));
-      expect(res.status).toBe(400);
-      expect(res.body.code).toBe('MAX_PER_ORDER_EXCEEDED');
-      expect(res.body.max).toBe(2);
-      expect(await getQuantityAvailable(ctx, window._id, p.variantIds[0]!)).toBe(10);
-    });
-
-    describe('maxPerCustomer', () => {
-      async function setup() {
+    describe('be limitų pirkėjui (riboja tik likutis)', () => {
+      async function setup(quantity = 10) {
         const p = await createProduct(ctx);
         const window = await createSaleWindow(ctx, {
-          items: [
-            {
-              productId: p.productId,
-              variantId: p.variantIds[0]!,
-              quantity: 20,
-              maxPerCustomer: 3,
-            },
-          ],
+          items: [{ productId: p.productId, variantId: p.variantIds[0]!, quantity }],
         });
         return { window, variantId: p.variantIds[0]! };
       }
 
-      it('tas pats el. paštas, kitas telefonas: 409 su remaining', async () => {
-        const { window, variantId } = await setup();
-        const first = await post(
-          orderBody(window._id, [{ variantId, quantity: 2 }], {
-            customer: { name: 'Ona', email: 'ona@example.com', phone: '+37061111111' },
-          }),
-        );
-        expect(first.status).toBe(201);
-
-        const second = await post(
-          orderBody(window._id, [{ variantId, quantity: 2 }], {
-            customer: { name: 'Ona', email: 'ONA@Example.com', phone: '+37062222222' },
-          }),
-        );
-        expect(second.status).toBe(409);
-        expect(second.body.code).toBe('MAX_PER_CUSTOMER_EXCEEDED');
-        expect(second.body.remaining).toBe(1);
-        expect(second.body.max).toBe(3);
-        expect(await getQuantityAvailable(ctx, window._id, variantId)).toBe(18);
-
-        // Likutis vis dar leidžiamas.
-        const third = await post(
-          orderBody(window._id, [{ variantId, quantity: 1 }], {
-            customer: { name: 'Ona', email: 'ona@example.com', phone: '+37063333333' },
-          }),
-        );
-        expect(third.status).toBe(201);
+      it('vienu užsakymu galima nupirkti visą likutį', async () => {
+        const { window, variantId } = await setup(10);
+        const res = await post(orderBody(window._id, [{ variantId, quantity: 10 }]));
+        expect(res.status).toBe(201);
+        expect(await getQuantityAvailable(ctx, window._id, variantId)).toBe(0);
       });
 
-      it('tas pats telefonas kitu formatu, kitas el. paštas: 409 su remaining', async () => {
-        const { window, variantId } = await setup();
-        const first = await post(
-          orderBody(window._id, [{ variantId, quantity: 3 }], {
-            customer: { name: 'Jonas', email: 'jonas@example.com', phone: '8 612 34567' },
-          }),
-        );
-        expect(first.status).toBe(201);
-
-        const second = await post(
-          orderBody(window._id, [{ variantId, quantity: 1 }], {
-            customer: { name: 'Jonas', email: 'kitas@example.com', phone: '+37061234567' },
-          }),
-        );
-        expect(second.status).toBe(409);
-        expect(second.body.code).toBe('MAX_PER_CUSTOMER_EXCEEDED');
-        expect(second.body.remaining).toBe(0);
+      it('tas pats pirkėjas gali užsakyti kelis kartus', async () => {
+        const { window, variantId } = await setup(10);
+        const customer = { name: 'Ona', email: 'ona@example.com', phone: '+37061111111' };
+        for (const quantity of [4, 4, 2]) {
+          const res = await post(orderBody(window._id, [{ variantId, quantity }], { customer }));
+          expect(res.status).toBe(201);
+        }
+        expect(await getQuantityAvailable(ctx, window._id, variantId)).toBe(0);
       });
 
-      it('atšauktas užsakymas į limitą neįskaičiuojamas', async () => {
-        const { window, variantId } = await setup();
-        const customer = { name: 'Rūta', email: 'ruta@example.com', phone: '+37064444444' };
+      it('seni lango laukai maxPerOrder / maxPerCustomer DB ignoruojami', async () => {
+        const { window, variantId } = await setup(10);
+        await ctx.saleWindowModel.collection.updateOne(
+          { _id: window._id },
+          { $set: { 'items.0.maxPerOrder': 1, 'items.0.maxPerCustomer': 1 } },
+        );
+        const customer = { name: 'Ona', email: 'ona@example.com', phone: '+37061111111' };
         const first = await post(orderBody(window._id, [{ variantId, quantity: 3 }], { customer }));
         expect(first.status).toBe(201);
-
-        await ctx.orderModel.updateOne({ _id: first.body.order.id }, { status: 'cancelled' });
-
         const second = await post(
           orderBody(window._id, [{ variantId, quantity: 3 }], { customer }),
         );
         expect(second.status).toBe(201);
       });
 
-      it('el. paštas su tarpais priimamas, saugomas be tarpų ir skaičiuojamas į tą patį limitą', async () => {
+      it('el. paštas su tarpais priimamas, saugomas be tarpų (ir normalizuotas)', async () => {
         const { window, variantId } = await setup();
         const first = await post(
           orderBody(window._id, [{ variantId, quantity: 2 }], {
-            customer: { name: 'Ona', email: '  ona@example.com ', phone: '+37061111111' },
+            customer: { name: 'Ona', email: '  ona@example.com ', phone: '8 612 34567' },
           }),
         );
         expect(first.status).toBe(201);
@@ -348,15 +294,7 @@ describe('Užsakymai (POST /orders, GET /orders/access/:token)', () => {
         const stored = await ctx.orderModel.findById(first.body.order.id).lean().exec();
         expect(stored?.customer.email).toBe('ona@example.com');
         expect(stored?.customer.emailNormalized).toBe('ona@example.com');
-
-        const second = await post(
-          orderBody(window._id, [{ variantId, quantity: 2 }], {
-            customer: { name: 'Ona', email: 'ona@example.com', phone: '+37062222222' },
-          }),
-        );
-        expect(second.status).toBe(409);
-        expect(second.body.code).toBe('MAX_PER_CUSTOMER_EXCEEDED');
-        expect(second.body.remaining).toBe(1);
+        expect(stored?.customer.phoneNormalized).toBe('+37061234567');
       });
     });
   });

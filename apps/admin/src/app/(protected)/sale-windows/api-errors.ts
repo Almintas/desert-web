@@ -13,18 +13,6 @@ export function saleWindowApiErrorState(
   const index = typeof body.variantId === 'string' ? variantIndex(body.variantId) : -1;
 
   switch (error.code) {
-    case 'PICKUP_INFO_REQUIRED':
-      return {
-        error: error.message,
-        fieldErrors: Object.fromEntries(
-          (Array.isArray((body as { missing?: unknown }).missing)
-            ? ((body as { missing: string[] }).missing ?? [])
-            : []
-          )
-            .filter((field) => field !== 'pickupAvailable')
-            .map((field) => [`fulfillment.${field}`, 'Privaloma paskelbtam langui']),
-        ),
-      };
     case 'QUANTITY_BELOW_SOLD':
       return {
         error: 'Patikrink pažymėtus laukus.',

@@ -31,12 +31,7 @@ const data = (overrides: Partial<OrderEmailData> = {}): OrderEmailData => ({
   giftWrapTotalCents: 0,
   totalCents: 1250,
   fulfillment: { method: 'pickup', address: null, notes: null },
-  pickup: {
-    location: 'Vilnius, Gedimino pr. 1',
-    // Žiemą Vilnius UTC+2: 08:00Z -> 10:00, 12:00Z -> 14:00.
-    from: '2026-12-20T08:00:00.000Z',
-    to: '2026-12-20T12:00:00.000Z',
-  },
+  pickup: { location: 'Vilnius, Gedimino pr. 1', hours: '17:00–20:00' },
   cancellationReason: null,
   seller: {
     name: 'Ieva Pardavėja',
@@ -65,20 +60,17 @@ describe('Užsakymų laiškų šablonai', () => {
     }
   });
 
-  it('atsiėmimo laikas Vilniaus laiku (žiemą ir vasarą)', () => {
-    const winter = visible(renderCustomerOrderReceived(data()).text);
-    expect(winter).toContain('Atsiėmimo laikas: Sekmadienis, gruodžio 20 d., 10:00–14:00');
-    expect(winter).toContain('Atsiėmimo vieta: Vilnius, Gedimino pr. 1');
-
-    // Vasarą UTC+3: 07:00Z -> 10:00. Skirtingos dienos: abi datos.
-    const summer = renderCustomerOrderStatus(
-      data({
-        pickup: { location: 'Kaunas', from: '2026-07-04T07:00:00Z', to: '2026-07-05T15:30:00Z' },
-      }),
-      'ready',
-    );
-    expect(visible(summer.text)).toContain('liepos 4 d. 10:00 – liepos 5 d. 18:30');
-    expect(visible(summer.html)).toContain('liepos 4 d. 10:00 – liepos 5 d. 18:30');
+  it('atsiėmimas viena eilute: „Atsiėmimas: {vieta}, {laikas}“', () => {
+    for (const email of [
+      renderCustomerOrderReceived(data()),
+      renderCustomerOrderStatus(data(), 'confirmed'),
+      renderCustomerOrderStatus(data(), 'ready'),
+      renderSellerNewOrder(data()),
+    ]) {
+      expect(visible(email.text)).toContain('Atsiėmimas: Vilnius, Gedimino pr. 1, 17:00–20:00');
+      expect(email.text).not.toContain('Atsiėmimo vieta');
+      expect(email.text).not.toContain('Atsiėmimo laikas');
+    }
   });
 
   it('tekstinėje versijoje nėra nematomų simbolių', () => {
@@ -131,19 +123,11 @@ describe('Užsakymų laiškų šablonai', () => {
     const { subject, html, text } = renderCustomerOrderStatus(data(), 'ready');
     expect(subject).toBe('Užsakymas DW-2026-0042 paruoštas atsiimti');
     expect(html).toMatch(/font-size:22px[^>]*>Paruoštas atsiimti</);
-    expect(visible(html)).toContain('<strong>Sekmadienis, gruodžio 20 d., 10:00–14:00</strong>');
-    expect(html).toContain('<strong>Vilnius, Gedimino pr. 1</strong>');
-    expect(text).toMatch(/^PARUOŠTAS ATSIIMTI\n\nAtsiėmimo vieta: Vilnius/);
-    expect(text).toContain(`Atsiimdami sumokėsite ${formatEur(1250)}.`);
-  });
-
-  it('paruoštas be atsiėmimo duomenų: „Bus patikslinta“', () => {
-    const { text } = renderCustomerOrderStatus(
-      data({ pickup: { location: null, from: null, to: null } }),
-      'ready',
+    expect(html).toContain('<strong>Vilnius, Gedimino pr. 1, 17:00–20:00</strong>');
+    expect(text).toMatch(
+      /^PARUOŠTAS ATSIIMTI\n\nAtsiėmimas: Vilnius, Gedimino pr\. 1, 17:00–20:00/,
     );
-    expect(text).toContain('Atsiėmimo vieta: Bus patikslinta');
-    expect(text).toContain('Atsiėmimo laikas: Bus patikslintas');
+    expect(text).toContain(`Atsiimdami sumokėsite ${formatEur(1250)}.`);
   });
 
   it('patvirtintas', () => {

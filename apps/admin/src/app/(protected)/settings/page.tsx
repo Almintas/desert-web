@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { apiFetch } from '@/lib/api';
 import { requireAdmin } from '@/lib/dal';
 import { getSessionToken } from '@/lib/session';
+import { PickupForm } from './pickup-form';
 import { SettingsForm } from './settings-form';
 import { ShopInfoForm } from './shop-info-form';
 
@@ -34,6 +35,11 @@ export default async function SettingsPage({
           Parduotuvės informacija išsaugota. Svetainėje ji atsinaujins maždaug per minutę.
         </p>
       ) : null}
+      {done === 'pickup' ? (
+        <p className="alert success" role="status">
+          Atsiėmimo informacija išsaugota. Svetainėje ji atsinaujins maždaug per minutę.
+        </p>
+      ) : null}
       {/* key: po išsaugojimo forma pradedama nuo naujų reikšmių. */}
       <SettingsForm
         key={settings.updatedAt ?? 'default'}
@@ -43,6 +49,11 @@ export default async function SettingsPage({
       <ShopInfoForm
         key={`shop-${settings.updatedAt ?? 'default'}`}
         initial={settings.shop}
+        canEdit={admin.role === 'owner'}
+      />
+      <PickupForm
+        key={`pickup-${settings.updatedAt ?? 'default'}`}
+        initial={settings.pickup}
         canEdit={admin.role === 'owner'}
       />
     </>

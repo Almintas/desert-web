@@ -2,7 +2,6 @@ import {
   type AdminSaleWindowDto,
   type AdminSaleWindowInput,
   getSaleWindowPhase,
-  missingPickupInfo,
   objectIdSchema,
   type SaleWindowErrorCode,
 } from '@desert-web/shared';
@@ -38,22 +37,6 @@ const hasOrders = (message: string) => windowError(ConflictException, 'WINDOW_HA
 
 const NOT_CANCELLED = { $ne: 'cancelled' } as const;
 
-/**
- * Paskelbtas langas turi turėti atsiėmimo vietą ir laiką: pirkėjai užsako tik atsiėmimui,
- * o užsakymo puslapis yra vienintelė vieta, kur jie tai sužino. Juodraščiams netaikoma.
- */
-function assertPickupInfo(fulfillment: Parameters<typeof missingPickupInfo>[0] | undefined): void {
-  const missing = missingPickupInfo(fulfillment ?? {});
-  if (missing.length > 0) {
-    throw windowError(
-      ConflictException,
-      'PICKUP_INFO_REQUIRED',
-      'Prieš skelbiant langą nurodyk atsiėmimo vietą ir laiką (nuo ir iki).',
-      { missing },
-    );
-  }
-}
-
 const MINUTE_MS = 60_000;
 
 /**
@@ -64,22 +47,15 @@ const MINUTE_MS = 60_000;
  * atidarytas langas „atsidarytų“ anksčiau, nei buvo atidarytas iš tikrųjų.
  */
 function keepStoredSeconds(input: AdminSaleWindowInput, stored: SaleWindow): AdminSaleWindowInput {
-  const keep = <T extends Date | undefined>(submitted: T, prev: Date | undefined): T =>
-    submitted && prev && submitted.getTime() === Math.floor(prev.getTime() / MINUTE_MS) * MINUTE_MS
-      ? (prev as T)
-      : submitted;
+  const keep = (submitted: Date, prev: Date): Date =>
+    submitted.getTime() === Math.floor(prev.getTime() / MINUTE_MS) * MINUTE_MS ? prev : submitted;
 
   let opensAt = keep(input.opensAt, stored.opensAt);
   let closesAt = keep(input.closesAt, stored.closesAt);
   // Teoriškai išsaugotos sekundės galėtų sugadinti eiliškumą: tada imam pateiktus laikus.
   if (closesAt <= opensAt) ({ opensAt, closesAt } = input);
 
-  const f = input.fulfillment;
-  let pickupFrom = keep(f.pickupFrom, stored.fulfillment?.pickupFrom);
-  let pickupTo = keep(f.pickupTo, stored.fulfillment?.pickupTo);
-  if (pickupFrom && pickupTo && pickupTo <= pickupFrom) ({ pickupFrom, pickupTo } = f);
-
-  return { ...input, opensAt, closesAt, fulfillment: { ...f, pickupFrom, pickupTo } };
+  return { ...input, opensAt, closesAt };
 }
 
 @Injectable()
@@ -196,13 +172,21 @@ export class AdminSaleWindowsService {
       return { ...this.itemFields(i), quantityAvailable: i.quantityTotal - sold };
     });
 
-    if (stored.status === 'published') assertPickupInfo(input.fulfillment);
-
     await this.linkProducts(input.items, session);
+    // Fulfillment laukai keičiami po vieną: seni atsiėmimo laukai (pickupLocation ir kt.)
+    // dokumente lieka nepaliesti.
+    const { fulfillment, ...fields } = this.windowFields(input);
     const updated = await this.saleWindowModel
       .findByIdAndUpdate(
         stored._id,
-        { $set: { ...this.windowFields(input), items } },
+        {
+          $set: {
+            ...fields,
+            'fulfillment.pickupAvailable': fulfillment.pickupAvailable,
+            'fulfillment.deliveryAvailable': fulfillment.deliveryAvailable,
+            items,
+          },
+        },
         { new: true, runValidators: true, session },
       )
       .lean<SaleWindow>()
@@ -211,14 +195,13 @@ export class AdminSaleWindowsService {
     return updated;
   }
 
-  /** draft -> published (jei turi atsiėmimo info). Paskelbti langai gali persidengti. */
+  /** draft -> published. Paskelbti langai gali persidengti. */
   publish(id: string): Promise<AdminSaleWindowDto> {
     return this.mutate(id, async (w, _session, now) => {
       if (w.status !== 'draft') throw invalidStatus('Paskelbti galima tik juodraštį');
       if (w.closesAt <= now) {
         throw invalidStatus('Lango pabaiga jau praėjo. Pirmiau pakeisk lango laikus.');
       }
-      assertPickupInfo(w.fulfillment);
       return { status: 'published' };
     });
   }
@@ -253,7 +236,6 @@ export class AdminSaleWindowsService {
       if (w.closesAt <= now) {
         throw invalidStatus('Lango pabaiga jau praėjo. Pirmiau pakeisk uždarymo laiką.');
       }
-      assertPickupInfo(w.fulfillment);
       return { status: 'published', opensAt: now };
     });
   }
@@ -421,13 +403,7 @@ export class AdminSaleWindowsService {
       title: input.title,
       opensAt: input.opensAt,
       closesAt: input.closesAt,
-      fulfillment: {
-        pickupAvailable: f.pickupAvailable,
-        pickupLocation: f.pickupLocation || undefined,
-        pickupFrom: f.pickupFrom,
-        pickupTo: f.pickupTo,
-        deliveryAvailable: f.deliveryAvailable,
-      },
+      fulfillment: { pickupAvailable: f.pickupAvailable, deliveryAvailable: f.deliveryAvailable },
       // Kaip ir prekių kainos: keičiama bet kada, užsakymai saugo kopiją.
       giftWrap: { enabled: input.giftWrap.enabled, priceCents: input.giftWrap.priceCents },
     };
@@ -441,8 +417,6 @@ export class AdminSaleWindowsService {
       variantId: new Types.ObjectId(i.variantId),
       priceCents: i.priceCents,
       quantityTotal: i.quantityTotal,
-      maxPerOrder: i.maxPerOrder,
-      maxPerCustomer: i.maxPerCustomer,
       giftWrapAllowed: i.giftWrapAllowed,
     };
   }

@@ -18,14 +18,11 @@ export function stockClass({ quantityAvailable }: StockItem): string {
   return 'stock';
 }
 
-/** Paaiškinimas, kai pasiektas didžiausias kiekis; null, jei dar galima pridėti. */
+/** Paaiškinimas, kai į krepšelį įdėtas visas likutis; null, jei dar galima pridėti. */
 export function limitHint(
-  item: Pick<PublicSaleWindowItemDto, 'quantityAvailable' | 'maxPerOrder'>,
+  item: Pick<PublicSaleWindowItemDto, 'quantityAvailable'>,
   quantity: number,
 ): string | null {
-  const max = maxQuantity(item);
-  if (quantity === 0 || quantity < max) return null;
-  return item.maxPerOrder && item.maxPerOrder < item.quantityAvailable
-    ? `Vienu užsakymu daugiausia ${item.maxPerOrder} vnt.`
-    : 'Daugiau neturime';
+  if (quantity === 0 || quantity < maxQuantity(item)) return null;
+  return 'Daugiau neturime';
 }

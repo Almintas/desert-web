@@ -104,11 +104,12 @@ export class OrdersService {
   /**
    * Sukuria užsakymą atidarytame pardavimo lange.
    *
-   * Viskas vyksta vienoje transakcijoje: lango tikrinimas, limitai, kiekių rezervavimas
-   * (vienas atominis updateOne su sąlyga quantityAvailable >= kiekis) ir užsakymo įrašas.
+   * Viskas vyksta vienoje transakcijoje: lango tikrinimas, kiekių rezervavimas (vienas
+   * atominis updateOne su sąlyga quantityAvailable >= kiekis) ir užsakymo įrašas.
    * Kiekvienas užsakymas rašo į tą patį lango dokumentą, todėl lygiagretūs užsakymai
    * tame pačiame lange gauna WriteConflict ir driveris transakciją pakartoja. Taip
-   * kiekiai ir limitas vienam pirkėjui visada skaičiuojami nuo naujausių duomenų.
+   * kiekiai visada skaičiuojami nuo naujausių duomenų. Pirkėjas gali pirkti kiek nori:
+   * riboja tik lango likutis.
    */
   async create(
     input: CreateOrderInput,
@@ -147,10 +148,10 @@ export class OrdersService {
 
   /**
    * Viskas vyksta vienoje transakcijoje: idempotencijos patikrinimas, lango tikrinimas,
-   * limitai, kiekių rezervavimas (vienas atominis updateOne su sąlyga quantityAvailable >=
-   * kiekis) ir užsakymo įrašas. Kiekvienas užsakymas rašo į tą patį lango dokumentą, todėl
+   * kiekių rezervavimas (vienas atominis updateOne su sąlyga quantityAvailable >= kiekis)
+   * ir užsakymo įrašas. Kiekvienas užsakymas rašo į tą patį lango dokumentą, todėl
    * lygiagretūs užsakymai tame pačiame lange gauna WriteConflict ir driveris transakciją
-   * pakartoja. Taip kiekiai, limitas vienam pirkėjui ir clientRequestId patikrinimas visada
+   * pakartoja. Taip kiekiai ir clientRequestId patikrinimas visada
    * remiasi naujausiais duomenimis: pakartotas dublikatas randa jau sukurtą užsakymą ir
    * kiekio antrą kartą nerezervuoja.
    */
@@ -189,13 +190,6 @@ export class OrdersService {
         this.assertFulfillmentAvailable(saleWindow, input.fulfillment.method);
         const lines = this.matchLines(saleWindow, input.items);
         this.assertGiftWrapAvailable(saleWindow, lines);
-        await this.assertCustomerLimits(
-          saleWindow._id,
-          lines,
-          emailNormalized,
-          phoneNormalized,
-          session,
-        );
         this.assertStock(lines);
         const items = await this.buildItemSnapshots(
           lines,
@@ -275,7 +269,7 @@ export class OrdersService {
     };
   }
 
-  /** Pirkėjo užsakymo peržiūra pagal slaptą nuorodą (su lango pavadinimu ir atsiėmimu). */
+  /** Pirkėjo užsakymo peržiūra pagal slaptą nuorodą (su lango pavadinimu). */
   async findByAccessToken(accessToken: string): Promise<OrderAccessDto> {
     const notFound = new NotFoundException('Užsakymas nerastas');
     if (!ACCESS_TOKEN_PATTERN.test(accessToken)) throw notFound;
@@ -283,8 +277,8 @@ export class OrdersService {
     const order = await this.orderModel.findOne({ accessToken }).lean<Order>().exec();
     if (!order) throw notFound;
     const saleWindow = await this.saleWindowModel
-      .findById(order.saleWindowId, { title: 1, fulfillment: 1 })
-      .lean<Pick<SaleWindow, '_id' | 'title' | 'fulfillment'>>()
+      .findById(order.saleWindowId, { title: 1 })
+      .lean<Pick<SaleWindow, '_id' | 'title'>>()
       .exec();
     return toOrderAccessDto(order, saleWindow);
   }
@@ -305,16 +299,12 @@ export class OrdersService {
 
   private matchLines(saleWindow: SaleWindow, requested: CreateOrderInput['items']): OrderLine[] {
     const notInWindow: OrderItemProblemDto[] = [];
-    const overMax: OrderItemProblemDto[] = [];
     const lines: OrderLine[] = [];
     for (const { variantId, quantity, giftWrapQuantity } of requested) {
       const windowItem = saleWindow.items.find((i) => i.variantId.equals(variantId));
       if (!windowItem) {
         notInWindow.push({ variantId, requested: quantity, allowed: 0 });
         continue;
-      }
-      if (windowItem.maxPerOrder && quantity > windowItem.maxPerOrder) {
-        overMax.push({ variantId, requested: quantity, allowed: windowItem.maxPerOrder });
       }
       lines.push({ variantId, quantity, giftWrapQuantity, windowItem });
     }
@@ -325,18 +315,6 @@ export class OrdersService {
         'ITEM_NOT_IN_WINDOW',
         'Šios prekės nėra šiame pardavimo lange',
         notInWindow,
-      );
-    }
-    if (overMax.length > 0) {
-      const max = overMax[0]!.allowed;
-      throw itemError(
-        BadRequestException,
-        'MAX_PER_ORDER_EXCEEDED',
-        overMax.length === 1
-          ? `Vienu užsakymu galima pirkti ne daugiau kaip ${max} vnt.`
-          : 'Kai kurių prekių vienu užsakymu galima pirkti mažiau',
-        overMax,
-        { max },
       );
     }
     return lines;
@@ -360,69 +338,6 @@ export class OrdersService {
         ? 'Kai kurių prekių supakuoti kaip dovaną negalima'
         : 'Šiame pardavime supakuoti kaip dovaną nebegalima',
       unavailable,
-    );
-  }
-
-  /**
-   * „Minkštas“ limitas vienam pirkėjui per visą langą: sumuojami to paties el. pašto
-   * ARBA telefono ne atšaukti užsakymai.
-   */
-  private async assertCustomerLimits(
-    saleWindowId: Types.ObjectId,
-    lines: OrderLine[],
-    emailNormalized: string,
-    phoneNormalized: string,
-    session: ClientSession,
-  ): Promise<void> {
-    const limited = lines.filter((l) => l.windowItem.maxPerCustomer);
-    if (limited.length === 0) return;
-
-    const previous = await this.orderModel
-      .aggregate<{ _id: Types.ObjectId; quantity: number }>([
-        {
-          $match: {
-            saleWindowId,
-            status: { $ne: 'cancelled' },
-            $or: [
-              { 'customer.emailNormalized': emailNormalized },
-              { 'customer.phoneNormalized': phoneNormalized },
-            ],
-          },
-        },
-        { $unwind: '$items' },
-        { $match: { 'items.variantId': { $in: limited.map((l) => l.windowItem.variantId) } } },
-        { $group: { _id: '$items.variantId', quantity: { $sum: '$items.quantity' } } },
-      ])
-      .session(session)
-      .exec();
-
-    const exceeded: (OrderItemProblemDto & { max: number })[] = [];
-    for (const line of limited) {
-      const max = line.windowItem.maxPerCustomer!;
-      const alreadyOrdered =
-        previous.find((p) => p._id.equals(line.windowItem.variantId))?.quantity ?? 0;
-      if (alreadyOrdered + line.quantity > max) {
-        exceeded.push({
-          variantId: line.variantId,
-          requested: line.quantity,
-          allowed: Math.max(0, max - alreadyOrdered),
-          max,
-        });
-      }
-    }
-    if (exceeded.length === 0) return;
-
-    const first = exceeded[0]!;
-    throw itemError(
-      ConflictException,
-      'MAX_PER_CUSTOMER_EXCEEDED',
-      exceeded.length > 1
-        ? 'Kai kurių prekių vienam pirkėjui galima užsakyti mažiau'
-        : first.allowed > 0
-          ? `Šios prekės vienam pirkėjui dar galite užsakyti ${first.allowed} vnt.`
-          : 'Šios prekės jau užsakėte maksimalų kiekį',
-      exceeded.map(({ variantId, requested, allowed }) => ({ variantId, requested, allowed })),
-      { max: first.max, remaining: first.allowed },
     );
   }
 

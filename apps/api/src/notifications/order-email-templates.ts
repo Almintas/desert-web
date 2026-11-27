@@ -1,8 +1,9 @@
 import {
   type FulfillmentMethod,
   formatEur,
-  formatPickupRange,
+  formatPickupInfo,
   PAYMENT_TEXT,
+  type PickupInfo,
   type SellerDetails,
   sellerDisplayName,
   SHOP_NAME,
@@ -29,7 +30,8 @@ export interface OrderEmailData {
   /** itemsTotalCents + giftWrapTotalCents. */
   totalCents: number;
   fulfillment: { method: FulfillmentMethod; address: string | null; notes: string | null };
-  pickup: { location: string | null; from: Date | string | null; to: Date | string | null };
+  /** Atsiėmimo vieta ir laikas iš nustatymų (bendri visiems langams). */
+  pickup: PickupInfo;
   cancellationReason: string | null;
   /** `${WEB_URL}/uzsakymas/<accessToken>`; null, jei WEB_URL nenustatytas. */
   orderUrl: string | null;
@@ -108,24 +110,12 @@ const COLORS = {
 
 const FONT = 'Arial, Helvetica, sans-serif';
 
-function pickupText(data: OrderEmailData): { place: string; time: string } {
-  const { location, from, to } = data.pickup;
-  return {
-    place: location ?? 'Bus patikslinta',
-    time: from && to ? formatPickupRange(from, to) : 'Bus patikslintas',
-  };
-}
-
 /** Atsiėmimo (arba pristatymo) eilutės: [etiketė, reikšmė]. */
 function fulfillmentRows(data: OrderEmailData): [string, string][] {
   if (data.fulfillment.method === 'delivery') {
     return [['Pristatymo adresas', data.fulfillment.address ?? 'Bus patikslintas']];
   }
-  const { place, time } = pickupText(data);
-  return [
-    ['Atsiėmimo vieta', place],
-    ['Atsiėmimo laikas', time],
-  ];
+  return [['Atsiėmimas', formatPickupInfo(data.pickup)]];
 }
 
 // --- HTML dalys (inline stiliai, be išorinio CSS ir paveikslėlių) ---

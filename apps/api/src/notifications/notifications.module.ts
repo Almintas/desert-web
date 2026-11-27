@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 import type { Env } from '../config/env';
-import { SaleWindowsModule } from '../sale-windows/sale-windows.module';
 import { SettingsModule } from '../settings/settings.module';
 import { EMAIL_SENDER, type EmailSender } from './email-sender';
 import { OrderNotificationsService } from './order-notifications.service';
@@ -10,8 +9,7 @@ import { ResendEmailSender } from './resend-email-sender';
 
 @Module({
   imports: [
-    SaleWindowsModule, // SaleWindow modelis (atsiėmimo vieta ir laikas)
-    SettingsModule, // pardavėjo duomenys laiškams
+    SettingsModule, // pardavėjo duomenys ir atsiėmimas laiškams
   ],
   providers: [
     OrderNotificationsService,

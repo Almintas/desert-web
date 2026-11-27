@@ -6,6 +6,7 @@ import { PickupInfo } from '@/components/pickup-info';
 import { ApiError, apiFetch, TOO_MANY_REQUESTS_MESSAGE } from '@/lib/api';
 import { forwardedClientHeaders } from '@/lib/client-headers';
 import { formatDateTime } from '@/lib/format';
+import { getShopInfo } from '@/lib/shop-info';
 import { CopyLink } from './copy-link';
 
 // Užsakymo būsena keičiasi, o nuoroda slapta: niekada netalpinam (žr. ir proxy.ts antraštes).
@@ -44,7 +45,7 @@ async function loadOrder(token: string): Promise<OrderAccessDto | 'not-found' | 
 
 export default async function OrderPage({ params }: { params: Promise<{ accessToken: string }> }) {
   const { accessToken } = await params;
-  const order = await loadOrder(accessToken);
+  const [order, { pickup }] = await Promise.all([loadOrder(accessToken), getShopInfo()]);
 
   if (order === 'not-found') notFound();
   if (order === 'too-many') {
@@ -143,11 +144,7 @@ export default async function OrderPage({ params }: { params: Promise<{ accessTo
       {cancelled ? null : (
         <section className="checkout-section" aria-labelledby="pickup-heading">
           <h2 id="pickup-heading">Atsiėmimas ir apmokėjimas</h2>
-          <PickupInfo
-            location={order.saleWindow.pickupLocation}
-            from={order.saleWindow.pickupFrom}
-            to={order.saleWindow.pickupTo}
-          />
+          <PickupInfo pickup={pickup} />
           <dl className="pickup-info">
             <div>
               <dt>Apmokėjimas</dt>

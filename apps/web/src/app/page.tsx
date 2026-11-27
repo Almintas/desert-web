@@ -4,6 +4,7 @@ import { OrderSteps } from '@/components/order-steps';
 import { Storefront, UpcomingProducts } from '@/components/storefront';
 import { WindowTabs } from '@/components/window-tabs';
 import { SHOP_DESCRIPTION, SHOP_NAME } from '@/lib/shop';
+import { getShopInfo } from '@/lib/shop-info';
 import { loadCurrentWindows, pickOpenWindow, WINDOW_PARAM } from '@/lib/window';
 
 // Lango būsena ir likučiai priklauso nuo laiko, todėl puslapis visada generuojamas iš naujo.
@@ -29,7 +30,11 @@ export default async function HomePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [current, params] = await Promise.all([loadCurrentWindows(), searchParams]);
+  const [current, params, { pickup }] = await Promise.all([
+    loadCurrentWindows(),
+    searchParams,
+    getShopInfo(),
+  ]);
 
   if (!current) {
     return (
@@ -55,7 +60,7 @@ export default async function HomePage({
           <p className="eyebrow">Prekyba vyksta</p>
           <h2 className="window-title">{open.title}</h2>
         </header>
-        <OrderSteps saleWindow={open} />
+        <OrderSteps saleWindow={open} pickup={pickup} />
         {open.giftWrap ? (
           <p className="order-steps-note">Desertus galima supakuoti kaip dovaną.</p>
         ) : null}
@@ -79,7 +84,7 @@ export default async function HomePage({
             Kol kas galite apžiūrėti, ką ruošiame. Užsakyti bus galima prasidėjus prekybai.
           </p>
         </header>
-        <OrderSteps saleWindow={upcoming} upcoming />
+        <OrderSteps saleWindow={upcoming} pickup={pickup} upcoming />
         <UpcomingProducts saleWindow={upcoming} />
       </>
     );

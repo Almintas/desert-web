@@ -1,8 +1,9 @@
 import {
   type AdminSaleWindowDto,
-  formatPickupRange,
+  formatPickupInfo,
   formatRelativeShopTime,
   formatShopDateTime,
+  type PickupInfo,
 } from '@desert-web/shared';
 import Link from 'next/link';
 import { PhaseBadge } from '../sale-windows/phase-badge';
@@ -30,11 +31,13 @@ const STOCK_LABELS = { 'sold-out': 'Išparduota', low: 'Mažai liko' } as const;
 export function DashboardWindowCard({
   saleWindow: w,
   now,
+  pickup,
 }: {
   saleWindow: AdminSaleWindowDto;
   now: Date;
+  /** Iš nustatymų (bendra visiems langams); null, jei nepavyko gauti. */
+  pickup: PickupInfo | null;
 }) {
-  const f = w.fulfillment;
   return (
     <section className="dash-card window-card" aria-labelledby="dash-window-title">
       <div className="dash-card-header">
@@ -57,21 +60,10 @@ export function DashboardWindowCard({
         <div className="wide">
           <dt>Atsiėmimas</dt>
           <dd>
-            {f.pickupLocation || f.pickupFrom ? (
-              <>
-                {f.pickupLocation ?? 'Vieta nenurodyta'}
-                {f.pickupFrom && f.pickupTo ? (
-                  <span className="muted small">{formatPickupRange(f.pickupFrom, f.pickupTo)}</span>
-                ) : null}
-              </>
-            ) : (
-              <>
-                Nenurodyta{' '}
-                <Link href={`/sale-windows/${w.id}/edit`} className="link">
-                  Nurodyti
-                </Link>
-              </>
-            )}
+            {pickup ? formatPickupInfo(pickup) : '–'}{' '}
+            <Link href="/settings#pickup" className="link">
+              Keisti
+            </Link>
           </dd>
         </div>
       </dl>

@@ -231,9 +231,6 @@ test.describe('Dovanų pakavimas', () => {
       closesAt: current.closesAt,
       fulfillment: {
         pickupAvailable: current.fulfillment.pickupAvailable,
-        pickupLocation: current.fulfillment.pickupLocation,
-        pickupFrom: current.fulfillment.pickupFrom,
-        pickupTo: current.fulfillment.pickupTo,
         deliveryAvailable: current.fulfillment.deliveryAvailable,
       },
       giftWrap: { enabled: false, priceCents: 200 },

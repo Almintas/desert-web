@@ -71,7 +71,6 @@ describe('Dovanų pakavimas', () => {
         },
       ],
       giftWrap: options.giftWrap ?? { enabled: true, priceCents: 200 },
-      pickupLocation: 'Vilnius',
     });
   }
 
@@ -139,25 +138,6 @@ describe('Dovanų pakavimas', () => {
         giftWrapTotalCents: 0,
         totalCents: 4000,
       });
-    });
-
-    it('pakavimas neįskaičiuojamas į maxPerOrder ir maxPerCustomer', async () => {
-      const w = await createSaleWindow(ctx, {
-        items: [
-          {
-            productId: cake.productId,
-            variantId: cake.variantIds[0]!,
-            maxPerOrder: 2,
-            maxPerCustomer: 2,
-          },
-        ],
-        giftWrap: { enabled: true, priceCents: 150 },
-      });
-      const res = await post(
-        orderBody(w._id, [{ variantId: cake.variantIds[0]!, quantity: 2, giftWrapQuantity: 2 }]),
-      );
-      expect(res.status).toBe(201);
-      expect(res.body.order.giftWrapTotalCents).toBe(300);
     });
 
     it('kainos pakeitimas po užsakymo esamo užsakymo nekeičia; naujas gauna naują kainą', async () => {

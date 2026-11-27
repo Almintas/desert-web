@@ -246,9 +246,6 @@ export function createDraftWindow(
     closesAt: iso(48 * HOUR),
     fulfillment: {
       pickupAvailable: true,
-      pickupLocation: 'Gedimino pr. 1, Vilnius',
-      pickupFrom: iso(50 * HOUR),
-      pickupTo: iso(52 * HOUR),
       deliveryAvailable: false,
     },
     items: items.map((i) => ({

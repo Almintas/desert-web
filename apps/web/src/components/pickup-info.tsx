@@ -1,22 +1,12 @@
-import { formatPickupRange } from '@/lib/format';
+import { formatPickupInfo, type PickupInfo as Pickup } from '@desert-web/shared';
 
-interface Props {
-  location: string | null;
-  from: string | null;
-  to: string | null;
-}
-
-/** Atsiėmimo vieta ir laikas (paskelbtame lange jie privalomi). */
-export function PickupInfo({ location, from, to }: Props) {
+/** „Atsiėmimas: {vieta}, {laikas}“ (iš nustatymų, bendra visiems langams). */
+export function PickupInfo({ pickup }: { pickup: Pickup }) {
   return (
     <dl className="pickup-info">
       <div>
-        <dt>Atsiėmimo vieta</dt>
-        <dd>{location ?? 'Bus patikslinta'}</dd>
-      </div>
-      <div>
-        <dt>Atsiėmimo laikas</dt>
-        <dd>{from && to ? formatPickupRange(from, to) : 'Bus patikslintas'}</dd>
+        <dt>Atsiėmimas</dt>
+        <dd>{formatPickupInfo(pickup)}</dd>
       </div>
     </dl>
   );

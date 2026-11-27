@@ -8,8 +8,6 @@ export interface SaleWindowFormState {
   fieldErrors?: Record<string, string>;
   /** WINDOW_HAS_ORDERS: nuoroda į to lango užsakymų sąrašą. */
   ordersHref?: string;
-  /** PICKUP_INFO_REQUIRED: nuoroda į lango redagavimą. */
-  editHref?: string;
 }
 
 /** Produktas prekių pasirinkimui formoje. */

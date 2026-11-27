@@ -1,8 +1,4 @@
-import {
-  type AdminSaleWindowDto,
-  type AdminSaleWindowItemDto,
-  shopToday,
-} from '@desert-web/shared';
+import type { AdminSaleWindowDto, AdminSaleWindowItemDto } from '@desert-web/shared';
 
 const time = (iso: string) => new Date(iso).getTime();
 
@@ -32,18 +28,13 @@ export function stockLevel(
 }
 
 /**
- * Paskelbti langai, kurių atsiėmimas vyksta šiandien (Vilniaus laiku diena tarp pickupFrom ir
- * pickupTo imtinai). Gali būti ir ne apžvalgos langas (pvz., vakar uždarytas, kai jau
- * paskelbtas kitas).
+ * Langai atsiėmimo sąrašo mygtukui: paskelbti ir jau atsidarę (vyksta arba pasibaigę). Ar
+ * juose dar yra neužbaigtų užsakymų, tikrina apžvalga. Gali būti ir ne apžvalgos langas
+ * (pvz., vakar uždarytas, kai jau paskelbtas kitas).
  */
-export function windowsWithPickupToday(
+export function windowsForPickupList(
   windows: AdminSaleWindowDto[],
   now: Date = new Date(),
 ): AdminSaleWindowDto[] {
-  const today = shopToday(now);
-  return windows.filter((w) => {
-    const { pickupFrom, pickupTo } = w.fulfillment;
-    if (w.status !== 'published' || !pickupFrom || !pickupTo) return false;
-    return shopToday(pickupFrom) <= today && today <= shopToday(pickupTo);
-  });
+  return windows.filter((w) => w.status === 'published' && time(w.opensAt) <= now.getTime());
 }

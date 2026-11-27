@@ -60,17 +60,10 @@ export function toOrderDto(o: Order): OrderDto {
 /** Pirkėjo užsakymo vaizdas. Langas gali būti ištrintas tik teoriškai (su užsakymais trinti negalima). */
 export function toOrderAccessDto(
   o: Order,
-  saleWindow: Pick<SaleWindow, '_id' | 'title' | 'fulfillment'> | null,
+  saleWindow: Pick<SaleWindow, '_id' | 'title'> | null,
 ): OrderAccessDto {
-  const f = saleWindow?.fulfillment;
   return {
     ...toOrderDto(o),
-    saleWindow: {
-      id: o.saleWindowId.toString(),
-      title: saleWindow?.title ?? '',
-      pickupLocation: f?.pickupLocation ?? null,
-      pickupFrom: f?.pickupFrom?.toISOString() ?? null,
-      pickupTo: f?.pickupTo?.toISOString() ?? null,
-    },
+    saleWindow: { id: o.saleWindowId.toString(), title: saleWindow?.title ?? '' },
   };
 }

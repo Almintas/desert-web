@@ -1,4 +1,4 @@
-import { DEFAULT_SHOP_INFO, type ShopInfo } from '@desert-web/shared';
+import { DEFAULT_PICKUP_INFO, DEFAULT_SHOP_INFO, type ShopInfo } from '@desert-web/shared';
 import request from 'supertest';
 import { clearDatabase, createTestContext, loginAdmin, type TestContext } from './helpers';
 
@@ -16,6 +16,14 @@ const SAVED: ShopInfo = {
     tiktok: '',
   },
   texts: { tagline: 'Saldžiausi Kaune.', subtagline: '' },
+};
+
+/** GET /shop-info: parduotuvės informacija su atsiėmimu. */
+const PUBLIC_DEFAULT = { ...DEFAULT_SHOP_INFO, pickup: DEFAULT_PICKUP_INFO };
+/** Atsiėmimas neišsaugotas: vieta yra išsaugotas pardavėjo adresas. */
+const PUBLIC_SAVED = {
+  ...SAVED,
+  pickup: { location: 'Laisvės al. 1, Kaunas', hours: '17:00–20:00' },
 };
 
 /** SAVED su pakeistu vienu lauku (pvz., ['social', 'tiktok']). */
@@ -49,7 +57,11 @@ describe('Parduotuvės informacija (nustatymai ir GET /shop-info)', () => {
     it('be dokumento: numatytosios reikšmės (dabartiniai tekstai iš kodo), be autentifikacijos', async () => {
       const res = await http().get('/shop-info');
       expect(res.status).toBe(200);
-      expect(res.body).toEqual(DEFAULT_SHOP_INFO);
+      expect(res.body).toEqual(PUBLIC_DEFAULT);
+      expect(res.body.pickup).toEqual({
+        location: 'Kovo 11-osios g. 33, Kaunas',
+        hours: '17:00–20:00',
+      });
       // Tik skaito: dokumento nesukuria.
       expect(await ctx.connection.db!.collection('settings').countDocuments()).toBe(0);
     });
@@ -57,8 +69,8 @@ describe('Parduotuvės informacija (nustatymai ir GET /shop-info)', () => {
     it('tik vieši laukai (be specialių užsakymų nustatymų ir laikų)', async () => {
       expect((await putShop(SAVED)).status).toBe(200);
       const res = await http().get('/shop-info');
-      expect(res.body).toEqual(SAVED);
-      expect(Object.keys(res.body).sort()).toEqual(['seller', 'social', 'texts']);
+      expect(res.body).toEqual(PUBLIC_SAVED);
+      expect(Object.keys(res.body).sort()).toEqual(['pickup', 'seller', 'social', 'texts']);
     });
 
     it('trūkstami saugomi laukai pakeičiami numatytaisiais, tuščia eilutė lieka tuščia', async () => {
@@ -80,7 +92,7 @@ describe('Parduotuvės informacija (nustatymai ir GET /shop-info)', () => {
       const view = await http().get('/admin/settings').set('Authorization', `Bearer ${staff}`);
       expect(view.status).toBe(200);
       expect(view.body.shop).toEqual(DEFAULT_SHOP_INFO);
-      expect((await http().get('/shop-info')).body).toEqual(DEFAULT_SHOP_INFO);
+      expect((await http().get('/shop-info')).body).toEqual(PUBLIC_DEFAULT);
     });
 
     it('owner išsaugo (reikšmės apkarpomos); specialių užsakymų nustatymai nekeičiami', async () => {
@@ -100,7 +112,7 @@ describe('Parduotuvės informacija (nustatymai ir GET /shop-info)', () => {
         .send({ specialOrders: { enabled: true, leadTimeDays: 1, maxDaysAhead: 10 } });
       expect(special.status).toBe(200);
       expect(special.body.shop).toEqual(SAVED);
-      expect((await http().get('/shop-info')).body).toEqual(SAVED);
+      expect((await http().get('/shop-info')).body).toEqual(PUBLIC_SAVED);
     });
 
     it('tušti body: 400', async () => {
@@ -175,6 +187,59 @@ describe('Parduotuvės informacija (nustatymai ir GET /shop-info)', () => {
       const missing = await putShop({ seller: SAVED.seller, social: SAVED.social });
       expect(missing.status).toBe(400);
       expect(issuePaths(missing)).toContain('shop.texts');
+    });
+  });
+
+  describe('PUT /admin/settings { pickup } (atsiėmimas)', () => {
+    const putPickup = (pickup: unknown, token = owner) =>
+      http().put('/admin/settings').set('Authorization', `Bearer ${token}`).send({ pickup });
+
+    it('numatyta: vieta iš pardavėjo adreso, tuščias adresas: Kovo 11-osios g. 33, Kaunas', async () => {
+      const view = await http().get('/admin/settings').set('Authorization', `Bearer ${owner}`);
+      expect(view.body.pickup).toEqual({
+        location: 'Kovo 11-osios g. 33, Kaunas',
+        hours: '17:00–20:00',
+      });
+      expect((await putShop(withField('seller', 'address', ''))).status).toBe(200);
+      expect((await http().get('/shop-info')).body.pickup).toEqual({
+        location: 'Kovo 11-osios g. 33, Kaunas',
+        hours: '17:00–20:00',
+      });
+    });
+
+    it('owner išsaugo (apkarpoma); kitos dalys nekeičiamos ir pickup išlieka', async () => {
+      expect((await putShop(SAVED)).status).toBe(200);
+      const res = await putPickup({
+        location: '  Vilnius, Gedimino pr. 1 ',
+        hours: 'Pirm.–penkt. 17:00–20:00',
+      });
+      expect(res.status).toBe(200);
+      const pickup = { location: 'Vilnius, Gedimino pr. 1', hours: 'Pirm.–penkt. 17:00–20:00' };
+      expect(res.body.pickup).toEqual(pickup);
+      expect(res.body.shop).toEqual(SAVED);
+      expect((await http().get('/shop-info')).body).toEqual({ ...SAVED, pickup });
+
+      // Keičiant parduotuvės informaciją atsiėmimas lieka.
+      expect((await putShop(withField('seller', 'address', 'Kitur'))).body.pickup).toEqual(pickup);
+    });
+
+    it('staff: 403; neprisijungus: 401', async () => {
+      const staff = await loginAdmin(ctx, 'staff');
+      const pickup = { location: 'Vilnius', hours: '17:00–20:00' };
+      expect((await putPickup(pickup, staff)).status).toBe(403);
+      expect((await http().put('/admin/settings').send({ pickup })).status).toBe(401);
+    });
+
+    it.each([
+      [{ location: '', hours: '17:00–20:00' }, 'pickup.location'],
+      [{ location: 'Vilnius', hours: '   ' }, 'pickup.hours'],
+      [{ location: 'x'.repeat(201), hours: '17:00–20:00' }, 'pickup.location'],
+      [{ location: 'Vilnius', hours: 'x'.repeat(101) }, 'pickup.hours'],
+      [{ location: 'Vilnius' }, 'pickup.hours'],
+    ])('netinkama reikšmė %j: 400 (%s)', async (pickup, path) => {
+      const res = await putPickup(pickup);
+      expect(res.status).toBe(400);
+      expect(issuePaths(res)).toContain(path);
     });
   });
 });

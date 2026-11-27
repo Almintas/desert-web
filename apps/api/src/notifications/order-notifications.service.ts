@@ -1,12 +1,9 @@
-import type { OrderStatus, SellerDetails } from '@desert-web/shared';
+import type { OrderStatus } from '@desert-web/shared';
 import { Inject, Injectable, Logger, type OnApplicationShutdown, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectModel } from '@nestjs/mongoose';
-import type { Model } from 'mongoose';
 import type { Env } from '../config/env';
 import type { Order } from '../orders/order.schema';
 import { orderTotals } from '../orders/orders.mapper';
-import { SaleWindow } from '../sale-windows/sale-window.schema';
 import { SettingsService } from '../settings/settings.service';
 import { EMAIL_SENDER, type EmailMessage, type EmailSender } from './email-sender';
 import {
@@ -54,7 +51,6 @@ export class OrderNotificationsService implements OnApplicationShutdown {
 
   constructor(
     config: ConfigService<Env, true>,
-    @InjectModel(SaleWindow.name) private readonly saleWindowModel: Model<SaleWindow>,
     private readonly settings: SettingsService,
     @Optional() @Inject(EMAIL_SENDER) private readonly sender: EmailSender | null,
   ) {
@@ -202,20 +198,9 @@ export class OrderNotificationsService implements OnApplicationShutdown {
     }
   }
 
-  /** Pardavėjo duomenys iš nustatymų (kol neišsaugoti, numatytieji). */
-  private async sellerDetails(): Promise<SellerDetails> {
-    return (await this.settings.shopInfo()).seller;
-  }
-
   private async loadData(order: Order): Promise<OrderEmailData> {
-    const [saleWindow, seller] = await Promise.all([
-      this.saleWindowModel
-        .findById(order.saleWindowId, { fulfillment: 1 })
-        .lean<Pick<SaleWindow, 'fulfillment'>>()
-        .exec(),
-      this.sellerDetails(),
-    ]);
-    const f = saleWindow?.fulfillment;
+    // Pardavėjo duomenys ir atsiėmimas iš nustatymų (kol neišsaugoti, numatytieji).
+    const { seller, pickup } = await this.settings.shopInfo();
     const id = order._id.toString();
     return {
       orderId: id,
@@ -238,11 +223,7 @@ export class OrderNotificationsService implements OnApplicationShutdown {
         address: order.fulfillment.address ?? null,
         notes: order.fulfillment.notes ?? null,
       },
-      pickup: {
-        location: f?.pickupLocation ?? null,
-        from: f?.pickupFrom ?? null,
-        to: f?.pickupTo ?? null,
-      },
+      pickup,
       cancellationReason: order.cancellation?.reason || null,
       orderUrl: this.webUrl ? `${this.webUrl}/uzsakymas/${order.accessToken}` : null,
       adminOrderUrl: this.adminUrl ? `${this.adminUrl}/orders/${id}` : null,

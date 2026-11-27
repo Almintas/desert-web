@@ -93,17 +93,11 @@ export interface CreateOrderResponse {
 }
 
 /**
- * GET /orders/access/:accessToken: užsakymas su lango pavadinimu ir atsiėmimo informacija,
- * kad pirkėjo užsakymo puslapiui nereikėtų kitų užklausų.
+ * GET /orders/access/:accessToken: užsakymas su lango pavadinimu. Atsiėmimo vieta ir laikas
+ * bendri visiems langams: GET /shop-info (`pickup`).
  */
 export interface OrderAccessDto extends OrderDto {
-  saleWindow: {
-    id: string;
-    title: string;
-    pickupLocation: string | null;
-    pickupFrom: string | null;
-    pickupTo: string | null;
-  };
+  saleWindow: { id: string; title: string };
 }
 
 /**
@@ -117,8 +111,8 @@ export interface OrderItemProblemDto {
 }
 
 /**
- * Prekių klaidų (ITEM_NOT_IN_WINDOW, ITEM_UNAVAILABLE, MAX_PER_ORDER_EXCEEDED,
- * MAX_PER_CUSTOMER_EXCEEDED, INSUFFICIENT_STOCK, GIFT_WRAP_UNAVAILABLE) atsakymo body. `details.items` išvardija
+ * Prekių klaidų (ITEM_NOT_IN_WINDOW, ITEM_UNAVAILABLE, INSUFFICIENT_STOCK,
+ * GIFT_WRAP_UNAVAILABLE) atsakymo body. `details.items` išvardija
  * visas tos rūšies problemines eilutes.
  */
 export interface OrderItemErrorBody {
@@ -131,8 +125,6 @@ export interface OrderItemErrorBody {
 export const ORDER_ITEM_ERROR_CODES = [
   'ITEM_NOT_IN_WINDOW',
   'ITEM_UNAVAILABLE',
-  'MAX_PER_ORDER_EXCEEDED',
-  'MAX_PER_CUSTOMER_EXCEEDED',
   'INSUFFICIENT_STOCK',
 ] as const satisfies readonly OrderErrorCode[];
 
@@ -143,8 +135,6 @@ export const ORDER_ERROR_CODES = [
   'FULFILLMENT_NOT_AVAILABLE',
   'ITEM_NOT_IN_WINDOW',
   'ITEM_UNAVAILABLE',
-  'MAX_PER_ORDER_EXCEEDED',
-  'MAX_PER_CUSTOMER_EXCEEDED',
   'INSUFFICIENT_STOCK',
   /**
    * 409: prašoma supakuoti kaip dovaną, bet lange pakavimas išjungtas arba prekė jo neleidžia.

@@ -67,7 +67,6 @@ export class SaleWindowsService {
         images: toPublicImages(product),
         priceCents: item.priceCents,
         quantityAvailable: item.quantityAvailable,
-        maxPerOrder: item.maxPerOrder ?? null,
         giftWrapAllowed: giftWrapAllowedOf(item),
       });
     }
@@ -82,9 +81,6 @@ export class SaleWindowsService {
       closesAt: window.closesAt.toISOString(),
       fulfillment: {
         pickupAvailable: f?.pickupAvailable ?? false,
-        pickupLocation: f?.pickupLocation ?? null,
-        pickupFrom: f?.pickupFrom?.toISOString() ?? null,
-        pickupTo: f?.pickupTo?.toISOString() ?? null,
         deliveryAvailable: f?.deliveryAvailable ?? false,
       },
       // Kaina viešai rodoma tik kai pakavimas įjungtas.

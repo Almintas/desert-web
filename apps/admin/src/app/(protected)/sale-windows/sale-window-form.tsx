@@ -23,8 +23,6 @@ interface ItemRow {
   variantLabel: string;
   price: string;
   quantityTotal: string;
-  maxPerOrder: string;
-  maxPerCustomer: string;
   /** Galima supakuoti kaip dovaną (rodoma tik kai pakavimas lange įjungtas). */
   giftWrapAllowed: boolean;
   sold: number;
@@ -54,12 +52,6 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [opensAt, setOpensAt] = useState(initial ? utcToVilniusLocal(initial.opensAt) : '');
   const [closesAt, setClosesAt] = useState(initial ? utcToVilniusLocal(initial.closesAt) : '');
-  const f = initial?.fulfillment;
-  const [pickupLocation, setPickupLocation] = useState(f?.pickupLocation ?? '');
-  const [pickupFrom, setPickupFrom] = useState(
-    f?.pickupFrom ? utcToVilniusLocal(f.pickupFrom) : '',
-  );
-  const [pickupTo, setPickupTo] = useState(f?.pickupTo ? utcToVilniusLocal(f.pickupTo) : '');
   const [giftWrapEnabled, setGiftWrapEnabled] = useState(initial?.giftWrap.enabled ?? false);
   const [giftWrapPrice, setGiftWrapPrice] = useState(
     initial && initial.giftWrap.priceCents > 0 ? centsToInput(initial.giftWrap.priceCents) : '',
@@ -74,8 +66,6 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
     variantLabel: '',
     price: '',
     quantityTotal: '',
-    maxPerOrder: '',
-    maxPerCustomer: '',
     giftWrapAllowed: true,
     sold: 0,
     ordersCount: 0,
@@ -92,8 +82,6 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
           variantLabel: i.variantName,
           price: centsToInput(i.priceCents),
           quantityTotal: String(i.quantityTotal),
-          maxPerOrder: i.maxPerOrder ? String(i.maxPerOrder) : '',
-          maxPerCustomer: i.maxPerCustomer ? String(i.maxPerCustomer) : '',
           giftWrapAllowed: i.giftWrapAllowed,
           sold: i.sold,
           ordersCount: i.ordersCount,
@@ -218,55 +206,9 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
           kompiuterio laiko juostos. Užsakymai priimami nuo atidarymo iki uždarymo.
         </p>
       </fieldset>
-
-      <fieldset>
-        <legend>Atsiėmimas</legend>
-        {/* Kol kas tik atsiėmimas: pristatymas lieka duomenų modelyje, bet išjungtas. */}
-        <input type="hidden" name="fulfillment.pickupAvailable" value="on" />
-        <p className="hint">
-          Pirkėjai užsakymus atsiima patys. Vietą ir laiką jie mato parduotuvėje ir užsakymo
-          puslapyje, todėl jie <strong>privalomi skelbiant</strong> langą. Juodraštį galima
-          išsaugoti ir be jų.
-        </p>
-        <label>
-          Atsiėmimo vieta <span className="required-mark">(privaloma skelbiant)</span>
-          <input
-            name="fulfillment.pickupLocation"
-            value={pickupLocation}
-            onChange={(e) => setPickupLocation(e.target.value)}
-            maxLength={300}
-            placeholder="pvz., Gedimino pr. 1, Vilnius"
-            aria-invalid={Boolean(errors['fulfillment.pickupLocation'])}
-          />
-          <FieldError message={errors['fulfillment.pickupLocation']} />
-        </label>
-        <div className="grid-2">
-          <label>
-            Atsiimti nuo <span className="required-mark">(privaloma skelbiant)</span>
-            <input
-              type="datetime-local"
-              name="fulfillment.pickupFrom"
-              value={pickupFrom}
-              onChange={(e) => setPickupFrom(e.target.value)}
-              aria-invalid={Boolean(errors['fulfillment.pickupFrom'])}
-            />
-            <FieldError message={errors['fulfillment.pickupFrom']} />
-          </label>
-          <label>
-            Atsiimti iki <span className="required-mark">(privaloma skelbiant)</span>
-            <input
-              type="datetime-local"
-              name="fulfillment.pickupTo"
-              value={pickupTo}
-              onChange={(e) => setPickupTo(e.target.value)}
-              aria-invalid={Boolean(errors['fulfillment.pickupTo'])}
-            />
-            <FieldError message={errors['fulfillment.pickupTo']} />
-          </label>
-        </div>
-        <p className="hint">Lietuvos laiku.</p>
-        <FieldError message={errors.fulfillment} />
-      </fieldset>
+      {/* Kol kas tik atsiėmimas (vieta ir laikas nustatymuose): pristatymas lieka duomenų
+          modelyje, bet išjungtas. */}
+      <FieldError message={errors.fulfillment} />
 
       <fieldset>
         <legend>Dovanų pakavimas</legend>
@@ -322,13 +264,9 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
               <tr>
                 <th scope="col">Prekė</th>
                 <th scope="col">Kaina, €</th>
-                <th scope="col">Kiekis</th>
-                <th scope="col">Maks. užsakymui</th>
-                <th scope="col">Maks. pirkėjui</th>
+                <th scope="col">Kiekis pardavimui</th>
                 {giftWrapEnabled ? <th scope="col">Dovana</th> : null}
-                <th scope="col">
-                  <span className="visually-hidden">Veiksmai</span>
-                </th>
+                <th scope="col">Išimti</th>
               </tr>
             </thead>
             <tbody>
@@ -423,7 +361,8 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
                         onChange={(e) => updateItem(row.key, { quantityTotal: e.target.value })}
                         inputMode="numeric"
                         className="input-number"
-                        aria-label="Kiekis"
+                        aria-label="Kiekis pardavimui"
+                        aria-describedby="quantity-hint"
                         aria-invalid={Boolean(errors[`${prefix}.quantityTotal`] ?? belowSold)}
                       />
                       {row.existing ? (
@@ -433,32 +372,6 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
                         </span>
                       ) : null}
                       <FieldError message={errors[`${prefix}.quantityTotal`] ?? belowSold} />
-                    </td>
-                    <td>
-                      <input
-                        name={`${prefix}.maxPerOrder`}
-                        value={row.maxPerOrder}
-                        onChange={(e) => updateItem(row.key, { maxPerOrder: e.target.value })}
-                        inputMode="numeric"
-                        className="input-number"
-                        placeholder="—"
-                        aria-label="Maks. vienam užsakymui"
-                        aria-invalid={Boolean(errors[`${prefix}.maxPerOrder`])}
-                      />
-                      <FieldError message={errors[`${prefix}.maxPerOrder`]} />
-                    </td>
-                    <td>
-                      <input
-                        name={`${prefix}.maxPerCustomer`}
-                        value={row.maxPerCustomer}
-                        onChange={(e) => updateItem(row.key, { maxPerCustomer: e.target.value })}
-                        inputMode="numeric"
-                        className="input-number"
-                        placeholder="—"
-                        aria-label="Maks. vienam pirkėjui"
-                        aria-invalid={Boolean(errors[`${prefix}.maxPerCustomer`])}
-                      />
-                      <FieldError message={errors[`${prefix}.maxPerCustomer`]} />
                     </td>
                     {giftWrapEnabled ? (
                       <td>
@@ -496,6 +409,10 @@ export function SaleWindowForm({ windowId, initial, products }: Props) {
           </table>
         </div>
         <FieldError message={errors.items} />
+        <p className="hint" id="quantity-hint">
+          Kiekis pardavimui – kiek pasirinktų pakuočių (pvz. 12 vnt. dėžučių) parduosi šiame lange.
+          Kai jos baigiasi, prekė rodoma kaip išparduota.
+        </p>
         {items.some((r) => r.ordersCount > 0) ? (
           <p className="hint">
             Užsakytų prekių išimti negalima: vietoj to nustatyk jų kiekį lygų parduotam.

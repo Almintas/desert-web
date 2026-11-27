@@ -1,19 +1,21 @@
-import type { PublicSaleWindowDto } from '@desert-web/shared';
-import { formatDateTime, formatOnDateTime, formatPickupWhen } from '@/lib/format';
+import { formatPickupInfo, type PickupInfo, type PublicSaleWindowDto } from '@desert-web/shared';
+import { formatDateTime, formatOnDateTime } from '@/lib/format';
 
 /**
- * Trumpas „kaip tai veikia“: trys žingsniai su pasirinkto lango duomenimis. Atstoja atsiėmimo
- * informacijos bloką pagrindiniame puslapyje (vieta ir laikas čia, kad nesikartotų).
+ * Trumpas „kaip tai veikia“: trys žingsniai su pasirinkto lango duomenimis ir atsiėmimu iš
+ * nustatymų. Atstoja atsiėmimo informacijos bloką pagrindiniame puslapyje.
  */
 export function OrderSteps({
   saleWindow,
+  pickup,
   upcoming = false,
 }: {
   saleWindow: PublicSaleWindowDto;
+  /** Atsiėmimo vieta ir laikas (bendri visiems langams). */
+  pickup: PickupInfo;
   /** Būsimas langas: antras žingsnis sako, kada prasidės prekyba. */
   upcoming?: boolean;
 }) {
-  const { pickupLocation, pickupFrom, pickupTo } = saleWindow.fulfillment;
   return (
     <ol className="order-steps" aria-label="Kaip užsakyti">
       <li>
@@ -34,14 +36,7 @@ export function OrderSteps({
       </li>
       <li>
         <span>
-          {pickupLocation && pickupFrom && pickupTo ? (
-            <>
-              Atsiimkite <strong>{pickupLocation}</strong>,{' '}
-              <strong>{formatPickupWhen(pickupFrom, pickupTo)}</strong> ir sumokėkite vietoje
-            </>
-          ) : (
-            'Atsiimkite ir sumokėkite vietoje (vieta ir laikas bus patikslinti)'
-          )}
+          Atsiėmimas: <strong>{formatPickupInfo(pickup)}</strong>. Sumokėsite vietoje
         </span>
       </li>
     </ol>

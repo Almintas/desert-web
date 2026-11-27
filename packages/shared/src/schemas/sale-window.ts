@@ -9,40 +9,27 @@ const isoDateSchema = z.iso
   .datetime({ offset: true, error: 'Netinkama data' })
   .transform((v) => new Date(v));
 
-const optionalLimitSchema = z
-  .number({ error: 'Įvesk skaičių' })
-  .int('Turi būti sveikasis skaičius')
-  .positive('Turi būti bent 1')
-  .optional();
-
 /**
  * Lango prekė. Tapatybė yra `variantId` (kaip užsakymuose): PUT metu esama prekė
  * randama pagal jį, todėl kiekis ir kaina keičiami vietoje.
  */
-export const adminSaleWindowItemInputSchema = z
-  .object({
-    productId: objectIdSchema,
-    variantId: objectIdSchema,
-    /** Lango kaina (gali skirtis nuo bazinės varianto kainos). Keičia tik naujus užsakymus. */
-    priceCents: z
-      .number({ error: 'Įvesk kainą' })
-      .int('Kaina turi būti nurodyta centais')
-      .nonnegative('Kaina negali būti neigiama'),
-    /** Visas kiekis. Parduota = quantityTotal - quantityAvailable; mažiau nei parduota negalima. */
-    quantityTotal: z
-      .number({ error: 'Įvesk kiekį' })
-      .int('Turi būti sveikasis skaičius')
-      .nonnegative('Kiekis negali būti neigiamas')
-      .max(100_000, 'Per didelis kiekis'),
-    maxPerOrder: optionalLimitSchema,
-    maxPerCustomer: optionalLimitSchema,
-    /** Ar šią prekę galima supakuoti kaip dovaną (kai pakavimas įjungtas lange). */
-    giftWrapAllowed: z.boolean().default(true),
-  })
-  .refine((i) => !i.maxPerOrder || !i.maxPerCustomer || i.maxPerOrder <= i.maxPerCustomer, {
-    message: 'Negali būti didesnis už limitą vienam pirkėjui',
-    path: ['maxPerOrder'],
-  });
+export const adminSaleWindowItemInputSchema = z.object({
+  productId: objectIdSchema,
+  variantId: objectIdSchema,
+  /** Lango kaina (gali skirtis nuo bazinės varianto kainos). Keičia tik naujus užsakymus. */
+  priceCents: z
+    .number({ error: 'Įvesk kainą' })
+    .int('Kaina turi būti nurodyta centais')
+    .nonnegative('Kaina negali būti neigiama'),
+  /** Visas kiekis. Parduota = quantityTotal - quantityAvailable; mažiau nei parduota negalima. */
+  quantityTotal: z
+    .number({ error: 'Įvesk kiekį' })
+    .int('Turi būti sveikasis skaičius')
+    .nonnegative('Kiekis negali būti neigiamas')
+    .max(100_000, 'Per didelis kiekis'),
+  /** Ar šią prekę galima supakuoti kaip dovaną (kai pakavimas įjungtas lange). */
+  giftWrapAllowed: z.boolean().default(true),
+});
 export type AdminSaleWindowItemInput = z.infer<typeof adminSaleWindowItemInputSchema>;
 
 /** Didžiausia dovanų pakavimo kaina už vienetą (100,00 €). */
@@ -79,11 +66,9 @@ export const adminSaleWindowInputSchema = z
     title: z.string().trim().min(1, 'Įvesk pavadinimą').max(120, 'Per ilgas pavadinimas'),
     opensAt: isoDateSchema,
     closesAt: isoDateSchema,
+    /** Atsiėmimo vieta ir laikas bendri visiems langams: nustatymuose (settings.pickup). */
     fulfillment: z.object({
       pickupAvailable: z.boolean(),
-      pickupLocation: z.string().trim().max(300, 'Per ilgas adresas').optional(),
-      pickupFrom: isoDateSchema.optional(),
-      pickupTo: isoDateSchema.optional(),
       deliveryAvailable: z.boolean(),
     }),
     /** Neprivaloma: be jo pakavimas išjungtas. */
@@ -109,13 +94,6 @@ export const adminSaleWindowInputSchema = z
         message: 'Reikia bent atsiėmimo arba pristatymo',
       });
     }
-    if (f.pickupFrom && f.pickupTo && f.pickupTo <= f.pickupFrom) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['fulfillment', 'pickupTo'],
-        message: 'Atsiėmimo pabaiga turi būti vėliau nei pradžia',
-      });
-    }
     const seen = new Set<string>();
     w.items.forEach((item, i) => {
       if (seen.has(item.variantId)) {
@@ -128,30 +106,6 @@ export const adminSaleWindowInputSchema = z
       seen.add(item.variantId);
     });
   });
-/** Atsiėmimo laukai, privalomi paskelbtam langui (PICKUP_INFO_REQUIRED). */
-export const PICKUP_INFO_FIELDS = [
-  'pickupAvailable',
-  'pickupLocation',
-  'pickupFrom',
-  'pickupTo',
-] as const;
-export type PickupInfoField = (typeof PICKUP_INFO_FIELDS)[number];
-
-/** Kurių atsiėmimo laukų trūksta, kad langą būtų galima paskelbti. */
-export function missingPickupInfo(f: {
-  pickupAvailable?: boolean | null;
-  pickupLocation?: string | null;
-  pickupFrom?: Date | string | null;
-  pickupTo?: Date | string | null;
-}): PickupInfoField[] {
-  const missing: PickupInfoField[] = [];
-  if (!f.pickupAvailable) missing.push('pickupAvailable');
-  if (!f.pickupLocation?.trim()) missing.push('pickupLocation');
-  if (!f.pickupFrom) missing.push('pickupFrom');
-  if (!f.pickupTo) missing.push('pickupTo');
-  return missing;
-}
-
 /** Įvestis (ką siunčia klientas: datos kaip ISO eilutės). */
 export type AdminSaleWindowInputBody = z.input<typeof adminSaleWindowInputSchema>;
 /** Po validacijos (datos kaip Date). */
@@ -173,8 +127,8 @@ export interface PublicSaleWindowItemDto {
   /** Produkto nuotraukos, pagrindinė pirmoji. */
   images: PublicProductImageDto[];
   priceCents: number;
+  /** Pirkėjas gali pirkti kiek nori: riboja tik šis likutis. */
   quantityAvailable: number;
-  maxPerOrder: number | null;
   /**
    * Ar prekę galima supakuoti kaip dovaną. Galioja tik kai lango `giftWrap` ne null
    * (žr. canGiftWrap).
@@ -190,9 +144,6 @@ export interface PublicSaleWindowDto {
   closesAt: string;
   fulfillment: {
     pickupAvailable: boolean;
-    pickupLocation: string | null;
-    pickupFrom: string | null;
-    pickupTo: string | null;
     deliveryAvailable: boolean;
   };
   /** Dovanų pakavimo kaina už vienetą; null, kai lange pakavimas išjungtas. */
@@ -223,7 +174,6 @@ export interface AdminSaleWindowItemDto extends PublicSaleWindowItemDto {
   quantityTotal: number;
   /** quantityTotal - quantityAvailable. Mažiausias leidžiamas naujas quantityTotal. */
   sold: number;
-  maxPerCustomer: number | null;
   /** Neatšauktų užsakymų su šia preke skaičius. Jei > 0, prekės išimti negalima. */
   ordersCount: number;
 }
@@ -249,11 +199,6 @@ export const SALE_WINDOW_ERROR_CODES = [
   'ITEM_HAS_ORDERS',
   /** 409: grąžinti į juodraštį, atšaukti ar ištrinti negalima, nes yra neatšauktų užsakymų. */
   'WINDOW_HAS_ORDERS',
-  /**
-   * 409: skelbti / atidaryti (ar keisti paskelbtą langą) be atsiėmimo informacijos negalima
-   * (`missing`: trūkstami laukai, pvz. ["pickupLocation", "pickupFrom"]).
-   */
-  'PICKUP_INFO_REQUIRED',
   /** 409: atšauktas langas tik skaitomas. */
   'WINDOW_CANCELLED',
   /** 409: veiksmas negalimas dabartinėje būsenoje (pvz., uždaryti neatidarytą langą). */

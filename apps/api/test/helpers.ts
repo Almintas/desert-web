@@ -140,8 +140,6 @@ export interface WindowItemFixture {
   variantId: Types.ObjectId;
   priceCents?: number;
   quantity?: number;
-  maxPerOrder?: number;
-  maxPerCustomer?: number;
   /** Numatyta: neįrašoma (kaip seni langai), t. y. leidžiama. */
   giftWrapAllowed?: boolean;
 }
@@ -159,7 +157,6 @@ export async function createSaleWindow(
     closesInMinutes?: number;
     pickupAvailable?: boolean;
     deliveryAvailable?: boolean;
-    pickupLocation?: string;
     /** Numatyta: laukas neįrašomas (kaip seni langai), t. y. pakavimas išjungtas. */
     giftWrap?: { enabled: boolean; priceCents: number };
   },
@@ -172,9 +169,6 @@ export async function createSaleWindow(
     closesAt: new Date(now + (options.closesInMinutes ?? 60) * MINUTE),
     fulfillment: {
       pickupAvailable: options.pickupAvailable ?? true,
-      pickupLocation: options.pickupLocation,
-      pickupFrom: options.pickupLocation ? new Date(now + 2 * HOUR) : undefined,
-      pickupTo: options.pickupLocation ? new Date(now + 4 * HOUR) : undefined,
       deliveryAvailable: options.deliveryAvailable ?? true,
     },
     ...(options.giftWrap ? { giftWrap: options.giftWrap } : {}),
@@ -184,8 +178,6 @@ export async function createSaleWindow(
       priceCents: i.priceCents ?? 2000,
       quantityTotal: i.quantity ?? 10,
       quantityAvailable: i.quantity ?? 10,
-      maxPerOrder: i.maxPerOrder,
-      maxPerCustomer: i.maxPerCustomer,
       ...(i.giftWrapAllowed === undefined ? {} : { giftWrapAllowed: i.giftWrapAllowed }),
     })),
   });
@@ -288,9 +280,6 @@ export function windowBody(
     closesAt: iso(48),
     fulfillment: {
       pickupAvailable: true,
-      pickupLocation: 'Vilnius',
-      pickupFrom: iso(50),
-      pickupTo: iso(52),
       deliveryAvailable: false,
     },
     items,
@@ -309,9 +298,6 @@ export function bodyFrom(
     closesAt: w.closesAt,
     fulfillment: {
       pickupAvailable: w.fulfillment.pickupAvailable,
-      pickupLocation: w.fulfillment.pickupLocation ?? undefined,
-      pickupFrom: w.fulfillment.pickupFrom ?? undefined,
-      pickupTo: w.fulfillment.pickupTo ?? undefined,
       deliveryAvailable: w.fulfillment.deliveryAvailable,
     },
     giftWrap: w.giftWrap,
@@ -320,8 +306,6 @@ export function bodyFrom(
       variantId: i.variantId,
       priceCents: i.priceCents,
       quantityTotal: i.quantityTotal,
-      maxPerOrder: i.maxPerOrder ?? undefined,
-      maxPerCustomer: i.maxPerCustomer ?? undefined,
       giftWrapAllowed: i.giftWrapAllowed,
     })),
     ...overrides,

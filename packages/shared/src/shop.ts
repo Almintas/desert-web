@@ -66,6 +66,39 @@ export const DEFAULT_SHOP_INFO: ShopInfo = {
   },
 };
 
+/**
+ * Atsiėmimas: viena vieta ir vienas laikas visiems langams (laisvas tekstas, keičiamas admin
+ * nustatymuose). Pirkėjams rodoma „Atsiėmimas: {location}, {hours}“ (žr. formatPickupInfo).
+ */
+export interface PickupInfo {
+  location: string;
+  hours: string;
+}
+
+/** Numatytoji vieta, kai nustatymuose nėra nei atsiėmimo vietos, nei pardavėjo adreso. */
+export const DEFAULT_PICKUP_LOCATION = 'Kovo 11-osios g. 33, Kaunas';
+/** Numatytasis atsiėmimo laikas (kol nustatymuose neišsaugotas). */
+export const DEFAULT_PICKUP_HOURS = '17:00–20:00';
+
+/**
+ * Numatytasis atsiėmimas: vieta yra pardavėjo adresas (tuščias: DEFAULT_PICKUP_LOCATION),
+ * laikas DEFAULT_PICKUP_HOURS.
+ */
+export function defaultPickupInfo(seller: Pick<SellerDetails, 'address'>): PickupInfo {
+  return {
+    location: seller.address.trim() || DEFAULT_PICKUP_LOCATION,
+    hours: DEFAULT_PICKUP_HOURS,
+  };
+}
+
+/** Kol nustatymai neišsaugoti ar API nepasiekiamas (web). */
+export const DEFAULT_PICKUP_INFO: PickupInfo = defaultPickupInfo(DEFAULT_SHOP_INFO.seller);
+
+/** „Kovo 11-osios g. 33, Kaunas, 17:00–20:00“ (po etiketės „Atsiėmimas:“). */
+export function formatPickupInfo(pickup: PickupInfo): string {
+  return `${pickup.location}, ${pickup.hours}`;
+}
+
 export const SELLER_FIELD_LABELS: Record<SellerField, string> = {
   name: 'Pardavėjas',
   businessId: 'Individualios veiklos pažymos Nr. / įmonės kodas',

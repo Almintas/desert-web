@@ -2,8 +2,11 @@ import {
   type AdminSettingsInput,
   DEFAULT_SHOP_INFO,
   DEFAULT_SPECIAL_ORDER_SETTINGS,
+  defaultPickupInfo,
+  type PickupInfo,
   SELLER_FIELDS,
   type ShopInfo,
+  type ShopInfoDto,
   SOCIAL_NETWORKS,
   type SettingsDto,
   type SpecialOrderSettings,
@@ -38,10 +41,23 @@ export function shopInfoOf(settings: Pick<Settings, 'shop'> | null): ShopInfo {
   };
 }
 
+/**
+ * Saugomas atsiėmimas; trūkstami laukai numatytieji: vieta yra pardavėjo adresas (tuščias:
+ * DEFAULT_PICKUP_LOCATION), laikas DEFAULT_PICKUP_HOURS.
+ */
+export function pickupOf(settings: Pick<Settings, 'shop' | 'pickup'> | null): PickupInfo {
+  const defaults = defaultPickupInfo(shopInfoOf(settings).seller);
+  return {
+    location: settings?.pickup?.location || defaults.location,
+    hours: settings?.pickup?.hours || defaults.hours,
+  };
+}
+
 function toSettingsDto(settings: Settings | null): SettingsDto {
   return {
     specialOrders: specialOrdersOf(settings),
     shop: shopInfoOf(settings),
+    pickup: pickupOf(settings),
     updatedAt: settings?.updatedAt?.toISOString() ?? null,
   };
 }
@@ -61,15 +77,15 @@ export class SettingsService {
   }
 
   /**
-   * Parduotuvės informacija (viešas GET /shop-info ir laiškai). Tik skaito: kol dokumento
-   * ar laukų nėra, numatytosios reikšmės.
+   * Parduotuvės informacija su atsiėmimu (viešas GET /shop-info ir laiškai). Tik skaito: kol
+   * dokumento ar laukų nėra, numatytosios reikšmės.
    */
-  async shopInfo(): Promise<ShopInfo> {
+  async shopInfo(): Promise<ShopInfoDto> {
     const settings = await this.settingsModel
-      .findById(GLOBAL_SETTINGS_ID, { shop: 1 })
+      .findById(GLOBAL_SETTINGS_ID, { shop: 1, pickup: 1 })
       .lean<Settings>()
       .exec();
-    return shopInfoOf(settings);
+    return { ...shopInfoOf(settings), pickup: pickupOf(settings) };
   }
 
   /** Admin GET: sukuria dokumentą su numatytosiomis reikšmėmis, jei jo dar nėra. */
@@ -86,15 +102,16 @@ export class SettingsService {
 
   /** Admin PUT (tik owner): atsiųstos dalys pakeičiamos visos (upsert). */
   async update(input: AdminSettingsInput): Promise<SettingsDto> {
-    const $set: Partial<Pick<Settings, 'specialOrders' | 'shop'>> = {};
+    const $set: Partial<Pick<Settings, 'specialOrders' | 'shop' | 'pickup'>> = {};
     if (input.specialOrders) $set.specialOrders = input.specialOrders;
     if (input.shop) $set.shop = input.shop;
+    if (input.pickup) $set.pickup = input.pickup;
     const settings = await this.settingsModel
       .findOneAndUpdate(
         { _id: GLOBAL_SETTINGS_ID },
         {
           $set,
-          // Pirmą kartą išsaugant tik parduotuvės informaciją: specialūs užsakymai numatytieji.
+          // Pirmą kartą išsaugant ne specialių užsakymų dalį: specialūs užsakymai numatytieji.
           ...(input.specialOrders
             ? {}
             : { $setOnInsert: { specialOrders: { ...DEFAULT_SPECIAL_ORDER_SETTINGS } } }),

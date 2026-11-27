@@ -39,8 +39,6 @@ export function toAdminSaleWindowDto(
       quantityTotal: item.quantityTotal,
       quantityAvailable: item.quantityAvailable,
       sold: item.quantityTotal - item.quantityAvailable,
-      maxPerOrder: item.maxPerOrder ?? null,
-      maxPerCustomer: item.maxPerCustomer ?? null,
       giftWrapAllowed: giftWrapAllowedOf(item),
       ordersCount: stats.ordersByVariant.get(variantId) ?? 0,
     };
@@ -56,9 +54,6 @@ export function toAdminSaleWindowDto(
     closesAt: w.closesAt.toISOString(),
     fulfillment: {
       pickupAvailable: f?.pickupAvailable ?? false,
-      pickupLocation: f?.pickupLocation ?? null,
-      pickupFrom: f?.pickupFrom?.toISOString() ?? null,
-      pickupTo: f?.pickupTo?.toISOString() ?? null,
       deliveryAvailable: f?.deliveryAvailable ?? false,
     },
     giftWrap: giftWrapOf(w),
