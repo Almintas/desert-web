@@ -24,6 +24,8 @@ Monorepo valdomas su **pnpm workspaces** ir **Turborepo**. `shared` sukompiliuoj
 - Node.js 22+ (`.nvmrc`)
 - pnpm 10: `corepack enable` (versija paimama iš `package.json` → `packageManager`)
 - MongoDB Atlas klasteris (nemokamo plano užtenka)
+  - Arba vietinis MongoDB, bet tik kaip **replica set** (API naudoja transakcijas; paprastas `mongod` duoda klaidą „Transaction numbers are only allowed on a replica set member or mongos“, o API paleidžiant tai parašo loge). `mongod.cfg` pridėk `replication:` → `replSetName: rs0`, perkrauk MongoDB, vieną kartą `mongosh --eval "rs.initiate({_id: 'rs0', members: [{_id: 0, host: 'localhost:27017'}]})"`, o `MONGODB_URI=mongodb://localhost:27017/desert-web?replicaSet=rs0`.
+  - Su produkcijos Atlas klasteriu vystant nustatyk `MONGODB_DB_NAME=desert-web-dev`, kad vietiniai bandymai neliestų tikrų duomenų.
 
 ## Pirmas paleidimas
 
