@@ -159,7 +159,6 @@ export async function createSaleWindow(
     closesInMinutes?: number;
     pickupAvailable?: boolean;
     deliveryAvailable?: boolean;
-    pickupLocation?: string;
     /** Numatyta: laukas neįrašomas (kaip seni langai), t. y. pakavimas išjungtas. */
     giftWrap?: { enabled: boolean; priceCents: number };
   },
@@ -172,9 +171,6 @@ export async function createSaleWindow(
     closesAt: new Date(now + (options.closesInMinutes ?? 60) * MINUTE),
     fulfillment: {
       pickupAvailable: options.pickupAvailable ?? true,
-      pickupLocation: options.pickupLocation,
-      pickupFrom: options.pickupLocation ? new Date(now + 2 * HOUR) : undefined,
-      pickupTo: options.pickupLocation ? new Date(now + 4 * HOUR) : undefined,
       deliveryAvailable: options.deliveryAvailable ?? true,
     },
     ...(options.giftWrap ? { giftWrap: options.giftWrap } : {}),
@@ -288,9 +284,6 @@ export function windowBody(
     closesAt: iso(48),
     fulfillment: {
       pickupAvailable: true,
-      pickupLocation: 'Vilnius',
-      pickupFrom: iso(50),
-      pickupTo: iso(52),
       deliveryAvailable: false,
     },
     items,
@@ -309,9 +302,6 @@ export function bodyFrom(
     closesAt: w.closesAt,
     fulfillment: {
       pickupAvailable: w.fulfillment.pickupAvailable,
-      pickupLocation: w.fulfillment.pickupLocation ?? undefined,
-      pickupFrom: w.fulfillment.pickupFrom ?? undefined,
-      pickupTo: w.fulfillment.pickupTo ?? undefined,
       deliveryAvailable: w.fulfillment.deliveryAvailable,
     },
     giftWrap: w.giftWrap,

@@ -79,11 +79,9 @@ export const adminSaleWindowInputSchema = z
     title: z.string().trim().min(1, 'Įvesk pavadinimą').max(120, 'Per ilgas pavadinimas'),
     opensAt: isoDateSchema,
     closesAt: isoDateSchema,
+    /** Atsiėmimo vieta ir laikas bendri visiems langams: nustatymuose (settings.pickup). */
     fulfillment: z.object({
       pickupAvailable: z.boolean(),
-      pickupLocation: z.string().trim().max(300, 'Per ilgas adresas').optional(),
-      pickupFrom: isoDateSchema.optional(),
-      pickupTo: isoDateSchema.optional(),
       deliveryAvailable: z.boolean(),
     }),
     /** Neprivaloma: be jo pakavimas išjungtas. */
@@ -109,13 +107,6 @@ export const adminSaleWindowInputSchema = z
         message: 'Reikia bent atsiėmimo arba pristatymo',
       });
     }
-    if (f.pickupFrom && f.pickupTo && f.pickupTo <= f.pickupFrom) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['fulfillment', 'pickupTo'],
-        message: 'Atsiėmimo pabaiga turi būti vėliau nei pradžia',
-      });
-    }
     const seen = new Set<string>();
     w.items.forEach((item, i) => {
       if (seen.has(item.variantId)) {
@@ -128,30 +119,6 @@ export const adminSaleWindowInputSchema = z
       seen.add(item.variantId);
     });
   });
-/** Atsiėmimo laukai, privalomi paskelbtam langui (PICKUP_INFO_REQUIRED). */
-export const PICKUP_INFO_FIELDS = [
-  'pickupAvailable',
-  'pickupLocation',
-  'pickupFrom',
-  'pickupTo',
-] as const;
-export type PickupInfoField = (typeof PICKUP_INFO_FIELDS)[number];
-
-/** Kurių atsiėmimo laukų trūksta, kad langą būtų galima paskelbti. */
-export function missingPickupInfo(f: {
-  pickupAvailable?: boolean | null;
-  pickupLocation?: string | null;
-  pickupFrom?: Date | string | null;
-  pickupTo?: Date | string | null;
-}): PickupInfoField[] {
-  const missing: PickupInfoField[] = [];
-  if (!f.pickupAvailable) missing.push('pickupAvailable');
-  if (!f.pickupLocation?.trim()) missing.push('pickupLocation');
-  if (!f.pickupFrom) missing.push('pickupFrom');
-  if (!f.pickupTo) missing.push('pickupTo');
-  return missing;
-}
-
 /** Įvestis (ką siunčia klientas: datos kaip ISO eilutės). */
 export type AdminSaleWindowInputBody = z.input<typeof adminSaleWindowInputSchema>;
 /** Po validacijos (datos kaip Date). */
@@ -190,9 +157,6 @@ export interface PublicSaleWindowDto {
   closesAt: string;
   fulfillment: {
     pickupAvailable: boolean;
-    pickupLocation: string | null;
-    pickupFrom: string | null;
-    pickupTo: string | null;
     deliveryAvailable: boolean;
   };
   /** Dovanų pakavimo kaina už vienetą; null, kai lange pakavimas išjungtas. */
@@ -249,11 +213,6 @@ export const SALE_WINDOW_ERROR_CODES = [
   'ITEM_HAS_ORDERS',
   /** 409: grąžinti į juodraštį, atšaukti ar ištrinti negalima, nes yra neatšauktų užsakymų. */
   'WINDOW_HAS_ORDERS',
-  /**
-   * 409: skelbti / atidaryti (ar keisti paskelbtą langą) be atsiėmimo informacijos negalima
-   * (`missing`: trūkstami laukai, pvz. ["pickupLocation", "pickupFrom"]).
-   */
-  'PICKUP_INFO_REQUIRED',
   /** 409: atšauktas langas tik skaitomas. */
   'WINDOW_CANCELLED',
   /** 409: veiksmas negalimas dabartinėje būsenoje (pvz., uždaryti neatidarytą langą). */

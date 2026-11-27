@@ -59,6 +59,14 @@ export class ShopFields {
 }
 export const ShopFieldsSchema = SchemaFactory.createForClass(ShopFields);
 
+/** Atsiėmimo vieta ir laikas (laisvas tekstas). Kol nėra: defaultPickupInfo (SettingsService). */
+@Schema({ _id: false })
+export class PickupFields {
+  @Prop() location?: string;
+  @Prop() hours?: string;
+}
+export const PickupFieldsSchema = SchemaFactory.createForClass(PickupFields);
+
 /**
  * Parduotuvės nustatymai: vienas dokumentas `_id: 'global'`. Kuriamas tingiai (pirmą kartą
  * adminui atidarius ar išsaugojus nustatymus); kol jo nėra, galioja numatytosios reikšmės.
@@ -74,6 +82,10 @@ export class Settings {
   /** Nėra, kol owner parduotuvės informacijos neišsaugojo (galioja DEFAULT_SHOP_INFO). */
   @Prop({ type: ShopFieldsSchema })
   shop?: ShopFields;
+
+  /** Nėra, kol owner atsiėmimo informacijos neišsaugojo (galioja defaultPickupInfo). */
+  @Prop({ type: PickupFieldsSchema })
+  pickup?: PickupFields;
 
   createdAt!: Date;
   updatedAt!: Date;

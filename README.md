@@ -96,7 +96,7 @@ Ką daro `e2e/scripts/run.mjs`:
 2. Paleidžia laikiną MongoDB replica set (`mongodb-memory-server`, kaip API Jest testai; pirmą kartą atsisiunčia mongod).
 3. Sukuria indeksus (`db:indexes`) ir adminą (`admin:create`).
 4. Paleidžia API, web ir admin (`NODE_ENV=production`) laisvuose portuose.
-5. Testai: prisijungimas, produktas su nuotraukomis, specialūs užsakymai (įjungimas nustatymuose, užklausa, patvirtinimas, įvykdymas), lango skelbimas su atsiėmimo informacija ir be jos, krepšelis po perkrovimo, užsakymas ir patvirtinimo puslapis, užsakymo būsenos admin panelėje (įvykdžius pažymima „Apmokėtas“), kiekių lenktynės, dvigubas paspaudimas, lango uždarymas, užsakymo atšaukimas (kiekiai grąžinami), lango su užsakymu atšaukimas, horizontalus slinkimas 390 px pločiu visuose puslapiuose.
+5. Testai: prisijungimas, produktas su nuotraukomis, specialūs užsakymai (įjungimas nustatymuose, užklausa, patvirtinimas, įvykdymas), lango skelbimas (atsiėmimo laukų lange nėra), atsiėmimas nustatymuose, krepšelis po perkrovimo, užsakymas ir patvirtinimo puslapis, užsakymo būsenos admin panelėje (įvykdžius pažymima „Apmokėtas“), kiekių lenktynės, dvigubas paspaudimas, lango uždarymas, užsakymo atšaukimas (kiekiai grąžinami), lango su užsakymu atšaukimas, horizontalus slinkimas 390 px pločiu visuose puslapiuose.
 6. API perleidžiamas su Turnstile „visada atmeta“ secret ir paleidžiamas `turnstile-fail` testas (pranešimas pirkėjui).
 7. Viską sustabdo, net jei testai nepavyko ar paspaudėte Ctrl+C. Serverių logai: `e2e/.logs/`.
 
@@ -285,6 +285,15 @@ Pardavėjo duomenys (vardas ar įmonės pavadinimas, IV pažymos Nr. ar įmonės
 - Laiškai pirkėjams (Reply-To ir poraštė) pardavėjo duomenis ima iš nustatymų; kol el. paštas tuščias, Reply-To nenustatomas.
 - Neužpildyti pardavėjo laukai rodomi įspėjimu admin apžvalgoje (build'o ir langų skelbimo jie nestabdo).
 
+### Atsiėmimas
+
+Atsiėmimas vyksta vienoje vietoje ir tuo pačiu laiku visiems pardavimo langams, todėl lange atsiėmimo laukų nėra. Vieta ir laikas (laisvas tekstas) keičiami **admin „Nustatymai“ → „Atsiėmimas“** (tik `owner`) ir saugomi `settings.pickup = { location, hours }`.
+
+- Kol neišsaugota: vieta yra pardavėjo adresas (`settings.shop.seller.address`, tuščias: „Kovo 11-osios g. 33, Kaunas“), laikas „17:00–20:00“ (`defaultPickupInfo`, `packages/shared/src/shop.ts`).
+- Viešai: `GET /shop-info` laukas `pickup`. Pirkėjams (pagrindinis puslapis, `/uzsakymas`, užsakymo puslapis, laiškai) rodoma „Atsiėmimas: {vieta}, {laikas}“.
+- Seni langų laukai `fulfillment.pickupLocation`, `pickupFrom`, `pickupTo` DB gali likti, bet nebeskaitomi ir nerašomi.
+- Admin apžvalgoje mygtukas „Atsiėmimo sąrašas“ rodomas kiekvienam paskelbtam jau atsidariusiam langui, kuriame yra neatsiimtų ir neatšauktų užsakymų.
+
 ## Pagrindinės taisyklės
 
 - Pinigai visur **centais** (integer), valiuta EUR.
@@ -314,7 +323,7 @@ Užklausa dideliam kiekiui bet kuriuo metu (be pardavimo lango), kai ji įjungta
 - [x] Admin pardavimo langų valdymas (`/admin/sale-windows`: kūrimas, kiekiai, skelbimas, atidaryti / uždaryti dabar, atšaukimas)
 - [x] Užsakymų valdymas (`/admin/orders`: sąrašas su filtrais, būsenos pirmyn, atšaukimas su kiekių grąžinimu, masinis „Patvirtinti“ / „Paruošta“ per `POST /admin/orders/bulk-status`)
 - [x] Admin apžvalga (dabartinis langas, likučiai, skaitikliai) ir atsiėmimo sąrašas (`/sale-windows/[id]/pickup`, `GET /admin/orders/pickup-list`, spausdinimas A4)
-- [x] Parduotuvės informacija admin nustatymuose (`GET /shop-info`)
+- [x] Parduotuvės informacija ir atsiėmimas admin nustatymuose (`GET /shop-info`)
 - [x] Laiškai per Resend: pardavėjui apie naują užsakymą; pirkėjui (gautas, būsenos) paruošta, bet išjungta iki domeno patvirtinimo
 - [x] Užsakymo kūrimas su atomine kiekio rezervacija ir limitu vienam pirkėjui (idempotentiškas pagal `clientRequestId`)
 - [x] Pirkėjų parduotuvė: krepšelis, užsakymas (tik atsiėmimas, apmokama atsiimant), užsakymo puslapis, `/privatumas`

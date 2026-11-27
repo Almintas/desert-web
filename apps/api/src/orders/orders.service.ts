@@ -275,7 +275,7 @@ export class OrdersService {
     };
   }
 
-  /** Pirkėjo užsakymo peržiūra pagal slaptą nuorodą (su lango pavadinimu ir atsiėmimu). */
+  /** Pirkėjo užsakymo peržiūra pagal slaptą nuorodą (su lango pavadinimu). */
   async findByAccessToken(accessToken: string): Promise<OrderAccessDto> {
     const notFound = new NotFoundException('Užsakymas nerastas');
     if (!ACCESS_TOKEN_PATTERN.test(accessToken)) throw notFound;
@@ -283,8 +283,8 @@ export class OrdersService {
     const order = await this.orderModel.findOne({ accessToken }).lean<Order>().exec();
     if (!order) throw notFound;
     const saleWindow = await this.saleWindowModel
-      .findById(order.saleWindowId, { title: 1, fulfillment: 1 })
-      .lean<Pick<SaleWindow, '_id' | 'title' | 'fulfillment'>>()
+      .findById(order.saleWindowId, { title: 1 })
+      .lean<Pick<SaleWindow, '_id' | 'title'>>()
       .exec();
     return toOrderAccessDto(order, saleWindow);
   }

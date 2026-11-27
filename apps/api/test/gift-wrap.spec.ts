@@ -71,7 +71,6 @@ describe('Dovanų pakavimas', () => {
         },
       ],
       giftWrap: options.giftWrap ?? { enabled: true, priceCents: 200 },
-      pickupLocation: 'Vilnius',
     });
   }
 

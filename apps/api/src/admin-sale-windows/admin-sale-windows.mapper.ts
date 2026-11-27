@@ -56,9 +56,6 @@ export function toAdminSaleWindowDto(
     closesAt: w.closesAt.toISOString(),
     fulfillment: {
       pickupAvailable: f?.pickupAvailable ?? false,
-      pickupLocation: f?.pickupLocation ?? null,
-      pickupFrom: f?.pickupFrom?.toISOString() ?? null,
-      pickupTo: f?.pickupTo?.toISOString() ?? null,
       deliveryAvailable: f?.deliveryAvailable ?? false,
     },
     giftWrap: giftWrapOf(w),

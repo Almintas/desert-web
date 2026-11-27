@@ -1,12 +1,11 @@
 // Datų formatai bendri su API laiškais (parduotuvės laiku): žr. packages/shared/src/time.ts.
-import { formatDateTime, formatDay, formatTime, SHOP_TIMEZONE } from '@desert-web/shared';
+import { formatDateTime, SHOP_TIMEZONE } from '@desert-web/shared';
 
 export {
   capitalize,
   formatDateTime,
   formatDateTimeWithWeekday,
   formatDay,
-  formatPickupRange,
   formatTime,
 } from '@desert-web/shared';
 
@@ -32,16 +31,4 @@ export function formatWeekdayAccusative(value: string | Date): string {
 /** „sekmadienį, gruodžio 20 d. 10:00“ (sakinio viduriui, parduotuvės laiku). */
 export function formatOnDateTime(value: string | Date): string {
   return `${formatWeekdayAccusative(value)}, ${formatDateTime(value)}`;
-}
-
-/**
- * Atsiėmimo laikas sakinio viduriui: „sekmadienį, gruodžio 20 d. 10:00–14:00“ arba, jei skirtingos
- * dienos, „gruodžio 20 d. 10:00 – gruodžio 21 d. 14:00“.
- */
-export function formatPickupWhen(from: string | Date, to: string | Date): string {
-  // Brūkšnys su žodžio jungtimis: laiko intervalas nelūžta per pusę.
-  if (formatDay(from) === formatDay(to)) {
-    return `${formatOnDateTime(from)}⁠–⁠${formatTime(to)}`;
-  }
-  return `${formatDateTime(from)} – ${formatDateTime(to)}`;
 }

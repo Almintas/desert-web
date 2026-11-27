@@ -1068,12 +1068,6 @@ details.group > summary {
   }
 }
 
-.required-mark {
-  font-weight: 400;
-  font-size: 0.85em;
-  color: var(--muted);
-}
-
 /* Apžvalga: administratoriai (tik owner) */
 
 .admins {

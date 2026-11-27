@@ -35,11 +35,11 @@ async function adminToken(): Promise<string> {
 function readSaleWindowForm(formData: FormData) {
   const errors: Record<string, string> = {};
 
-  const date = (key: string, required: boolean): string | undefined => {
+  const date = (key: string): string => {
     const raw = text(formData, key);
     if (!raw) {
-      if (required) errors[key] = 'Įvesk datą ir laiką';
-      return required ? '' : undefined;
+      errors[key] = 'Įvesk datą ir laiką';
+      return '';
     }
     const utc = vilniusLocalToUtc(raw);
     if (!utc) {
@@ -93,16 +93,11 @@ function readSaleWindowForm(formData: FormData) {
 
   const input = {
     title: text(formData, 'title'),
-    opensAt: date('opensAt', true),
-    closesAt: date('closesAt', true),
-    // Kol kas tik atsiėmimas: pristatymas visada išjungtas (lieka duomenų modelyje).
-    fulfillment: {
-      pickupAvailable: true,
-      pickupLocation: text(formData, 'fulfillment.pickupLocation') || undefined,
-      pickupFrom: date('fulfillment.pickupFrom', false),
-      pickupTo: date('fulfillment.pickupTo', false),
-      deliveryAvailable: false,
-    },
+    opensAt: date('opensAt'),
+    closesAt: date('closesAt'),
+    // Kol kas tik atsiėmimas (vieta ir laikas nustatymuose): pristatymas visada išjungtas
+    // (lieka duomenų modelyje).
+    fulfillment: { pickupAvailable: true, deliveryAvailable: false },
     giftWrap: {
       enabled: giftWrapEnabled,
       priceCents: giftWrapPriceCents ?? (giftWrapEnabled ? Number.NaN : 0),
@@ -171,9 +166,6 @@ export async function saleWindowCommandAction(
       const state = saleWindowApiErrorState(error);
       if (error.code === 'WINDOW_HAS_ORDERS') {
         return { ...state, ordersHref: `/orders?window=${encodeURIComponent(windowId)}` };
-      }
-      if (error.code === 'PICKUP_INFO_REQUIRED') {
-        return { ...state, editHref: `/sale-windows/${encodeURIComponent(windowId)}/edit` };
       }
       return state;
     }

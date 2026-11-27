@@ -118,9 +118,6 @@ describe('Užsakymai (POST /orders, GET /orders/access/:token)', () => {
         saleWindow: {
           id: window._id.toString(),
           title: 'Savaitgalio pardavimas',
-          pickupLocation: null,
-          pickupFrom: null,
-          pickupTo: null,
         },
       });
 

@@ -13,7 +13,7 @@ import { getSessionToken } from '@/lib/session';
 import { CreateAdminForm } from './_admins/create-admin-form';
 import { ROLE_LABELS } from './_admins/form-state';
 import { DashboardWindowCard } from './_dashboard/window-card';
-import { pickDashboardWindow, windowsWithPickupToday } from './_dashboard/window-pick';
+import { pickDashboardWindow, windowsForPickupList } from './_dashboard/window-pick';
 import { fetchOrders } from './orders/data';
 import { fetchSaleWindows } from './sale-windows/data';
 import { fetchRequestedCount } from './special-orders/data';
@@ -64,18 +64,19 @@ export default async function DashboardPage({
     fetchOrders({ pageSize: '1' }),
     fetchRequestedCount(),
     isOwner ? apiFetch<AdminDto[]>('/admin/admins', { token }) : Promise.resolve([]),
-    // Įspėjimui apie neužpildytus pardavėjo duomenis (klaida neturi sugadinti apžvalgos).
+    // Pardavėjo duomenų įspėjimui ir atsiėmimui (klaida neturi sugadinti apžvalgos).
     apiFetch<SettingsDto>('/admin/settings', { token }).catch(() => null),
   ]);
   const missingSeller = settings ? sellerTodoFields(settings.shop.seller) : [];
   const now = new Date();
   const current = pickDashboardWindow(windows);
-  // Atsiėmimas šiandien: mygtukas į sąrašą, jei lange yra patvirtintų ar paruoštų užsakymų.
+  // Mygtukas į atsiėmimo sąrašą kiekvienam atsidariusiam paskelbtam langui, kuriame dar yra
+  // neužbaigtų (ne atsiimtų ir ne atšauktų) užsakymų.
   const pickups = (
     await Promise.all(
-      windowsWithPickupToday(windows, now).map(async (w) => {
+      windowsForPickupList(windows, now).map(async (w) => {
         const { counts } = await fetchOrders({ saleWindowId: w.id, pageSize: '1' });
-        return { window: w, waiting: counts.confirmed + counts.ready };
+        return { window: w, waiting: counts.pending + counts.confirmed + counts.ready };
       }),
     )
   ).filter((p) => p.waiting > 0);
@@ -112,7 +113,7 @@ export default async function DashboardPage({
         <Link key={w.id} href={`/sale-windows/${w.id}/pickup`} className="pickup-cta">
           <span className="pickup-cta-title">Atsiėmimo sąrašas</span>
           <span className="pickup-cta-text">
-            Šiandien atsiėmimas: {w.title} · laukia {waiting} užs.
+            {w.title} · neatsiimta {waiting} užs.
           </span>
         </Link>
       ))}
@@ -138,7 +139,7 @@ export default async function DashboardPage({
       </ul>
 
       {current ? (
-        <DashboardWindowCard saleWindow={current} now={now} />
+        <DashboardWindowCard saleWindow={current} now={now} pickup={settings?.pickup ?? null} />
       ) : (
         <section className="dash-card empty-state">
           <h2>Pardavimo langų dar nėra</h2>

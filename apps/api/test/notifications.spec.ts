@@ -40,7 +40,6 @@ describe('Užsakymų laiškai (visi įjungti)', () => {
   async function newWindow() {
     return createSaleWindow(ctx, {
       items: [{ productId: cake.productId, variantId: cake.variantIds[0]!, priceCents: 1250 }],
-      pickupLocation: 'Vilnius, Gedimino pr. 1',
       deliveryAvailable: false,
     });
   }
@@ -121,6 +120,22 @@ describe('Užsakymų laiškai (visi įjungti)', () => {
       }
     });
 
+    it('atsiėmimas iš nustatymų: išsaugota vieta ir laikas', async () => {
+      const saved = await request(ctx.app.getHttpServer())
+        .put('/admin/settings')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          pickup: { location: 'Vilnius, Gedimino pr. 1', hours: 'Pirm.–penkt. 17:00–20:00' },
+        });
+      expect(saved.status).toBe(200);
+      const customer = uniqueCustomer();
+      await placeOrder({ customer });
+      for (const m of await settled()) {
+        expect(m.text).toContain('Atsiėmimas: Vilnius, Gedimino pr. 1, Pirm.–penkt. 17:00–20:00');
+        expect(m.html).toContain('Vilnius, Gedimino pr. 1, Pirm.–penkt. 17:00–20:00');
+      }
+    });
+
     it('išsaugotas tuščias el. paštas: be Reply-To, vardo vietoje parduotuvės pavadinimas', async () => {
       expect((await saveShop({ name: '', email: '' })).status).toBe(200);
       const customer = uniqueCustomer();
@@ -149,11 +164,13 @@ describe('Užsakymų laiškai (visi įjungti)', () => {
         idempotencyKey: `order-created/${order.id}`,
       });
       expect(toCustomer.subject).toContain(order.orderNumber);
+      expect(toCustomer.text).toContain('Atsiėmimas: Kovo 11-osios g. 33, Kaunas, 17:00–20:00');
       for (const body of [toCustomer.html, toCustomer.text]) {
         expect(body).toContain('Medaus tortas 1 kg');
         expect(body).toContain('× 2');
         expect(body).toContain(formatEur(2500)); // 2 × 12,50 €
-        expect(body).toContain('Vilnius, Gedimino pr. 1');
+        // Nustatymai neišsaugoti: numatytoji vieta (pardavėjo adresas) ir laikas.
+        expect(body).toContain('Kovo 11-osios g. 33, Kaunas, 17:00–20:00');
         expect(body).toContain('atsiimant');
         expect(body).toContain('Atvažiuosiu 15 val.');
         expect(body).toContain(`${WEB_URL}/uzsakymas/${order.accessToken}`);
@@ -259,7 +276,7 @@ describe('Užsakymų laiškai (visi įjungti)', () => {
       expect(sent[0]!.idempotencyKey).toBe(`order-status/${order.id}/ready`);
       expect(sent[0]!.subject).toBe(`Užsakymas ${order.orderNumber} paruoštas atsiimti`);
       expect(sent[0]!.html).toContain('Paruoštas atsiimti');
-      expect(sent[0]!.html).toContain('Vilnius, Gedimino pr. 1');
+      expect(sent[0]!.html).toContain('Kovo 11-osios g. 33, Kaunas, 17:00–20:00');
       expect(sent[0]!.html).toContain(`${WEB_URL}/uzsakymas/${order.accessToken}`);
       ctx.emails.clear();
 

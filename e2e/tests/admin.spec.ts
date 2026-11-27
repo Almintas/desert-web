@@ -1,5 +1,6 @@
-import { utcToVilniusLocal } from '@desert-web/shared';
+import { DEFAULT_PICKUP_INFO, formatPickupInfo, utcToVilniusLocal } from '@desert-web/shared';
 import {
+  adminApi,
   createProduct,
   env,
   expect,
@@ -81,13 +82,15 @@ test.describe('Admin', () => {
     await expect(images.locator('.image-tile img')).toHaveCount(2);
   });
 
-  test('lango skelbimas: be atsiėmimo informacijos atmetamas, su ja paskelbiamas', async ({
-    page,
-  }) => {
+  test('lango skelbimas: atsiėmimo laukų lange nėra, paskelbiama iškart', async ({ page }) => {
     await resetWindows();
     const product = await createProduct(`Medaus tortas ${Date.now()}`);
     await loginAdmin(page);
     await page.goto(`${env.adminUrl}/sale-windows/new`);
+
+    // Atsiėmimo vieta ir laikas nustatymuose, ne lange.
+    await expect(page.getByRole('group', { name: 'Atsiėmimas' })).toHaveCount(0);
+    await expect(page.getByLabel(/Atsiėmimo vieta|Atsiimti nuo|Atsiimti iki/)).toHaveCount(0);
 
     const title = `Savaitgalio pardavimas ${Date.now()}`;
     await page.getByLabel('Pavadinimas').fill(title);
@@ -101,29 +104,42 @@ test.describe('Admin', () => {
     await page.getByLabel('Kiekis', { exact: true }).fill('12');
     await page.getByRole('button', { name: 'Sukurti juodraštį' }).click();
     await expect(page).toHaveURL(/\/sale-windows\/[a-f0-9]{24}\?done=created/);
-
-    // Be atsiėmimo vietos ir laiko paskelbti negalima: klaida su nuoroda į redagavimą.
-    await page.getByRole('button', { name: 'Paskelbti' }).click();
-    await page.getByRole('button', { name: 'Taip, paskelbti' }).click();
-    const alert = page.locator('main').getByRole('alert');
-    await expect(alert).toContainText('atsiėmimo');
-    await alert.getByRole('link', { name: /Nurodyti atsiėmimo vietą ir laiką/ }).click();
-
-    await page.getByLabel(/Atsiėmimo vieta/).fill('Gedimino pr. 1, Vilnius');
-    await page
-      .getByLabel(/Atsiimti nuo/)
-      .fill(utcToVilniusLocal(new Date(Date.now() + 50 * 3600e3)));
-    await page
-      .getByLabel(/Atsiimti iki/)
-      .fill(utcToVilniusLocal(new Date(Date.now() + 52 * 3600e3)));
-    await page.getByRole('button', { name: 'Išsaugoti' }).click();
-    await expect(page).toHaveURL(/done=saved/);
+    await expect(page.locator('.summary')).toContainText(
+      `Atsiėmimas${formatPickupInfo(DEFAULT_PICKUP_INFO)}`,
+    );
 
     await page.getByRole('button', { name: 'Paskelbti' }).click();
     await page.getByRole('button', { name: 'Taip, paskelbti' }).click();
     await expect(page).toHaveURL(/done=publish/);
     await expect(page.locator('.badge.phase-upcoming').first()).toHaveText('Paskelbtas');
     await resetWindows();
+  });
+
+  test('atsiėmimo vieta ir laikas nustatymuose', async ({ page }) => {
+    await loginAdmin(page);
+    await page.goto(`${env.adminUrl}/settings`);
+    const form = page.locator('form#pickup');
+    await expect(form.getByRole('heading', { name: 'Atsiėmimas' })).toBeVisible();
+    await expect(form.getByLabel('Atsiėmimo vieta')).toHaveValue(DEFAULT_PICKUP_INFO.location);
+    await expect(form.getByLabel('Atsiėmimo laikas')).toHaveValue('17:00–20:00');
+    await expect(form.getByText('Pvz. 17:00–20:00 arba Pirm.–penkt. 17:00–20:00')).toBeVisible();
+
+    try {
+      await form.getByLabel('Atsiėmimo vieta').fill('');
+      await form.getByRole('button', { name: 'Išsaugoti atsiėmimą' }).click();
+      await expect(form.getByText('Įvesk atsiėmimo vietą')).toBeVisible();
+
+      await form.getByLabel('Atsiėmimo vieta').fill('Gedimino pr. 1, Vilnius');
+      await form.getByLabel('Atsiėmimo laikas').fill('Pirm.–penkt. 17:00–20:00');
+      await form.getByRole('button', { name: 'Išsaugoti atsiėmimą' }).click();
+      await expect(page).toHaveURL(/done=pickup/);
+      await expect(page.getByRole('status')).toContainText('Atsiėmimo informacija išsaugota.');
+      await expect(form.getByLabel('Atsiėmimo vieta')).toHaveValue('Gedimino pr. 1, Vilnius');
+      await expect(form.getByLabel('Atsiėmimo laikas')).toHaveValue('Pirm.–penkt. 17:00–20:00');
+    } finally {
+      // Kiti testai tikisi numatytojo atsiėmimo (web jo dar nespėjo pasiimti į talpyklą).
+      await adminApi('PUT', '/admin/settings', { pickup: DEFAULT_PICKUP_INFO });
+    }
   });
 
   test('vykstančio lango redagavimas: pridedama prekė, jau esama nepasirenkama', async ({

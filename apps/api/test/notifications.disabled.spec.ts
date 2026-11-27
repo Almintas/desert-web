@@ -44,7 +44,6 @@ async function placeOrder(ctx: TestContext): Promise<void> {
   const cake = await createProduct(ctx);
   const w = await createSaleWindow(ctx, {
     items: [{ productId: cake.productId, variantId: cake.variantIds[0]! }],
-    pickupLocation: 'Vilnius',
   });
   const res = await request(ctx.app.getHttpServer())
     .post('/orders')

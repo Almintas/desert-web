@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { SOCIAL_DOMAINS, type ShopInfo, type SocialNetwork } from '../shop';
+import { type PickupInfo, SOCIAL_DOMAINS, type ShopInfo, type SocialNetwork } from '../shop';
 
 /** Ribos, kurias tikrina ir API, ir admin forma. */
 export const SPECIAL_ORDER_LEAD_TIME_DAYS = { min: 0, max: 60 } as const;
@@ -110,24 +110,41 @@ export const shopInfoInputSchema = z.object({
 });
 export type ShopInfoInput = z.infer<typeof shopInfoInputSchema>;
 
+// --- Atsiėmimas ---
+
+export const PICKUP_INFO_MAX_LENGTHS = { location: 200, hours: 100 } as const;
+
+/** Atsiėmimo vieta ir laikas (laisvas tekstas, abu privalomi). */
+export const pickupInfoInputSchema = z.object({
+  location: text(PICKUP_INFO_MAX_LENGTHS.location, 'Atsiėmimo vieta').min(
+    1,
+    'Įvesk atsiėmimo vietą',
+  ),
+  hours: text(PICKUP_INFO_MAX_LENGTHS.hours, 'Atsiėmimo laikas').min(1, 'Įvesk atsiėmimo laiką'),
+});
+export type PickupInfoInput = z.infer<typeof pickupInfoInputSchema>;
+
 /**
  * GET /shop-info (viešas, be autentifikacijos): tik tai, kas rodoma svetainėje. Kol
- * nustatymai neišsaugoti, numatytosios reikšmės (DEFAULT_SHOP_INFO).
+ * nustatymai neišsaugoti, numatytosios reikšmės (DEFAULT_SHOP_INFO, defaultPickupInfo).
  */
-export type ShopInfoDto = ShopInfo;
+export interface ShopInfoDto extends ShopInfo {
+  pickup: PickupInfo;
+}
 
 // --- Visas nustatymų dokumentas ---
 
 /**
- * PUT /admin/settings (tik owner). Atnaujinamos tik atsiųstos dalys (specialOrders, shop),
- * kiekviena visa; bent viena privaloma.
+ * PUT /admin/settings (tik owner). Atnaujinamos tik atsiųstos dalys (specialOrders, shop,
+ * pickup), kiekviena visa; bent viena privaloma.
  */
 export const adminSettingsInputSchema = z
   .object({
     specialOrders: specialOrderSettingsInputSchema.optional(),
     shop: shopInfoInputSchema.optional(),
+    pickup: pickupInfoInputSchema.optional(),
   })
-  .refine((s) => s.specialOrders !== undefined || s.shop !== undefined, {
+  .refine((s) => s.specialOrders !== undefined || s.shop !== undefined || s.pickup !== undefined, {
     message: 'Nėra ką išsaugoti',
   });
 export type AdminSettingsInput = z.infer<typeof adminSettingsInputSchema>;
@@ -136,6 +153,8 @@ export type AdminSettingsInput = z.infer<typeof adminSettingsInputSchema>;
 export interface SettingsDto {
   specialOrders: SpecialOrderSettings;
   shop: ShopInfo;
+  /** Kol neišsaugota: defaultPickupInfo(shop.seller). */
+  pickup: PickupInfo;
   /** null: nustatymai dar niekada nekeisti (numatytosios reikšmės). */
   updatedAt: string | null;
 }

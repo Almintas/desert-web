@@ -1,5 +1,11 @@
 import 'server-only';
-import type { AdminPickupOrderDto, AdminProductDto, AdminSaleWindowDto } from '@desert-web/shared';
+import type {
+  AdminPickupOrderDto,
+  AdminProductDto,
+  AdminSaleWindowDto,
+  PickupInfo,
+  SettingsDto,
+} from '@desert-web/shared';
 import { notFound } from 'next/navigation';
 import { ApiError, apiFetch } from '@/lib/api';
 import { requireAdmin } from '@/lib/dal';
@@ -44,6 +50,18 @@ export function quantitySummary(w: AdminSaleWindowDto): { sold: number; total: n
     (acc, i) => ({ sold: acc.sold + i.sold, total: acc.total + i.quantityTotal }),
     { sold: 0, total: 0 },
   );
+}
+
+/**
+ * Atsiėmimo vieta ir laikas iš nustatymų (bendri visiems langams). null, jei nepavyko gauti:
+ * puslapis turi veikti ir be jų.
+ */
+export async function fetchPickupInfo(): Promise<PickupInfo | null> {
+  try {
+    return (await apiFetch<SettingsDto>('/admin/settings', { token: await token() })).pickup;
+  } catch {
+    return null;
+  }
 }
 
 /** Atsiėmimo sąrašas: neatšaukti lango užsakymai pagal pirkėjo vardą. */

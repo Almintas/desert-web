@@ -1,7 +1,7 @@
-import { formatEur, formatShopDateTime, missingPickupInfo } from '@desert-web/shared';
+import { formatEur, formatPickupInfo, formatShopDateTime } from '@desert-web/shared';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { fetchSaleWindow, quantitySummary } from '../data';
+import { fetchPickupInfo, fetchSaleWindow, quantitySummary } from '../data';
 import { PhaseBadge } from '../phase-badge';
 import { WindowActions } from '../window-actions';
 
@@ -25,7 +25,7 @@ export default async function SaleWindowPage({
   searchParams: Promise<{ done?: string }>;
 }) {
   const [{ id }, { done }] = await Promise.all([params, searchParams]);
-  const w = await fetchSaleWindow(id);
+  const [w, pickup] = await Promise.all([fetchSaleWindow(id), fetchPickupInfo()]);
   const doneMessage = done ? DONE_MESSAGES[done] : undefined;
   const { sold, total } = quantitySummary(w);
   const f = w.fulfillment;
@@ -47,13 +47,6 @@ export default async function SaleWindowPage({
       ) : null}
       {w.phase === 'cancelled' ? (
         <p className="alert info">Atšauktas langas tik skaitomas.</p>
-      ) : null}
-
-      {w.phase !== 'cancelled' && missingPickupInfo(f).length > 0 ? (
-        <p className="alert info">
-          Nenurodyta atsiėmimo vieta arba laikas: be jų lango paskelbti negalima.{' '}
-          <Link href={`/sale-windows/${w.id}/edit`}>Redaguoti</Link>
-        </p>
       ) : null}
 
       {/* key: po veiksmo (redirect į tą patį puslapį) patvirtinimo būsena išvaloma. */}
@@ -88,12 +81,10 @@ export default async function SaleWindowPage({
           <dd>
             {f.pickupAvailable ? (
               <>
-                {f.pickupLocation ?? 'Taip'}
-                {f.pickupFrom && f.pickupTo ? (
-                  <span className="muted small">
-                    {formatShopDateTime(f.pickupFrom)} – {formatShopDateTime(f.pickupTo)}
-                  </span>
-                ) : null}
+                {pickup ? formatPickupInfo(pickup) : 'Taip'}
+                <Link href="/settings#pickup" className="muted small">
+                  Keisti nustatymuose
+                </Link>
               </>
             ) : (
               'Ne'

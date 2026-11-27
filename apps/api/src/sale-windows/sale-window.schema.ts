@@ -2,19 +2,14 @@ import { SALE_WINDOW_STATUSES, type SaleWindowStatus } from '@desert-web/shared'
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { type HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 
+/**
+ * Atsiėmimo vieta ir laikas bendri visiems langams (nustatymuose). Seni dokumentai dar gali
+ * turėti pickupLocation / pickupFrom / pickupTo: jie nebeskaitomi ir nerašomi.
+ */
 @Schema({ _id: false })
 export class SaleWindowFulfillment {
   @Prop({ default: true })
   pickupAvailable!: boolean;
-
-  @Prop()
-  pickupLocation?: string;
-
-  @Prop()
-  pickupFrom?: Date;
-
-  @Prop()
-  pickupTo?: Date;
 
   @Prop({ default: false })
   deliveryAvailable!: boolean;

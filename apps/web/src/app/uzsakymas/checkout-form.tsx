@@ -3,7 +3,9 @@
 import {
   canGiftWrap,
   formatEur,
+  formatPickupInfo,
   PAYMENT_TEXT,
+  type PickupInfo,
   type PublicSaleWindowDto,
   type SellerDetails,
   telHref,
@@ -25,7 +27,7 @@ import { Stepper } from '@/components/stepper';
 import { preloadTurnstile, Turnstile, type TurnstileHandle } from '@/components/turnstile';
 import { adjustCart, giftWrapQuantityOf, maxQuantity, removeGiftWrap } from '@/lib/cart-logic';
 import { clearCart, useCart } from '@/lib/cart-store';
-import { formatDateTime, formatPickupWhen } from '@/lib/format';
+import { formatDateTime } from '@/lib/format';
 import { forgetRequestId, getRequestId, resetRequestId } from '@/lib/request-id';
 import { placeOrderAction } from './actions';
 import type { CheckoutField, CheckoutState } from './checkout-state';
@@ -42,6 +44,7 @@ export function CheckoutForm({
   selectedVariantId,
   turnstileSiteKey,
   seller,
+  pickup,
 }: {
   saleWindow: PublicSaleWindowDto;
   /** Šio lango prekių puslapis. */
@@ -52,6 +55,8 @@ export function CheckoutForm({
   turnstileSiteKey: string;
   /** Pardavėjo kontaktai (iš admin nustatymų). */
   seller: Pick<SellerDetails, 'email' | 'phone'>;
+  /** Atsiėmimo vieta ir laikas (iš admin nustatymų, bendri visiems langams). */
+  pickup: PickupInfo;
 }) {
   const router = useRouter();
   const [saleWindow, setSaleWindow] = useState(initialWindow);
@@ -292,7 +297,7 @@ export function CheckoutForm({
               </p>
             </>
           )}
-          <CheckoutFacts saleWindow={saleWindow} />
+          <CheckoutFacts saleWindow={saleWindow} pickup={pickup} />
           {empty && !selected ? null : (
             <p className="allergy-note">
               {/* Pastaba rodoma visada; kontaktai tik užpildyti (tušti laukai praleidžiami). */}
@@ -441,14 +446,17 @@ function useStickyTop(ref: RefObject<HTMLElement | null>, ready: boolean) {
 }
 
 /** Atsiėmimas, apmokėjimas ir lango pabaiga (parduotuvės laiku) po krepšelio suma. */
-function CheckoutFacts({ saleWindow }: { saleWindow: PublicSaleWindowDto }) {
-  const { pickupLocation, pickupFrom, pickupTo } = saleWindow.fulfillment;
-  const when =
-    pickupFrom && pickupTo ? formatPickupWhen(pickupFrom, pickupTo) : 'laikas bus patikslintas';
+function CheckoutFacts({
+  saleWindow,
+  pickup,
+}: {
+  saleWindow: PublicSaleWindowDto;
+  pickup: PickupInfo;
+}) {
   return (
     <ul className="checkout-facts">
       <li>
-        <strong>Atsiėmimas:</strong> {pickupLocation ?? 'vieta bus patikslinta'}, {when}
+        <strong>Atsiėmimas:</strong> {formatPickupInfo(pickup)}
       </li>
       <li>{PAYMENT_TEXT}</li>
       <li>Užsakymai priimami iki {formatDateTime(saleWindow.closesAt)}</li>

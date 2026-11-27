@@ -93,17 +93,11 @@ export interface CreateOrderResponse {
 }
 
 /**
- * GET /orders/access/:accessToken: užsakymas su lango pavadinimu ir atsiėmimo informacija,
- * kad pirkėjo užsakymo puslapiui nereikėtų kitų užklausų.
+ * GET /orders/access/:accessToken: užsakymas su lango pavadinimu. Atsiėmimo vieta ir laikas
+ * bendri visiems langams: GET /shop-info (`pickup`).
  */
 export interface OrderAccessDto extends OrderDto {
-  saleWindow: {
-    id: string;
-    title: string;
-    pickupLocation: string | null;
-    pickupFrom: string | null;
-    pickupTo: string | null;
-  };
+  saleWindow: { id: string; title: string };
 }
 
 /**

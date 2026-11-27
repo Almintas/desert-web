@@ -125,13 +125,7 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
         opensAt: body.opensAt,
         closesAt: body.closesAt,
         ordersCount: 0,
-        fulfillment: {
-          pickupAvailable: true,
-          pickupLocation: 'Vilnius',
-          pickupFrom: body.fulfillment.pickupFrom,
-          pickupTo: body.fulfillment.pickupTo,
-          deliveryAvailable: false,
-        },
+        fulfillment: { pickupAvailable: true, deliveryAvailable: false },
         // Be giftWrap įvestyje pakavimas išjungtas.
         giftWrap: { enabled: false, priceCents: 0 },
       });
@@ -173,14 +167,6 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
         'nei atsiėmimo, nei pristatymo',
         (b) => ({ ...b, fulfillment: { pickupAvailable: false, deliveryAvailable: false } }),
         'fulfillment',
-      ],
-      [
-        'atsiėmimo pabaiga prieš pradžią',
-        (b) => ({
-          ...b,
-          fulfillment: { ...b.fulfillment, pickupFrom: iso(50), pickupTo: iso(49) },
-        }),
-        'fulfillment.pickupTo',
       ],
       [
         'ta pati prekė du kartus',
@@ -521,6 +507,44 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
     });
   });
 
+  describe('atsiėmimas nebe lange (nustatymuose)', () => {
+    it.each(['publish', 'open-now'])(
+      '%s be jokios atsiėmimo informacijos lange: 200',
+      async (name) => {
+        const w = await createOk();
+        const res = await action(w.id, name);
+        expect(res.status).toBe(200);
+        expect(res.body.status).toBe('published');
+        expect(res.body.fulfillment).toEqual({ pickupAvailable: true, deliveryAvailable: false });
+      },
+    );
+
+    it('seni lango atsiėmimo laukai nerodomi ir PUT jų neliečia', async () => {
+      const w = await createOk();
+      const old = {
+        'fulfillment.pickupLocation': 'Vilnius',
+        'fulfillment.pickupFrom': new Date('2027-01-10T08:00:00.000Z'),
+        'fulfillment.pickupTo': new Date('2027-01-10T15:00:00.000Z'),
+      };
+      await ctx.saleWindowModel.collection.updateOne(
+        { _id: new Types.ObjectId(w.id) },
+        { $set: old },
+      );
+      const published = await actionOk(w.id, 'publish');
+      expect(published.fulfillment).toEqual({ pickupAvailable: true, deliveryAvailable: false });
+
+      const res = await update(w.id, bodyFrom(published, { title: 'Pervadintas' }));
+      expect(res.status).toBe(200);
+      expect(res.body.fulfillment).toEqual({ pickupAvailable: true, deliveryAvailable: false });
+      const raw = await ctx.saleWindowModel.collection.findOne({ _id: new Types.ObjectId(w.id) });
+      expect(raw?.fulfillment).toMatchObject({
+        pickupLocation: 'Vilnius',
+        pickupFrom: old['fulfillment.pickupFrom'],
+        pickupTo: old['fulfillment.pickupTo'],
+      });
+    });
+  });
+
   describe('PUT be pakeitimų išsaugo laikų sekundes', () => {
     const MINUTE = 60_000;
     /** Kaip admin forma: datetime-local tikslumas yra minutė. */
@@ -528,34 +552,18 @@ describe('Admin pardavimo langai (/admin/sale-windows)', () => {
       new Date(Math.floor(new Date(isoValue).getTime() / MINUTE) * MINUTE).toISOString();
 
     it('„Atidaryti dabar“, tada PUT be pakeitimų: opensAt lieka tiksliai toks pat', async () => {
-      const w = await createOk([item(cake)], {
-        fulfillment: {
-          pickupAvailable: true,
-          pickupLocation: 'Vilnius',
-          pickupFrom: '2027-01-10T08:00:42.000Z',
-          pickupTo: '2027-01-10T15:00:00.000Z',
-          deliveryAvailable: false,
-        },
-      });
+      const w = await createOk([item(cake)]);
       const opened = await actionOk(w.id, 'open-now');
       // Su labai maža tikimybe atidaryta lygiai 00 sekundžių; tada testas vis tiek galioja.
       const body = bodyFrom(opened, {
         opensAt: truncated(opened.opensAt),
         closesAt: truncated(opened.closesAt),
-        fulfillment: {
-          pickupAvailable: true,
-          pickupLocation: 'Vilnius',
-          pickupFrom: truncated(opened.fulfillment.pickupFrom!),
-          pickupTo: opened.fulfillment.pickupTo!,
-          deliveryAvailable: false,
-        },
       });
 
       const res = await update(w.id, body);
       expect(res.status).toBe(200);
       expect(res.body.opensAt).toBe(opened.opensAt);
       expect(res.body.closesAt).toBe(opened.closesAt);
-      expect(res.body.fulfillment.pickupFrom).toBe('2027-01-10T08:00:42.000Z');
       expect(res.body.phase).toBe('open');
     });
 

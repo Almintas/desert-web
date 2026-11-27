@@ -6,7 +6,7 @@
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { DEFAULT_SHOP_INFO } from '@desert-web/shared';
+import { DEFAULT_PICKUP_INFO, DEFAULT_SHOP_INFO } from '@desert-web/shared';
 import {
   CUSTOMER_STATUS_EMAILS,
   type OrderEmailData,
@@ -55,11 +55,7 @@ const sample: OrderEmailData = {
     address: null,
     notes: 'Atvažiuosiu apie 15 val.\nJei galima, makaronus be riešutų.',
   },
-  pickup: {
-    location: 'Vilnius, Gedimino pr. 1 (kiemas)',
-    from: '2026-12-20T08:00:00.000Z', // 10:00 Vilniaus laiku
-    to: '2026-12-20T12:00:00.000Z', // 14:00
-  },
+  pickup: DEFAULT_PICKUP_INFO,
   cancellationReason: null,
   orderUrl: 'https://desertai.lt/uzsakymas/AbCdEfGhIjKlMnOpQrStUvWxYz012345',
   adminOrderUrl: 'https://admin.desertai.lt/orders/665f1c2e8b3a4d0012345678',

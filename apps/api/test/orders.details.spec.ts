@@ -10,7 +10,7 @@ import {
   type TestContext,
 } from './helpers';
 
-/** Klaidų `details`, mokėjimas ir pirkėjo užsakymo vaizdas su atsiėmimo informacija. */
+/** Klaidų `details`, mokėjimas ir pirkėjo užsakymo vaizdas su lango pavadinimu. */
 describe('Užsakymai: klaidų details, mokėjimas, prieigos vaizdas', () => {
   let ctx: TestContext;
 
@@ -136,11 +136,10 @@ describe('Užsakymai: klaidų details, mokėjimas, prieigos vaizdas', () => {
     ]);
   });
 
-  it('naujas užsakymas: payment unpaid, on_pickup; prieigos vaizdas su lango pavadinimu ir atsiėmimu', async () => {
+  it('naujas užsakymas: payment unpaid, on_pickup; prieigos vaizdas su lango pavadinimu', async () => {
     const p = await createProduct(ctx);
     const window = await createSaleWindow(ctx, {
       items: [{ productId: p.productId, variantId: p.variantIds[0]! }],
-      pickupLocation: 'Gedimino pr. 1, Vilnius',
     });
     const res = await post(orderBody(window._id, [{ variantId: p.variantIds[0]!, quantity: 1 }]));
     expect(res.status).toBe(201);
@@ -157,9 +156,6 @@ describe('Užsakymai: klaidų details, mokėjimas, prieigos vaizdas', () => {
     expect(dto.saleWindow).toEqual({
       id: window._id.toString(),
       title: 'Savaitgalio pardavimas',
-      pickupLocation: 'Gedimino pr. 1, Vilnius',
-      pickupFrom: window.fulfillment.pickupFrom!.toISOString(),
-      pickupTo: window.fulfillment.pickupTo!.toISOString(),
     });
     expect(dto.orderNumber).toBe(res.body.order.orderNumber);
   });

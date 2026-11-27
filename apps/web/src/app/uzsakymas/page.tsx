@@ -74,6 +74,7 @@ export default async function CheckoutPage({
         selectedVariantId={selectedVariantId}
         turnstileSiteKey={webEnv().turnstileSiteKey}
         seller={{ email: shopInfo.seller.email, phone: shopInfo.seller.phone }}
+        pickup={shopInfo.pickup}
       />
     </div>
   );

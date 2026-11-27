@@ -64,9 +64,6 @@ async function main() {
       closesAt: new Date(now + 2 * day),
       fulfillment: {
         pickupAvailable: true,
-        pickupLocation: 'Vilnius, Gedimino pr. 1',
-        pickupFrom: new Date(now + 3 * day),
-        pickupTo: new Date(now + 3 * day + 6 * hour),
         deliveryAvailable: false,
       },
       items: [
@@ -103,9 +100,6 @@ async function main() {
       closesAt: new Date(now + 13 * day),
       fulfillment: {
         pickupAvailable: true,
-        pickupLocation: 'Vilnius, Gedimino pr. 1',
-        pickupFrom: new Date(now + 14 * day),
-        pickupTo: new Date(now + 14 * day + 6 * hour),
         deliveryAvailable: false,
       },
       items: [

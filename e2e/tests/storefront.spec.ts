@@ -1,3 +1,4 @@
+import { DEFAULT_PICKUP_INFO, formatPickupInfo } from '@desert-web/shared';
 import {
   addToCart,
   adminApi,
@@ -17,6 +18,8 @@ import {
 } from './support';
 
 const SHOP_TAGLINE = 'Tokių macarons niekur kitur nerasite.';
+/** Atsiėmimas nustatymuose neišsaugotas: „Kovo 11-osios g. 33, Kaunas, 17:00–20:00“. */
+const PICKUP_TEXT = formatPickupInfo(DEFAULT_PICKUP_INFO);
 
 test.describe('Parduotuvė ir užsakymas', () => {
   test('krepšelis išlieka perkrovus puslapį', async ({ page }) => {
@@ -27,9 +30,9 @@ test.describe('Parduotuvė ir užsakymas', () => {
     await page.goto(env.webUrl);
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(SHOP_TAGLINE);
     await expect(page.getByRole('heading', { name: w.title, level: 2 })).toBeVisible();
-    // Žingsniai su lango duomenimis vietoj atskiro atsiėmimo bloko.
+    // Žingsniai su lango duomenimis ir atsiėmimu iš nustatymų vietoj atskiro bloko.
     const steps = page.getByRole('list', { name: 'Kaip užsakyti' });
-    await expect(steps).toContainText('Gedimino pr. 1, Vilnius');
+    await expect(steps).toContainText(`Atsiėmimas: ${PICKUP_TEXT}`);
     await expect(steps).toContainText('Užsakykite iki');
     await addToCart(page, item, 3);
     const cartBar = page.getByRole('region', { name: 'Krepšelis' });
@@ -97,13 +100,14 @@ test.describe('Parduotuvė ir užsakymas', () => {
     await expect(submitButton(page)).toHaveText(/44,00/);
     // Tas pats apmokėjimo tekstas formoje ir patvirtinimo puslapyje (PAYMENT_TEXT).
     await expect(page.getByText('Apmokėjimas atsiimant.', { exact: true })).toBeVisible();
+    await expect(page.locator('.checkout-facts')).toContainText(`Atsiėmimas: ${PICKUP_TEXT}`);
     await submitButton(page).click();
 
     await expect(page).toHaveURL(/\/uzsakymas\/[A-Za-z0-9_-]{32}$/);
     await expect(page.getByText('Ačiū! Užsakymą gavome')).toBeVisible();
     await expect(page.getByText('Neapmokėta Apmokėjimas atsiimant.')).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(/Užsakymas DW-\d{4}-\d{4}/);
-    await expect(page.getByText('Gedimino pr. 1, Vilnius')).toBeVisible();
+    await expect(page.getByText(PICKUP_TEXT, { exact: true })).toBeVisible();
     await expect(page.getByText(itemLabel(item).split(' ')[0]!).first()).toBeVisible();
 
     expect(await findOrders(who.email)).toHaveLength(1);
