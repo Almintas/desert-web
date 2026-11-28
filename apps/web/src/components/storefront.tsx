@@ -2,8 +2,8 @@
 
 import type { PublicSaleWindowDto } from '@desert-web/shared';
 import { useCart } from '@/lib/cart-store';
-import { useLastCheckoutVariant } from '@/lib/last-checkout';
-import { checkoutHref } from '@/lib/links';
+import { useLastProduct } from '@/lib/last-product';
+import { cartBarHref, checkoutHref } from '@/lib/links';
 import { CartBar } from './cart-bar';
 import { ProductCard } from './product-card';
 
@@ -21,10 +21,19 @@ export function Storefront({
   openCount: number;
 }) {
   const cart = useCart(saleWindow);
-  const lastVariant = useLastCheckoutVariant(saleWindow.id);
-  const returnVariant = saleWindow.items.some((i) => i.variantId === lastVariant)
-    ? (lastVariant ?? undefined)
-    : undefined;
+  const lastProductId = useLastProduct(saleWindow.id);
+  const orderHref = checkoutHref(saleWindow.id, openCount);
+  // Kol sessionStorage neperskaitytas (hidratacija), suvestinė veda ten pat, kur „Užsakyti“.
+  const summaryHref =
+    lastProductId === undefined
+      ? orderHref
+      : cartBarHref({
+          windowId: saleWindow.id,
+          openCount,
+          itemVariantIds: saleWindow.items.map((i) => i.variantId),
+          lastProductId,
+          cartLines: cart.lines,
+        });
   return (
     <>
       {cart.loadChanges.length > 0 ? (
@@ -58,8 +67,8 @@ export function Storefront({
       <CartBar
         count={cart.count}
         totalCents={cart.totalCents}
-        href={checkoutHref(saleWindow.id, openCount)}
-        returnHref={checkoutHref(saleWindow.id, openCount, returnVariant)}
+        href={orderHref}
+        summaryHref={summaryHref}
       />
     </>
   );
