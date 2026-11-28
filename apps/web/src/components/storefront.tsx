@@ -2,6 +2,7 @@
 
 import type { PublicSaleWindowDto } from '@desert-web/shared';
 import { useCart } from '@/lib/cart-store';
+import { useLastCheckoutVariant } from '@/lib/last-checkout';
 import { checkoutHref } from '@/lib/links';
 import { CartBar } from './cart-bar';
 import { ProductCard } from './product-card';
@@ -20,6 +21,10 @@ export function Storefront({
   openCount: number;
 }) {
   const cart = useCart(saleWindow);
+  const lastVariant = useLastCheckoutVariant(saleWindow.id);
+  const returnVariant = saleWindow.items.some((i) => i.variantId === lastVariant)
+    ? (lastVariant ?? undefined)
+    : undefined;
   return (
     <>
       {cart.loadChanges.length > 0 ? (
@@ -54,6 +59,7 @@ export function Storefront({
         count={cart.count}
         totalCents={cart.totalCents}
         href={checkoutHref(saleWindow.id, openCount)}
+        returnHref={checkoutHref(saleWindow.id, openCount, returnVariant)}
       />
     </>
   );

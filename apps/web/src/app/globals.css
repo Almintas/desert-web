@@ -932,11 +932,43 @@ img {
   gap: 1rem;
 }
 
+/* Suvestinė yra nuoroda per visą juostą (::after): tuščia vieta grąžina į užsakymo puslapį. */
 .cart-bar-summary {
   margin: 0;
   display: flex;
   flex-direction: column;
   line-height: 1.25;
+  color: inherit;
+  text-decoration: none;
+}
+
+.cart-bar-summary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.cart-bar-summary:hover {
+  color: inherit;
+}
+
+.cart-bar-summary:focus-visible {
+  outline: none;
+}
+
+.cart-bar-summary:focus-visible::after {
+  box-shadow: inset 0 0 0 3px var(--accent);
+}
+
+.cart-bar:has(.cart-bar-summary:hover) {
+  background: var(--surface-warm);
+}
+
+.cart-bar:has(.cart-bar-summary:hover) .cart-bar-total {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
 }
 
 .cart-bar-count {
@@ -950,6 +982,8 @@ img {
 }
 
 .cart-bar .button {
+  position: relative;
+  z-index: 2;
   min-width: 9rem;
 }
 

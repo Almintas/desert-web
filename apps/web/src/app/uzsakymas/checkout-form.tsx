@@ -28,6 +28,7 @@ import { preloadTurnstile, Turnstile, type TurnstileHandle } from '@/components/
 import { adjustCart, giftWrapQuantityOf, maxQuantity, removeGiftWrap } from '@/lib/cart-logic';
 import { clearCart, useCart } from '@/lib/cart-store';
 import { formatDateTime } from '@/lib/format';
+import { rememberCheckout } from '@/lib/last-checkout';
 import { forgetRequestId, getRequestId, resetRequestId } from '@/lib/request-id';
 import { placeOrderAction } from './actions';
 import type { CheckoutField, CheckoutState } from './checkout-state';
@@ -75,6 +76,11 @@ export function CheckoutForm({
 
   // Turnstile api.js pradedam krauti iškart, dar prieš įkeliant krepšelį ir rodant formą.
   useEffect(preloadTurnstile, []);
+
+  // Krepšelio juosta prekių sąraše grąžins būtent į šį puslapį (su ta pačia preke).
+  useEffect(() => {
+    rememberCheckout(saleWindow.id, selectedVariantId);
+  }, [saleWindow.id, selectedVariantId]);
 
   // Vienas ID visam pateikimo bandymui (ir pakartojimams), žr. request-id.ts.
   useEffect(() => {
