@@ -21,7 +21,7 @@ Monorepo valdomas su **pnpm workspaces** ir **Turborepo**. `shared` sukompiliuoj
 
 ## Reikalavimai
 
-- Node.js 22+ (`.nvmrc`)
+- Node.js 24 (`.nvmrc`)
 - pnpm 10: `corepack enable` (versija paimama iš `package.json` → `packageManager`)
 - MongoDB Atlas klasteris (nemokamo plano užtenka)
 
