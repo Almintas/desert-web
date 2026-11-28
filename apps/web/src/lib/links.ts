@@ -22,3 +22,32 @@ export function checkoutHref(windowId: string, openCount: number, variantId?: st
   const query = params.toString();
   return query ? `/uzsakymas?${query}` : '/uzsakymas';
 }
+
+/**
+ * Kur veda krepšelio juostos suvestinė (visa juosta, išskyrus „Užsakyti“): atgal į paskutinę
+ * užsakymo puslapyje atidarytą prekę. Jei jos nebėra lange, į paskiausiai į krepšelį įdėtą prekę
+ * (nauja eilutė pridedama krepšelio gale), o jei ir tokios nėra, į įprastą užsakymą.
+ */
+export function cartBarHref({
+  windowId,
+  openCount,
+  itemVariantIds,
+  lastProductId,
+  cartLines,
+}: {
+  windowId: string;
+  openCount: number;
+  /** Dabartinio lango prekės (variantų ID). */
+  itemVariantIds: readonly string[];
+  /** Paskutinė užsakymo puslapyje rodyta prekė (sessionStorage) arba null. */
+  lastProductId: string | null;
+  /** Krepšelio eilutės ta tvarka, kuria buvo pridėtos. */
+  cartLines: readonly { variantId: string; quantity: number }[];
+}): string {
+  const inWindow = (id: string) => itemVariantIds.includes(id);
+  const target =
+    lastProductId !== null && inWindow(lastProductId)
+      ? lastProductId
+      : cartLines.findLast((l) => l.quantity > 0 && inWindow(l.variantId))?.variantId;
+  return checkoutHref(windowId, openCount, target);
+}

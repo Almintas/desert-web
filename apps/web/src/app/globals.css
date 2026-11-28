@@ -911,32 +911,76 @@ img {
 
 /* --- Krepšelio juosta --- */
 
+/*
+ * Juosta per visą ekrano plotį. Turinys išlygiuotas kaip konteineris (max-width ir 16px kraštai,
+ * --cart-bar-side), bet kairysis atitraukimas yra suvestinės nuorodos viduje: nuoroda užima visą
+ * aukštį ir visą plotį iki mygtuko, todėl paspaudimas bet kur baltoje vietoje atidaro krepšelį.
+ */
 .cart-bar {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 20;
-  padding: 0.75rem 16px calc(0.75rem + env(safe-area-inset-bottom));
+  container-type: inline-size;
+  padding-bottom: env(safe-area-inset-bottom);
   background: var(--surface);
   border-top: 1px solid var(--border);
   box-shadow: 0 -4px 20px rgb(58 42 36 / 10%);
 }
 
 .cart-bar-inner {
-  max-width: var(--container);
-  margin: 0 auto;
+  --cart-bar-side: var(--gutter);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  align-items: stretch;
+  padding-right: var(--cart-bar-side);
+}
+
+@supports (width: 1cqw) {
+  .cart-bar-inner {
+    --cart-bar-side: max(var(--gutter), (100cqw - var(--container)) / 2);
+  }
 }
 
 .cart-bar-summary {
-  margin: 0;
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  padding: 0.75rem 1rem 0.75rem var(--cart-bar-side);
   line-height: 1.25;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.cart-bar-summary:hover {
+  color: inherit;
+}
+
+.cart-bar-summary:focus-visible {
+  outline-offset: -3px;
+  border-radius: 0;
+}
+
+.cart-bar-summary:focus-visible .cart-bar-total {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
+}
+
+/* Tik su pele: liečiamame ekrane :hover po paspaudimo „užstringa“. */
+@media (hover: hover) {
+  .cart-bar:has(.cart-bar-summary:hover) {
+    background: var(--surface-warm);
+  }
+
+  .cart-bar-summary:hover .cart-bar-total {
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.15em;
+  }
 }
 
 .cart-bar-count {
@@ -950,6 +994,9 @@ img {
 }
 
 .cart-bar .button {
+  align-self: center;
+  flex-shrink: 0;
+  margin-block: 0.75rem;
   min-width: 9rem;
 }
 

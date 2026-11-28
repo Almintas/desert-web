@@ -74,6 +74,48 @@ test.describe('Prekė užsakymo puslapyje', () => {
     await expect(page.getByRole('region', { name: 'Krepšelis' })).toContainText('1 prekė');
   });
 
+  test('krepšelio juostos suvestinė grąžina į paskutinę atidarytą prekę, „Užsakyti“ – į užsakymą', async ({
+    page,
+  }) => {
+    const first = await createProduct(`Obuolių pyragas ${Date.now()}`);
+    const cake = await createProduct(`Aviečių tortas ${Date.now()}`);
+    const w = await openWindow([
+      { product: first, quantity: 10 },
+      { product: cake, quantity: 10 },
+    ]);
+    const item = w.items.find((i) => i.productName === cake.name)!;
+
+    await page.goto(env.webUrl);
+    await cardLink(page, item).click();
+    await expect(page).toHaveURL(new RegExp(`/uzsakymas\\?preke=${item.variantId}$`));
+    const increase = panel(page, item).getByRole('button', {
+      name: `Didinti kiekį: ${itemLabel(item)}`,
+    });
+    await increase.click();
+    await increase.click();
+    await page.getByRole('link', { name: '+ Pridėti kitų desertų' }).click();
+    await expect(page).toHaveURL(new RegExp(`^${env.webUrl}/?$`));
+
+    const bar = page.getByRole('region', { name: 'Krepšelis' });
+    const summary = bar.getByRole('link', { name: /^Peržiūrėti krepšelį: 2 prekės, / });
+    const order = bar.getByRole('link', { name: 'Užsakyti', exact: true });
+    await expect(summary).toHaveAttribute('href', `/uzsakymas?preke=${item.variantId}`);
+
+    // Suvestinė užima visą juostą kairiau mygtuko: spaudžiam tuščią vietą prie pat mygtuko.
+    const [summaryBox, orderBox] = [await summary.boundingBox(), await order.boundingBox()];
+    expect(summaryBox!.x).toBe(0);
+    expect(summaryBox!.x + summaryBox!.width).toBeCloseTo(orderBox!.x, 0);
+    await summary.click({ position: { x: summaryBox!.width - 5, y: summaryBox!.height / 2 } });
+    await expect(page).toHaveURL(new RegExp(`/uzsakymas\\?preke=${item.variantId}$`));
+    await expect(page.getByRole('heading', { level: 2, name: item.productName })).toBeVisible();
+    await expect(panel(page, item).getByRole('group')).toContainText('2');
+
+    await page.getByRole('link', { name: '← Atgal į desertus' }).click();
+    await order.click();
+    await expect(page).toHaveURL(new RegExp(`/uzsakymas$`));
+    await expect(page.getByRole('heading', { level: 2, name: item.productName })).toHaveCount(0);
+  });
+
   test('kortelės kiekio mygtukai prideda neišeinant iš puslapio, nuotrauka atidaro prekę', async ({
     page,
   }) => {

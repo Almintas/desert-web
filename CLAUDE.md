@@ -4,7 +4,7 @@ Desertų parduotuvė, kurioje užsakyti galima tik per admino atidarytą pardavi
 
 ## Stekas
 
-- pnpm workspaces + Turborepo. Node 22, pnpm 10.
+- pnpm workspaces + Turborepo. Node 24, pnpm 10.
 - `apps/api`: NestJS 11, Mongoose 8, MongoDB Atlas. Diegiamas į Railway.
 - `apps/web`, `apps/admin`: Next.js (App Router), React 19. Diegiami į Vercel.
 - `packages/shared`: Zod 4 schemos, DTO tipai, enum'ai, helperiai. Kompiliuojamas į CJS `dist/`.
